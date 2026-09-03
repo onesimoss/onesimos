@@ -1,5 +1,4 @@
 node_modules/
 .next/
-.git/
-README.md
 *.log
+.DS_Store

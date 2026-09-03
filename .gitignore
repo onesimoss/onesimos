@@ -25,16 +25,3 @@ yarn-error.log*
 # OS files
 .DS_Store
 Thumbs.db
-
-# IDE
-.vscode/
-.idea/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-node_modules/
-.next/
-.env.local
-.DS_Store
