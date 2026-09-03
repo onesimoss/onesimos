@@ -2,11 +2,14 @@
 import { useState } from "react";
 import Link from "next/link";
 
-export default function ChildDashboard() {
-  const [theme, setTheme] = useState("dino");
+// Define a type for our theme keys
+type ThemeKey = "dino" | "space" | "ocean" | "candy" | "jungle" | "arctic" | "fairy" | "robot" | "pirate" | "castle";
 
-  // 10 Rich Theme Gradients & Mascots
-  const themes = {
+export default function ChildDashboard() {
+  const [theme, setTheme] = useState<ThemeKey>("dino");
+
+  // 10 Rich Theme Gradients & Mascots with TypeScript typing
+  const themes: Record<ThemeKey, { bg: string; text: string; button: string; mascot: string; name: string }> = {
     dino: { bg: "bg-gradient-to-br from-lime-200 via-emerald-100 to-teal-200", text: "text-emerald-900", button: "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-300", mascot: "🦖", name: "Dino Land" },
     space: { bg: "bg-gradient-to-br from-indigo-900 via-purple-800 to-fuchsia-900", text: "text-white", button: "bg-fuchsia-500 hover:bg-fuchsia-600 shadow-fuchsia-900", mascot: "👨‍🚀", name: "Space Zone" },
     ocean: { bg: "bg-gradient-to-br from-cyan-300 via-blue-400 to-indigo-400", text: "text-blue-950", button: "bg-blue-600 hover:bg-blue-700 shadow-blue-300", mascot: "🐙", name: "Ocean World" },
@@ -34,16 +37,16 @@ export default function ChildDashboard() {
         <path fill="currentColor" d="M45.7,-63.9C58.9,-54.1,68.6,-39.7,73.5,-23.3C78.4,-6.9,78.5,11.6,71.6,27.1C64.8,42.7,51.1,55.3,35.7,63.5C20.3,71.7,3.2,75.5,-14.3,71.3C-31.8,67.1,-49.7,54.9,-60.3,38.6C-70.9,22.3,-74.2,1.9,-69.8,-16.4C-65.4,-34.7,-53.3,-50.9,-38.5,-60.5C-23.7,-70.1,-6.2,-73.1,10.4,-72.4C27,-71.7,43.6,-67.3,45.7,-63.9Z" transform="translate(100 100)" />
       </svg>
 
-      {/* Theme Selection with Rich Tooltip Styling */}
+      {/* Theme Selection */}
       <div className="z-10 absolute top-4 right-4 flex gap-2 bg-white/30 p-2 rounded-full backdrop-blur-xl shadow-lg border border-white/50">
         {Object.keys(themes).map((key) => (
           <button
             key={key}
-            onClick={() => setTheme(key)}
-            title={themes[key].name}
+            onClick={() => setTheme(key as ThemeKey)}
+            title={themes[key as ThemeKey].name}
             className={`w-10 h-10 rounded-full text-xl flex items-center justify-center transition-all duration-300 ${theme === key ? "bg-white scale-110 shadow-md ring-2 ring-offset-2 ring-[#FCE588]" : "hover:scale-110 opacity-70"}`}
           >
-            {themes[key].mascot}
+            {themes[key as ThemeKey].mascot}
           </button>
         ))}
       </div>
@@ -65,7 +68,7 @@ export default function ChildDashboard() {
           Let's explore {currentTheme.name}!
         </p>
 
-        {/* The MASSIVE Fun Button with Shadow and Hover Lift */}
+        {/* The MASSIVE Fun Button */}
         <button className={`relative group ${currentTheme.button} text-white text-3xl md:text-5xl font-extrabold px-14 py-8 md:px-20 md:py-10 rounded-[3rem] shadow-2xl transform transition-all duration-300 hover:-translate-y-2 hover:shadow-3xl active:translate-y-0 active:scale-95`}>
           <span className="absolute -top-3 -left-3 text-4xl animate-spin-slow">🔊</span>
           📚 START READING
