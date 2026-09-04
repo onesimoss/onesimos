@@ -23,3 +23,26 @@ export default function RootLayout({
     </html>
   );
 }
+import type { Metadata } from "next";
+import "./globals.css";
+import { Analytics } from "@vercel/analytics/next";  // <-- ADD THIS
+
+export const metadata: Metadata = {
+  title: "Onesimos – The Useful Tutor",
+  description: "Read aloud. Get better. Quietly.",
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body>
+        {children}
+        <Analytics />  {/* <-- ADD THIS */}
+      </body>
+    </html>
+  );
+}
