@@ -3,6 +3,7 @@ import { Fredoka, Inter } from "next/font/google";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { AuthProvider } from "@/context/AuthContext";
 
 const childFont = Fredoka({ 
   subsets: ["latin"], 
@@ -23,10 +24,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${childFont.className} ${parentFont.className} antialiased`}>
-        <ThemeProvider>
-          {children}
-          <Analytics />
-        </ThemeProvider>
+        <AuthProvider>
+          <ThemeProvider>
+            {children}
+            <Analytics />
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );
