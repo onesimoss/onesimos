@@ -1,7 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@deepgram/sdk';
-
-const deepgram = createClient(process.env.DEEPGRAM_API_KEY!);
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,27 +12,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const buffer = Buffer.from(await audio.arrayBuffer());
-
-    const { result, error } = await deepgram.listen.prerecorded.transcribeFile(
-      buffer,
-      {
-        model: 'nova-3',
-        language: 'en-US',
-        smart_format: true,
-        punctuate: true,
-      }
-    );
-
-    if (error) {
-      console.error('Deepgram error:', error);
+    const apiKey = process.env.DEEPGRAM_API_KEY;
+    if (!apiKey) {
       return NextResponse.json(
-        { error: 'Transcription failed' },
+        { error: 'Deepgram API key not configured' },
         { status: 500 }
       );
     }
 
-    const transcript = result.results?.channels?.[0]?.alternatives?.[0]?.transcript || '';
+    const buffer = Buffer.from(await audio.arrayBuffer());
+
+    // Call Deepgram REST API directly
+    const response = await fetch('https://api.deepgram.com/v1/listen?model=nova-3&smart_format=true&punctuate=true', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Token ${apiKey}`,
+        'Content-Type': 'audio/webm',
+      },
+      body: buffer,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Deepgram API error:', response.status, errorText);
+      return NextResponse.json(
+        { error: `Deepgram API error: ${response.status}` },
+        { status: response.status }
+      );
+    }
+
+    const data = await response.json();
+    const transcript = data?.results?.channels?.[0]?.alternatives?.[0]?.transcript || '';
 
     return NextResponse.json({ transcript });
   } catch (error) {
