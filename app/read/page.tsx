@@ -31,6 +31,12 @@ const EASY_WORDS = new Set([
 
 const FILLER_WORDS = new Set(['um', 'uh', 'er', 'ah', 'like']);
 
+// Check if speech recognition is supported
+function isSpeechSupported(): boolean {
+  if (typeof window === 'undefined') return false;
+  return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+}
+
 // Main reading component that uses useSearchParams
 function ReadingContent() {
   const searchParams = useSearchParams();
@@ -44,10 +50,16 @@ function ReadingContent() {
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [sessionEnded, setSessionEnded] = useState(false);
+  const [isSpeechSupportedState, setIsSpeechSupportedState] = useState(true);
+  const [isReadingMode, setIsReadingMode] = useState(false);
   const recognitionRef = useRef<any>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const story = `Ella was the biggest elephant in the forest, but she had the softest heart. One morning, she found a tiny bird with a broken wing. "I can help you," Ella whispered, though she was in a hurry to meet her friends. She gently lifted the bird onto her back and carried it to the old owl who knew about healing. Later, her friends asked why she was late. Ella could have made up an excuse. Instead, she told the truth. "I stopped to help a bird," she said, despite feeling shy. Her friends were quiet for a moment. Then they smiled. "That is why we love you," they said. Ella learned that kindness is never wasted.`;
+
+  useEffect(() => {
+    setIsSpeechSupportedState(isSpeechSupported());
+  }, []);
 
   // Timer logic (background only – no display)
   useEffect(() => {
@@ -103,12 +115,20 @@ function ReadingContent() {
       return;
     }
 
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert("Speech recognition is not supported in this browser. Please use Chrome.");
+    if (!isSpeechSupportedState) {
+      // If speech isn't supported, enter manual reading mode
+      setIsReadingMode(true);
+      setIsTimerRunning(true);
       return;
     }
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setIsReadingMode(true);
+      setIsTimerRunning(true);
+      return;
+    }
+
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = true;
@@ -118,12 +138,19 @@ function ReadingContent() {
       setIsListening(true);
       setIsTimerRunning(true);
       setSessionEnded(false);
+      setIsReadingMode(false);
     };
 
     recognition.onerror = (event: any) => {
       console.error('Speech error:', event.error);
       if (event.error === 'not-allowed') {
         alert("Please allow microphone access in your browser settings.");
+      } else if (event.error === 'no-speech') {
+        // Keep going silently
+      } else {
+        // Fallback to manual reading mode
+        setIsReadingMode(true);
+        setIsTimerRunning(true);
       }
       setIsListening(false);
     };
@@ -164,11 +191,11 @@ function ReadingContent() {
     setIsTimerRunning(false);
     stopListening();
 
-    const wordsRead = transcript.split(' ').filter(w => w.length > 0).length;
+    const wordsRead = transcript.split(' ').filter(w => w.length > 0).length || 1;
 
     const result = await saveReadingSession({
       childId: childId!,
-      durationSeconds: readingTime,
+      durationSeconds: Math.max(readingTime, 1),
       wordsRead: wordsRead,
       wordsStumbled: stumbledWords,
       endedAt: new Date(),
@@ -177,10 +204,11 @@ function ReadingContent() {
     setIsSaving(false);
 
     if (result.error) {
-      alert("There was an error saving your session. But your reading data is still here.");
       console.error("Save error:", result.error);
+      alert("There was an error saving your session. But your reading data is still here.");
     } else {
       alert(`🎉 Great reading! You read for ${Math.floor(readingTime / 60)} minutes and ${readingTime % 60} seconds.`);
+      router.push('/dashboard');
     }
   };
 
@@ -190,6 +218,7 @@ function ReadingContent() {
     setReadingTime(0);
     setIsTimerRunning(false);
     setSessionEnded(false);
+    setIsReadingMode(false);
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       setIsListening(false);
@@ -198,6 +227,25 @@ function ReadingContent() {
 
   const goToDashboard = () => {
     router.push('/dashboard');
+  };
+
+  // Manual reading mode for unsupported devices
+  const handleManualRead = () => {
+    if (!isReadingMode) {
+      setIsReadingMode(true);
+      setIsTimerRunning(true);
+    }
+  };
+
+  const handleManualSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const form = e.target as HTMLFormElement;
+    const textarea = form.querySelector('textarea') as HTMLTextAreaElement;
+    if (textarea && textarea.value.trim()) {
+      setTranscript(prev => prev + ' ' + textarea.value.trim());
+      detectStumbles(textarea.value.trim());
+      textarea.value = '';
+    }
   };
 
   if (!childId) {
@@ -228,12 +276,17 @@ function ReadingContent() {
               {sessionEnded ? '✅ Session complete!' : 'Read aloud. Get better. Quietly.'}
             </p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
+            {!isSpeechSupportedState && !isReadingMode && !sessionEnded && (
+              <span className="text-xs text-amber-600 bg-amber-50 px-3 py-1 rounded-full">
+                ⚠️ Speech not supported – type instead
+              </span>
+            )}
             <button
               onClick={isListening ? stopListening : startListening}
-              disabled={sessionEnded}
+              disabled={sessionEnded || isReadingMode}
               className={`px-6 py-2 rounded-full font-medium transition-all ${
-                sessionEnded
+                sessionEnded || isReadingMode
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : isListening 
                     ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse' 
@@ -242,6 +295,14 @@ function ReadingContent() {
             >
               {isListening ? '⏹ Stop' : '🎙️ Start Reading'}
             </button>
+            {!isSpeechSupportedState && !isReadingMode && !sessionEnded && (
+              <button
+                onClick={handleManualRead}
+                className="px-6 py-2 bg-[#b28b6a] text-white rounded-full font-medium hover:shadow-xl transition-all"
+              >
+                ✍️ Type Instead
+              </button>
+            )}
           </div>
         </div>
 
@@ -251,6 +312,26 @@ function ReadingContent() {
             {story}
           </p>
         </div>
+
+        {/* Manual Reading Mode */}
+        {isReadingMode && !sessionEnded && (
+          <div className="mt-6 p-4 bg-[#f3eee8] rounded-xl">
+            <p className="text-sm text-[#4a423b] font-medium mb-3">✍️ Type the sentence you just read:</p>
+            <form onSubmit={handleManualSubmit} className="flex gap-3 flex-wrap">
+              <textarea
+                placeholder="Type what you read..."
+                className="flex-1 min-w-[200px] px-4 py-2 border border-[#dcc8b4] rounded-lg focus:ring-2 focus:ring-[#b28b6a] focus:outline-none"
+                rows={2}
+              />
+              <button
+                type="submit"
+                className="px-4 py-2 bg-[#b28b6a] text-white rounded-lg font-medium hover:shadow-xl transition-all"
+              >
+                Submit
+              </button>
+            </form>
+          </div>
+        )}
 
         {/* Transcript */}
         {transcript && (
@@ -265,7 +346,7 @@ function ReadingContent() {
                 🔄 Reset
               </button>
             </div>
-            <p className="text-[#1e1916] mt-1 text-sm">{transcript}</p>
+            <p className="text-[#1e1916] mt-1 text-sm max-h-40 overflow-y-auto">{transcript}</p>
           </div>
         )}
 
@@ -287,11 +368,11 @@ function ReadingContent() {
         )}
 
         {/* Footer */}
-        <div className="mt-6 flex justify-between items-center pt-4 border-t border-black/5">
+        <div className="mt-6 flex justify-between items-center pt-4 border-t border-black/5 flex-wrap gap-3">
           <span className="text-sm text-[#8a7e74]">
             {sessionEnded ? '✅ Session complete!' : `${Math.floor(readingTime / 60)}m ${readingTime % 60}s reading`}
           </span>
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             {sessionEnded ? (
               <button
                 onClick={goToDashboard}
