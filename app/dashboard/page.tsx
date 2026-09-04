@@ -147,12 +147,28 @@ export default function Dashboard() {
     await fetchChildren();
   };
 
+  // Calculate dynamic reading level based on sessions
+  const calculateReadingLevel = (stats: ChildStats | null) => {
+    if (!stats || stats.totalSessions === 0) return 7; // Default starting level
+    
+    // Each 3 sessions increases level by 0.5, capped at 12
+    const baseLevel = 7;
+    const bonus = Math.floor(stats.totalSessions / 3) * 0.5;
+    const level = baseLevel + bonus;
+    // Round to 1 decimal place and cap at 12
+    return Math.min(12, Math.round(level * 10) / 10);
+  };
+
   const formatDuration = (seconds: number) => {
     if (seconds < 60) return `${seconds}s`;
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}m ${secs}s`;
   };
+
+  const currentLevel = selectedChild 
+    ? (childStats ? calculateReadingLevel(childStats) : 7)
+    : 7;
 
   if (loading) {
     return (
@@ -168,18 +184,20 @@ export default function Dashboard() {
     <main className="min-h-screen bg-[#f7f2eb] p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-8 flex-wrap gap-4">
           <div>
             <h1 className="text-3xl font-bold text-[#1e1916]">📊 Parent Dashboard</h1>
             <p className="text-[#8a7e74]">Welcome, {user.email}</p>
           </div>
-          <div className="flex gap-3">
-            <Link
-              href="/read"
-              className="px-4 py-2 bg-[#b28b6a] text-white rounded-full text-sm font-medium hover:shadow-xl transition-all"
-            >
-              📖 Start Reading
-            </Link>
+          <div className="flex gap-3 flex-wrap">
+            {selectedChild && (
+              <Link
+                href={`/read?child=${selectedChild.id}`}
+                className="px-4 py-2 bg-[#b28b6a] text-white rounded-full text-sm font-medium hover:shadow-xl transition-all"
+              >
+                📖 Read with {selectedChild.name}
+              </Link>
+            )}
             <button
               onClick={signOut}
               className="px-4 py-2 border border-[#dcc8b4] text-[#4a423b] rounded-full text-sm font-medium hover:bg-black/5 transition-all"
@@ -297,11 +315,13 @@ export default function Dashboard() {
                   </div>
                   <div className="bg-[#f7f2eb] p-4 rounded-xl text-center">
                     <p className="text-2xl font-bold text-[#1e1916]">{formatDuration(childStats.totalDuration)}</p>
-                    <p className="text-xs text-[#8a7e74]">Total Reading Time</p>
+                    <p className="text-xs text-[#8a7e74]">Reading Time</p>
                   </div>
                   <div className="bg-[#f7f2eb] p-4 rounded-xl text-center">
-                    <p className="text-2xl font-bold text-[#1e1916]">{childStats.totalStumbles}</p>
-                    <p className="text-xs text-[#8a7e74]">Words to Practice</p>
+                    <p className="text-2xl font-bold text-[#1e1916]">
+                      {calculateReadingLevel(childStats)}
+                    </p>
+                    <p className="text-xs text-[#8a7e74]">Reading Level</p>
                   </div>
                 </div>
 
@@ -335,7 +355,15 @@ export default function Dashboard() {
                 </div>
               </div>
             ) : (
-              <p className="text-[#8a7e74] text-sm">No reading data yet. Start a reading session!</p>
+              <div className="text-center py-8">
+                <p className="text-[#8a7e74] mb-4">No reading data yet for {selectedChild.name}.</p>
+                <Link
+                  href={`/read?child=${selectedChild.id}`}
+                  className="inline-block px-6 py-3 bg-[#b28b6a] text-white rounded-full text-sm font-medium hover:shadow-xl transition-all"
+                >
+                  📖 Start First Reading Session
+                </Link>
+              </div>
             )}
           </div>
         </div>
