@@ -9,7 +9,7 @@ declare global {
 
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { saveReadingSession } from "@/lib/readingUtils";
@@ -31,7 +31,8 @@ const EASY_WORDS = new Set([
 
 const FILLER_WORDS = new Set(['um', 'uh', 'er', 'ah', 'like']);
 
-export default function ReadPage() {
+// Main reading component that uses useSearchParams
+function ReadingContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const childId = searchParams.get('child');
@@ -48,7 +49,7 @@ export default function ReadPage() {
 
   const story = `Ella was the biggest elephant in the forest, but she had the softest heart. One morning, she found a tiny bird with a broken wing. "I can help you," Ella whispered, though she was in a hurry to meet her friends. She gently lifted the bird onto her back and carried it to the old owl who knew about healing. Later, her friends asked why she was late. Ella could have made up an excuse. Instead, she told the truth. "I stopped to help a bird," she said, despite feeling shy. Her friends were quiet for a moment. Then they smiled. "That is why we love you," they said. Ella learned that kindness is never wasted.`;
 
-  // Timer logic
+  // Timer logic (background only – no display)
   useEffect(() => {
     if (isTimerRunning) {
       timerIntervalRef.current = setInterval(() => {
@@ -66,14 +67,6 @@ export default function ReadPage() {
       }
     };
   }, [isTimerRunning]);
-
-  // Auto-end when reading time reaches 5 minutes
-  useEffect(() => {
-    if (readingTime >= 300 && isTimerRunning) {
-      stopListening();
-      endSession();
-    }
-  }, [readingTime, isTimerRunning]);
 
   const detectStumbles = (text: string) => {
     const cleaned = text
@@ -184,11 +177,10 @@ export default function ReadPage() {
     setIsSaving(false);
 
     if (result.error) {
-      alert("There was an error saving your session. But don't worry, your reading data is still on this page.");
+      alert("There was an error saving your session. But your reading data is still here.");
       console.error("Save error:", result.error);
     } else {
       alert(`🎉 Great reading! You read for ${Math.floor(readingTime / 60)} minutes and ${readingTime % 60} seconds.`);
-      router.push('/dashboard');
     }
   };
 
@@ -204,10 +196,8 @@ export default function ReadPage() {
     }
   };
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  const goToDashboard = () => {
+    router.push('/dashboard');
   };
 
   if (!childId) {
@@ -217,7 +207,7 @@ export default function ReadPage() {
           <h1 className="text-2xl font-bold text-[#1e1916] mb-4">👶 Select a Child</h1>
           <p className="text-[#8a7e74] mb-6">Please go back to the dashboard and select a child to start reading.</p>
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={goToDashboard}
             className="px-6 py-2 bg-[#b28b6a] text-white rounded-full font-medium hover:shadow-xl transition-all"
           >
             Go to Dashboard
@@ -234,12 +224,11 @@ export default function ReadPage() {
         <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-semibold text-[#1e1916]">📖 Reading Session</h1>
-            <p className="text-sm text-[#8a7e74]">Child ID: {childId}</p>
+            <p className="text-sm text-[#8a7e74]">
+              {sessionEnded ? '✅ Session complete!' : 'Read aloud. Get better. Quietly.'}
+            </p>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm font-medium text-[#1e1916] font-mono">
-              ⏱️ {formatTime(readingTime)}
-            </span>
             <button
               onClick={isListening ? stopListening : startListening}
               disabled={sessionEnded}
@@ -271,6 +260,7 @@ export default function ReadPage() {
               <button
                 onClick={resetSession}
                 className="text-xs text-[#8a7e74] hover:text-[#b28b6a] transition"
+                disabled={sessionEnded}
               >
                 🔄 Reset
               </button>
@@ -301,24 +291,52 @@ export default function ReadPage() {
           <span className="text-sm text-[#8a7e74]">
             {sessionEnded ? '✅ Session complete!' : `${Math.floor(readingTime / 60)}m ${readingTime % 60}s reading`}
           </span>
-          {sessionEnded ? (
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="text-sm bg-[#b28b6a] text-white px-4 py-2 rounded-full hover:shadow-xl transition-all"
-            >
-              📊 View Dashboard
-            </button>
-          ) : (
-            <button
-              onClick={endSession}
-              disabled={!transcript || sessionEnded || isSaving}
-              className="text-sm bg-[#1e1916] text-white px-4 py-2 rounded-full hover:shadow-xl transition-all disabled:opacity-50"
-            >
-              {isSaving ? 'Saving...' : '✅ End Session'}
-            </button>
-          )}
+          <div className="flex gap-3">
+            {sessionEnded ? (
+              <button
+                onClick={goToDashboard}
+                className="text-sm bg-[#b28b6a] text-white px-6 py-2 rounded-full hover:shadow-xl transition-all"
+              >
+                📊 Back to Dashboard
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={resetSession}
+                  className="text-sm text-[#8a7e74] hover:text-[#b28b6a] transition px-4 py-2"
+                >
+                  🔄 Reset
+                </button>
+                <button
+                  onClick={endSession}
+                  disabled={!transcript || sessionEnded || isSaving}
+                  className="text-sm bg-[#1e1916] text-white px-6 py-2 rounded-full hover:shadow-xl transition-all disabled:opacity-50"
+                >
+                  {isSaving ? 'Saving...' : '✅ End Session & Save'}
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </main>
+  );
+}
+
+// Loading fallback for Suspense
+function ReadingFallback() {
+  return (
+    <main className="min-h-screen bg-[#f7f2eb] flex items-center justify-center p-6">
+      <div className="text-[#8a7e74]">Loading reading session...</div>
+    </main>
+  );
+}
+
+// Main page component with Suspense boundary
+export default function ReadPage() {
+  return (
+    <Suspense fallback={<ReadingFallback />}>
+      <ReadingContent />
+    </Suspense>
   );
 }
