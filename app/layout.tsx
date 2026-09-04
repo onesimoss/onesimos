@@ -1,7 +1,7 @@
 ﻿import type { Metadata } from "next";
 import { Fredoka, Inter } from "next/font/google";
 import "./globals.css";
-import { Analytics } from "@vercel/analytics/next";  // ← ADD THIS
+import { Analytics } from "@vercel/analytics/next";
 
 const childFont = Fredoka({ 
   subsets: ["latin"], 
@@ -10,8 +10,8 @@ const childFont = Fredoka({
 const parentFont = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Onesimos",
-  description: "The Useful Tutor",
+  title: "Onesimos – The Useful Tutor",
+  description: "Read aloud. Get better. Quietly.",
 };
 
 export default function RootLayout({
@@ -23,7 +23,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${childFont.className} ${parentFont.className} antialiased`}>
         {children}
-        <Analytics />  {/* ← ADD THIS */}
+        <Analytics />
       </body>
     </html>
   );
