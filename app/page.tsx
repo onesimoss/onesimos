@@ -2,17 +2,46 @@
 
 import { useTheme } from "@/context/ThemeContext";
 import { themes } from "@/lib/themes";
+import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 
 export default function Home() {
   const { theme, setTheme } = useTheme();
   const currentTheme = themes[theme];
+  const { user } = useAuth();
 
   return (
     <main 
-      className="min-h-screen flex items-center justify-center p-6 transition-colors duration-300"
+      className="min-h-screen flex items-center justify-center p-6 transition-colors duration-300 relative"
       style={{ background: currentTheme.background }}
     >
+      {/* Auth Buttons - Top Right */}
+      <div className="absolute top-4 right-4 flex gap-2">
+        {user ? (
+          <Link
+            href="/dashboard"
+            className="text-sm bg-[#b28b6a] text-white px-4 py-1 rounded-full hover:shadow-xl transition-all"
+          >
+            Dashboard
+          </Link>
+        ) : (
+          <>
+            <Link
+              href="/login"
+              className="text-sm text-[#4a423b] hover:text-[#b28b6a] transition-colors px-3 py-1"
+            >
+              Log in
+            </Link>
+            <Link
+              href="/signup"
+              className="text-sm bg-[#b28b6a] text-white px-4 py-1 rounded-full hover:shadow-xl transition-all"
+            >
+              Sign Up
+            </Link>
+          </>
+        )}
+      </div>
+
       <div 
         className="max-w-4xl w-full rounded-3xl shadow-xl p-12 border transition-colors duration-300"
         style={{ 
