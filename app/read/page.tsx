@@ -9,7 +9,7 @@ declare global {
 
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 // List of common easy words to ignore
 const EASY_WORDS = new Set([
@@ -29,46 +29,72 @@ const EASY_WORDS = new Set([
 // Common filler words that aren't worth tracking
 const FILLER_WORDS = new Set(['um', 'uh', 'er', 'ah', 'like']);
 
-// Words that indicate a genuine stumble (mispronounced or replaced)
-const STUMBLE_INDICATORS = new Set([
-  'whisper', 'whispered', 'though', 'despite', 'gentle', 'gently',
-  'lifted', 'carried', 'healing', 'excuse', 'instead', 'kindness',
-  'wasted', 'silent', 'quiet', 'moment', 'forest', 'elephant',
-  'broken', 'wing', 'healing', 'comfort', 'courage', 'brave'
-]);
-
 export default function ReadPage() {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [stumbledWords, setStumbledWords] = useState<string[]>([]);
-  const [timeLeft, setTimeLeft] = useState(20);
+  const [timeLeft, setTimeLeft] = useState(20); // in minutes
+  const [secondsLeft, setSecondsLeft] = useState(20 * 60); // in seconds
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const story = `Ella was the biggest elephant in the forest, but she had the softest heart. One morning, she found a tiny bird with a broken wing. "I can help you," Ella whispered, though she was in a hurry to meet her friends. She gently lifted the bird onto her back and carried it to the old owl who knew about healing. Later, her friends asked why she was late. Ella could have made up an excuse. Instead, she told the truth. "I stopped to help a bird," she said, despite feeling shy. Her friends were quiet for a moment. Then they smiled. "That is why we love you," they said. Ella learned that kindness is never wasted.`;
 
+  // Timer logic
+  useEffect(() => {
+    if (isTimerRunning && secondsLeft > 0) {
+      timerIntervalRef.current = setInterval(() => {
+        setSecondsLeft(prev => {
+          if (prev <= 1) {
+            setIsTimerRunning(false);
+            if (recognitionRef.current) {
+              recognitionRef.current.stop();
+              setIsListening(false);
+            }
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else if (secondsLeft === 0 && timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    };
+  }, [isTimerRunning, secondsLeft]);
+
   const detectStumbles = (text: string) => {
-    const words = text.toLowerCase().split(/\s+/);
-    const storyWords = new Set(story.toLowerCase().split(/\s+/));
+    const cleaned = text
+      .toLowerCase()
+      .replace(/\b(uh|um|er|ah|like|you know|i mean|so|well)\b/g, '')
+      .replace(/[^a-z\s']/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+      
+    const words = cleaned.split(' ');
+    const storyWords = story.toLowerCase().split(/\s+/);
+    const storyWordCount: Record<string, number> = {};
+    storyWords.forEach((w: string) => {
+      const clean = w.replace(/[^a-z']/g, '');
+      if (clean) storyWordCount[clean] = (storyWordCount[clean] || 0) + 1;
+    });
     
     words.forEach((word: string) => {
-      // Clean the word of punctuation
       const cleanWord = word.replace(/[^a-z']/g, '');
-      
-      // Skip if:
-      // 1. It's empty
-      // 2. It's an easy/common word
-      // 3. It's a filler word
-      // 4. It's not in the story (they added extra words)
-      // 5. Already tracked
       if (!cleanWord || 
           EASY_WORDS.has(cleanWord) || 
-          FILLER_WORDS.has(cleanWord) ||
-          !storyWords.has(cleanWord) ||
-          stumbledWords.includes(cleanWord)) {
+          !storyWordCount[cleanWord] ||
+          stumbledWords.includes(cleanWord) ||
+          /^[0-9]+$/.test(cleanWord)) {
         return;
       }
-      
-      // Add to stumbled words
       setStumbledWords(prev => [...prev, cleanWord]);
     });
   };
@@ -87,6 +113,10 @@ export default function ReadPage() {
 
     recognition.onstart = () => {
       setIsListening(true);
+      // Start timer when listening starts
+      if (!isTimerRunning && secondsLeft > 0) {
+        setIsTimerRunning(true);
+      }
     };
 
     recognition.onerror = (event: any) => {
@@ -95,6 +125,7 @@ export default function ReadPage() {
         alert("Please allow microphone access in your browser settings.");
       }
       setIsListening(false);
+      setIsTimerRunning(false);
     };
 
     recognition.onresult = (event: any) => {
@@ -105,13 +136,14 @@ export default function ReadPage() {
         }
       }
       if (finalTranscript) {
-        setTranscript(finalTranscript);
+        setTranscript(prev => prev + ' ' + finalTranscript);
         detectStumbles(finalTranscript);
       }
     };
 
     recognition.onend = () => {
       setIsListening(false);
+      // Don't stop timer – let it keep running
     };
 
     recognitionRef.current = recognition;
@@ -122,41 +154,69 @@ export default function ReadPage() {
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       setIsListening(false);
+      setIsTimerRunning(false);
     }
   };
 
   const adjustTime = (change: number) => {
-    setTimeLeft(prev => Math.max(5, Math.min(60, prev + change)));
+    const newMinutes = Math.max(5, Math.min(60, timeLeft + change));
+    setTimeLeft(newMinutes);
+    setSecondsLeft(newMinutes * 60);
   };
+
+  const resetSession = () => {
+    setTranscript("");
+    setStumbledWords([]);
+    setSecondsLeft(timeLeft * 60);
+    setIsTimerRunning(false);
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
+  };
+
+  // Format time as MM:SS
+  const formatTime = (totalSeconds: number) => {
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  };
+
+  // Calculate progress based on words tracked vs total unique words
+  const totalUniqueWords = new Set(story.toLowerCase().split(/\s+/).map(w => w.replace(/[^a-z']/g, ''))).size;
+  const progress = Math.min(100, Math.round((stumbledWords.length / totalUniqueWords) * 100));
 
   return (
     <main className="min-h-screen bg-[#f7f2eb] p-6">
       <div className="max-w-4xl mx-auto bg-[#fcf9f5] rounded-3xl shadow-xl p-8">
+        {/* Header */}
         <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
           <h1 className="text-2xl font-semibold text-[#1e1916]">📖 Reading Session</h1>
           <div className="flex items-center gap-4">
+            {/* Timer Controls */}
             <div className="flex items-center gap-2 bg-[#f3eee8] px-3 py-1 rounded-full">
               <button 
                 onClick={() => adjustTime(-5)}
-                className="text-[#b28b6a] hover:bg-[#dcc8b4] px-2 py-1 rounded-full transition"
+                className="text-[#b28b6a] hover:bg-[#dcc8b4] px-2 py-1 rounded-full transition text-lg font-bold"
               >
                 −
               </button>
-              <span className="text-sm font-medium text-[#1e1916] min-w-[40px] text-center">
-                ⏱️ {timeLeft}m
+              <span className="text-sm font-medium text-[#1e1916] min-w-[60px] text-center font-mono">
+                {formatTime(secondsLeft)}
               </span>
               <button 
                 onClick={() => adjustTime(5)}
-                className="text-[#b28b6a] hover:bg-[#dcc8b4] px-2 py-1 rounded-full transition"
+                className="text-[#b28b6a] hover:bg-[#dcc8b4] px-2 py-1 rounded-full transition text-lg font-bold"
               >
                 +
               </button>
             </div>
+            {/* Mic Button */}
             <button
               onClick={isListening ? stopListening : startListening}
               className={`px-6 py-2 rounded-full font-medium transition-all ${
                 isListening 
-                  ? 'bg-red-500 text-white hover:bg-red-600' 
+                  ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse' 
                   : 'bg-[#1e1916] text-white hover:bg-[#2d241e]'
               }`}
             >
@@ -165,19 +225,30 @@ export default function ReadPage() {
           </div>
         </div>
 
+        {/* Story */}
         <div className="prose max-w-none">
           <p className="text-lg leading-relaxed whitespace-pre-wrap font-serif text-[#1e1916]">
             {story}
           </p>
         </div>
 
+        {/* Transcript */}
         {transcript && (
           <div className="mt-6 p-4 bg-[#f3eee8] rounded-xl">
-            <p className="text-sm text-[#4a423b] font-medium">What you read:</p>
-            <p className="text-[#1e1916] mt-1">{transcript}</p>
+            <div className="flex justify-between items-center mb-2">
+              <p className="text-sm text-[#4a423b] font-medium">What you read:</p>
+              <button
+                onClick={resetSession}
+                className="text-xs text-[#8a7e74] hover:text-[#b28b6a] transition"
+              >
+                🔄 Reset
+              </button>
+            </div>
+            <p className="text-[#1e1916] mt-1 text-sm">{transcript}</p>
           </div>
         )}
 
+        {/* Stumbled Words */}
         {stumbledWords.length > 0 && (
           <div className="mt-4 p-4 bg-[#dcc8b4] bg-opacity-20 rounded-xl border border-[#b28b6a] border-opacity-30">
             <p className="text-sm text-[#4a423b] font-medium">📝 Words to practice:</p>
@@ -194,11 +265,19 @@ export default function ReadPage() {
           </div>
         )}
 
+        {/* Footer */}
         <div className="mt-6 flex justify-between items-center pt-4 border-t border-black/5">
           <span className="text-sm text-[#8a7e74]">
-            Progress: {stumbledWords.length > 0 ? '📝' : '📖'} Reading
+            Progress: {progress}%
           </span>
-          <button className="text-sm text-[#b28b6a] hover:underline">Next Story →</button>
+          {secondsLeft === 0 && (
+            <span className="text-sm font-medium text-[#b28b6a]">
+              ⏰ Session complete!
+            </span>
+          )}
+          <button className="text-sm text-[#b28b6a] hover:underline">
+            Next Story →
+          </button>
         </div>
       </div>
     </main>
