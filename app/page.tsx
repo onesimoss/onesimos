@@ -35,7 +35,6 @@ export default function Home() {
               style={{
                 background: t.accent,
                 color: key === "space" || key === "fantasy" ? "#fff" : t.primary,
-                ringColor: t.accent,
               }}
             >
               {t.name}
