@@ -17,9 +17,6 @@ import {
   getChildStreak
 } from "@/lib/dailyProgress";
 
-// Deepgram SDK for voice recognition
-import { createClient } from "@deepgram/sdk";
-
 // Common easy words to ignore
 const EASY_WORDS = new Set([
   'a', 'an', 'the', 'and', 'or', 'but', 'so', 'for', 'nor', 'yet',
@@ -96,7 +93,6 @@ function ReadingContent() {
   
   const recognitionRef = useRef<any>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const deepgramRef = useRef<any>(null);
 
   const story = STORIES[storyIndex] || STORIES[0];
   const sentences = splitIntoSentences(story.content);
@@ -173,7 +169,7 @@ function ReadingContent() {
     }
   }, [readingTime, isTimerRunning]);
 
-  // Deepgram voice recognition
+  // Deepgram voice recognition via REST API
   const startListening = () => {
     if (!childId) {
       alert("Please select a child first.");
@@ -191,9 +187,6 @@ function ReadingContent() {
     }
 
     try {
-      // Using Deepgram's REST API instead of WebSocket for simplicity
-      // For real-time, we'd use WebSocket, but for MVP, we'll use recording + REST
-      
       // Check if browser supports MediaRecorder
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         alert("Your browser doesn't support microphone access.");
