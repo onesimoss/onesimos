@@ -11,14 +11,67 @@ declare global {
 
 import { useState, useRef } from "react";
 
+// List of common easy words to ignore
+const EASY_WORDS = new Set([
+  'a', 'an', 'the', 'and', 'or', 'but', 'so', 'for', 'nor', 'yet',
+  'i', 'me', 'my', 'you', 'your', 'he', 'him', 'his', 'she', 'her',
+  'it', 'we', 'us', 'our', 'they', 'them', 'their',
+  'is', 'am', 'are', 'was', 'were', 'be', 'been', 'being',
+  'do', 'does', 'did', 'has', 'have', 'had',
+  'to', 'of', 'from', 'with', 'by', 'at', 'on', 'in', 'for', 'about',
+  'up', 'down', 'off', 'over', 'under', 'into', 'through',
+  'no', 'yes', 'not', 'so', 'very', 'too', 'quite', 'almost',
+  'will', 'would', 'could', 'should', 'may', 'might', 'must',
+  'this', 'that', 'these', 'those', 'then', 'than', 'there',
+  'said', 'asked', 'told', 'went', 'came', 'looked', 'saw', 'made'
+]);
+
+// Common filler words that aren't worth tracking
+const FILLER_WORDS = new Set(['um', 'uh', 'er', 'ah', 'like']);
+
+// Words that indicate a genuine stumble (mispronounced or replaced)
+const STUMBLE_INDICATORS = new Set([
+  'whisper', 'whispered', 'though', 'despite', 'gentle', 'gently',
+  'lifted', 'carried', 'healing', 'excuse', 'instead', 'kindness',
+  'wasted', 'silent', 'quiet', 'moment', 'forest', 'elephant',
+  'broken', 'wing', 'healing', 'comfort', 'courage', 'brave'
+]);
+
 export default function ReadPage() {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [stumbledWords, setStumbledWords] = useState<string[]>([]);
-  const [timeLeft, setTimeLeft] = useState(20); // in minutes
+  const [timeLeft, setTimeLeft] = useState(20);
   const recognitionRef = useRef<any>(null);
 
   const story = `Ella was the biggest elephant in the forest, but she had the softest heart. One morning, she found a tiny bird with a broken wing. "I can help you," Ella whispered, though she was in a hurry to meet her friends. She gently lifted the bird onto her back and carried it to the old owl who knew about healing. Later, her friends asked why she was late. Ella could have made up an excuse. Instead, she told the truth. "I stopped to help a bird," she said, despite feeling shy. Her friends were quiet for a moment. Then they smiled. "That is why we love you," they said. Ella learned that kindness is never wasted.`;
+
+  const detectStumbles = (text: string) => {
+    const words = text.toLowerCase().split(/\s+/);
+    const storyWords = new Set(story.toLowerCase().split(/\s+/));
+    
+    words.forEach((word: string) => {
+      // Clean the word of punctuation
+      const cleanWord = word.replace(/[^a-z']/g, '');
+      
+      // Skip if:
+      // 1. It's empty
+      // 2. It's an easy/common word
+      // 3. It's a filler word
+      // 4. It's not in the story (they added extra words)
+      // 5. Already tracked
+      if (!cleanWord || 
+          EASY_WORDS.has(cleanWord) || 
+          FILLER_WORDS.has(cleanWord) ||
+          !storyWords.has(cleanWord) ||
+          stumbledWords.includes(cleanWord)) {
+        return;
+      }
+      
+      // Add to stumbled words
+      setStumbledWords(prev => [...prev, cleanWord]);
+    });
+  };
 
   const startListening = () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
@@ -53,12 +106,7 @@ export default function ReadPage() {
       }
       if (finalTranscript) {
         setTranscript(finalTranscript);
-        const words = finalTranscript.split(' ');
-        words.forEach((word: string) => {
-          if (word.length > 0 && !stumbledWords.includes(word.toLowerCase())) {
-            setStumbledWords(prev => [...prev, word.toLowerCase()]);
-          }
-        });
+        detectStumbles(finalTranscript);
       }
     };
 
@@ -140,11 +188,16 @@ export default function ReadPage() {
                 </span>
               ))}
             </div>
+            <p className="text-xs text-[#8a7e74] mt-2">
+              {stumbledWords.length} challenging words detected
+            </p>
           </div>
         )}
 
         <div className="mt-6 flex justify-between items-center pt-4 border-t border-black/5">
-          <span className="text-sm text-[#8a7e74]">Progress: 0%</span>
+          <span className="text-sm text-[#8a7e74]">
+            Progress: {stumbledWords.length > 0 ? '📝' : '📖'} Reading
+          </span>
           <button className="text-sm text-[#b28b6a] hover:underline">Next Story →</button>
         </div>
       </div>
