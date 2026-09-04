@@ -10,8 +10,11 @@ declare global {
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+import { saveReadingSession } from "@/lib/readingUtils";
 
-// List of common easy words to ignore
+// Common easy words to ignore
 const EASY_WORDS = new Set([
   'a', 'an', 'the', 'and', 'or', 'but', 'so', 'for', 'nor', 'yet',
   'i', 'me', 'my', 'you', 'your', 'he', 'him', 'his', 'she', 'her',
@@ -26,16 +29,20 @@ const EASY_WORDS = new Set([
   'said', 'asked', 'told', 'went', 'came', 'looked', 'saw', 'made'
 ]);
 
-// Common filler words that aren't worth tracking
 const FILLER_WORDS = new Set(['um', 'uh', 'er', 'ah', 'like']);
 
 export default function ReadPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const childId = searchParams.get('child');
+  
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [stumbledWords, setStumbledWords] = useState<string[]>([]);
-  const [timeLeft, setTimeLeft] = useState(20); // in minutes
-  const [secondsLeft, setSecondsLeft] = useState(20 * 60); // in seconds
+  const [readingTime, setReadingTime] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [sessionEnded, setSessionEnded] = useState(false);
   const recognitionRef = useRef<any>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -43,21 +50,11 @@ export default function ReadPage() {
 
   // Timer logic
   useEffect(() => {
-    if (isTimerRunning && secondsLeft > 0) {
+    if (isTimerRunning) {
       timerIntervalRef.current = setInterval(() => {
-        setSecondsLeft(prev => {
-          if (prev <= 1) {
-            setIsTimerRunning(false);
-            if (recognitionRef.current) {
-              recognitionRef.current.stop();
-              setIsListening(false);
-            }
-            return 0;
-          }
-          return prev - 1;
-        });
+        setReadingTime(prev => prev + 1);
       }, 1000);
-    } else if (secondsLeft === 0 && timerIntervalRef.current) {
+    } else if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
     }
@@ -68,7 +65,15 @@ export default function ReadPage() {
         timerIntervalRef.current = null;
       }
     };
-  }, [isTimerRunning, secondsLeft]);
+  }, [isTimerRunning]);
+
+  // Auto-end when reading time reaches 5 minutes
+  useEffect(() => {
+    if (readingTime >= 300 && isTimerRunning) {
+      stopListening();
+      endSession();
+    }
+  }, [readingTime, isTimerRunning]);
 
   const detectStumbles = (text: string) => {
     const cleaned = text
@@ -100,6 +105,11 @@ export default function ReadPage() {
   };
 
   const startListening = () => {
+    if (!childId) {
+      alert("Please select a child first. Go back to the dashboard.");
+      return;
+    }
+
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       alert("Speech recognition is not supported in this browser. Please use Chrome.");
       return;
@@ -113,10 +123,8 @@ export default function ReadPage() {
 
     recognition.onstart = () => {
       setIsListening(true);
-      // Start timer when listening starts
-      if (!isTimerRunning && secondsLeft > 0) {
-        setIsTimerRunning(true);
-      }
+      setIsTimerRunning(true);
+      setSessionEnded(false);
     };
 
     recognition.onerror = (event: any) => {
@@ -125,7 +133,6 @@ export default function ReadPage() {
         alert("Please allow microphone access in your browser settings.");
       }
       setIsListening(false);
-      setIsTimerRunning(false);
     };
 
     recognition.onresult = (event: any) => {
@@ -143,7 +150,6 @@ export default function ReadPage() {
 
     recognition.onend = () => {
       setIsListening(false);
-      // Don't stop timer – let it keep running
     };
 
     recognitionRef.current = recognition;
@@ -158,66 +164,91 @@ export default function ReadPage() {
     }
   };
 
-  const adjustTime = (change: number) => {
-    const newMinutes = Math.max(5, Math.min(60, timeLeft + change));
-    setTimeLeft(newMinutes);
-    setSecondsLeft(newMinutes * 60);
+  const endSession = async () => {
+    if (isSaving || sessionEnded) return;
+    setIsSaving(true);
+    setSessionEnded(true);
+    setIsTimerRunning(false);
+    stopListening();
+
+    const wordsRead = transcript.split(' ').filter(w => w.length > 0).length;
+
+    const result = await saveReadingSession({
+      childId: childId!,
+      durationSeconds: readingTime,
+      wordsRead: wordsRead,
+      wordsStumbled: stumbledWords,
+      endedAt: new Date(),
+    });
+
+    setIsSaving(false);
+
+    if (result.error) {
+      alert("There was an error saving your session. But don't worry, your reading data is still on this page.");
+      console.error("Save error:", result.error);
+    } else {
+      alert(`🎉 Great reading! You read for ${Math.floor(readingTime / 60)} minutes and ${readingTime % 60} seconds.`);
+      router.push('/dashboard');
+    }
   };
 
   const resetSession = () => {
     setTranscript("");
     setStumbledWords([]);
-    setSecondsLeft(timeLeft * 60);
+    setReadingTime(0);
     setIsTimerRunning(false);
+    setSessionEnded(false);
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       setIsListening(false);
     }
   };
 
-  // Format time as MM:SS
-  const formatTime = (totalSeconds: number) => {
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = totalSeconds % 60;
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
-  // Calculate progress based on words tracked vs total unique words
-  const totalUniqueWords = new Set(story.toLowerCase().split(/\s+/).map(w => w.replace(/[^a-z']/g, ''))).size;
-  const progress = Math.min(100, Math.round((stumbledWords.length / totalUniqueWords) * 100));
+  if (!childId) {
+    return (
+      <main className="min-h-screen bg-[#f7f2eb] flex flex-col items-center justify-center p-6">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md text-center">
+          <h1 className="text-2xl font-bold text-[#1e1916] mb-4">👶 Select a Child</h1>
+          <p className="text-[#8a7e74] mb-6">Please go back to the dashboard and select a child to start reading.</p>
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="px-6 py-2 bg-[#b28b6a] text-white rounded-full font-medium hover:shadow-xl transition-all"
+          >
+            Go to Dashboard
+          </button>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[#f7f2eb] p-6">
       <div className="max-w-4xl mx-auto bg-[#fcf9f5] rounded-3xl shadow-xl p-8">
         {/* Header */}
         <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-          <h1 className="text-2xl font-semibold text-[#1e1916]">📖 Reading Session</h1>
+          <div>
+            <h1 className="text-2xl font-semibold text-[#1e1916]">📖 Reading Session</h1>
+            <p className="text-sm text-[#8a7e74]">Child ID: {childId}</p>
+          </div>
           <div className="flex items-center gap-4">
-            {/* Timer Controls */}
-            <div className="flex items-center gap-2 bg-[#f3eee8] px-3 py-1 rounded-full">
-              <button 
-                onClick={() => adjustTime(-5)}
-                className="text-[#b28b6a] hover:bg-[#dcc8b4] px-2 py-1 rounded-full transition text-lg font-bold"
-              >
-                −
-              </button>
-              <span className="text-sm font-medium text-[#1e1916] min-w-[60px] text-center font-mono">
-                {formatTime(secondsLeft)}
-              </span>
-              <button 
-                onClick={() => adjustTime(5)}
-                className="text-[#b28b6a] hover:bg-[#dcc8b4] px-2 py-1 rounded-full transition text-lg font-bold"
-              >
-                +
-              </button>
-            </div>
-            {/* Mic Button */}
+            <span className="text-sm font-medium text-[#1e1916] font-mono">
+              ⏱️ {formatTime(readingTime)}
+            </span>
             <button
               onClick={isListening ? stopListening : startListening}
+              disabled={sessionEnded}
               className={`px-6 py-2 rounded-full font-medium transition-all ${
-                isListening 
-                  ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse' 
-                  : 'bg-[#1e1916] text-white hover:bg-[#2d241e]'
+                sessionEnded
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : isListening 
+                    ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse' 
+                    : 'bg-[#1e1916] text-white hover:bg-[#2d241e]'
               }`}
             >
               {isListening ? '⏹ Stop' : '🎙️ Start Reading'}
@@ -268,16 +299,24 @@ export default function ReadPage() {
         {/* Footer */}
         <div className="mt-6 flex justify-between items-center pt-4 border-t border-black/5">
           <span className="text-sm text-[#8a7e74]">
-            Progress: {progress}%
+            {sessionEnded ? '✅ Session complete!' : `${Math.floor(readingTime / 60)}m ${readingTime % 60}s reading`}
           </span>
-          {secondsLeft === 0 && (
-            <span className="text-sm font-medium text-[#b28b6a]">
-              ⏰ Session complete!
-            </span>
+          {sessionEnded ? (
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="text-sm bg-[#b28b6a] text-white px-4 py-2 rounded-full hover:shadow-xl transition-all"
+            >
+              📊 View Dashboard
+            </button>
+          ) : (
+            <button
+              onClick={endSession}
+              disabled={!transcript || sessionEnded || isSaving}
+              className="text-sm bg-[#1e1916] text-white px-4 py-2 rounded-full hover:shadow-xl transition-all disabled:opacity-50"
+            >
+              {isSaving ? 'Saving...' : '✅ End Session'}
+            </button>
           )}
-          <button className="text-sm text-[#b28b6a] hover:underline">
-            Next Story →
-          </button>
         </div>
       </div>
     </main>

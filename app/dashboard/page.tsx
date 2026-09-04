@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
+import { getChildStats } from "@/lib/readingUtils";
 
 interface Child {
   id: string;
@@ -12,6 +13,14 @@ interface Child {
   age: number;
   reading_level: number;
   created_at: string;
+}
+
+interface ChildStats {
+  totalSessions: number;
+  totalWordsRead: number;
+  totalDuration: number;
+  totalStumbles: number;
+  uniqueStumbledWords: string[];
 }
 
 export default function Dashboard() {
@@ -22,6 +31,9 @@ export default function Dashboard() {
   const [childAge, setChildAge] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState("");
+  const [selectedChild, setSelectedChild] = useState<Child | null>(null);
+  const [childStats, setChildStats] = useState<ChildStats | null>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -29,7 +41,6 @@ export default function Dashboard() {
     }
   }, [user, loading, router]);
 
-  // Fetch children when user is logged in
   useEffect(() => {
     if (user) {
       fetchChildren();
@@ -51,7 +62,31 @@ export default function Dashboard() {
     }
 
     setChildren(data || []);
+    if (data && data.length > 0 && !selectedChild) {
+      setSelectedChild(data[0]);
+    }
   };
+
+  const fetchChildStats = async (childId: string) => {
+    setIsLoadingStats(true);
+    const stats = await getChildStats(childId);
+    if (!stats.error) {
+      setChildStats({
+        totalSessions: stats.totalSessions,
+        totalWordsRead: stats.totalWordsRead,
+        totalDuration: stats.totalDuration,
+        totalStumbles: stats.totalStumbles,
+        uniqueStumbledWords: stats.uniqueStumbledWords,
+      });
+    }
+    setIsLoadingStats(false);
+  };
+
+  useEffect(() => {
+    if (selectedChild) {
+      fetchChildStats(selectedChild.id);
+    }
+  }, [selectedChild]);
 
   const addChild = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,7 +111,7 @@ export default function Dashboard() {
         parent_id: user?.id,
         name: childName.trim(),
         age: parseInt(childAge),
-        reading_level: 7, // Default reading level
+        reading_level: 7,
       });
 
     if (error) {
@@ -89,7 +124,7 @@ export default function Dashboard() {
     setChildName("");
     setChildAge("");
     setIsAdding(false);
-    fetchChildren(); // Refresh the list
+    await fetchChildren();
   };
 
   const deleteChild = async (childId: string) => {
@@ -105,7 +140,18 @@ export default function Dashboard() {
       return;
     }
 
-    fetchChildren(); // Refresh the list
+    if (selectedChild?.id === childId) {
+      setSelectedChild(null);
+      setChildStats(null);
+    }
+    await fetchChildren();
+  };
+
+  const formatDuration = (seconds: number) => {
+    if (seconds < 60) return `${seconds}s`;
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs}s`;
   };
 
   if (loading) {
@@ -140,26 +186,6 @@ export default function Dashboard() {
             >
               Logout
             </button>
-          </div>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-2xl shadow-sm">
-            <p className="text-sm text-[#8a7e74]">Stories Read</p>
-            <p className="text-3xl font-bold text-[#1e1916]">0</p>
-          </div>
-          <div className="bg-white p-6 rounded-2xl shadow-sm">
-            <p className="text-sm text-[#8a7e74]">Words Mastered</p>
-            <p className="text-3xl font-bold text-[#1e1916]">0</p>
-          </div>
-          <div className="bg-white p-6 rounded-2xl shadow-sm">
-            <p className="text-sm text-[#8a7e74]">Current Level</p>
-            <p className="text-3xl font-bold text-[#1e1916]">8</p>
-          </div>
-          <div className="bg-white p-6 rounded-2xl shadow-sm">
-            <p className="text-sm text-[#8a7e74]">Session Count</p>
-            <p className="text-3xl font-bold text-[#1e1916]">{children.length}</p>
           </div>
         </div>
 
@@ -202,45 +228,116 @@ export default function Dashboard() {
           </form>
         </div>
 
-        {/* Children List */}
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-          <h2 className="text-xl font-semibold text-[#1e1916] mb-4">Your Children</h2>
-          
-          {children.length === 0 ? (
-            <p className="text-[#8a7e74] text-sm">
-              No children added yet. Add your child above to start tracking progress.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {children.map((child) => (
-                <div
-                  key={child.id}
-                  className="flex justify-between items-center p-4 bg-[#f7f2eb] rounded-xl"
-                >
-                  <div>
-                    <p className="font-semibold text-[#1e1916]">{child.name}</p>
-                    <p className="text-sm text-[#8a7e74]">
+        {/* Children List & Stats */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Children List */}
+          <div className="lg:col-span-1 bg-white rounded-2xl shadow-sm p-6">
+            <h2 className="text-xl font-semibold text-[#1e1916] mb-4">Your Children</h2>
+            
+            {children.length === 0 ? (
+              <p className="text-[#8a7e74] text-sm">
+                No children added yet. Add your child above to start tracking progress.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {children.map((child) => (
+                  <button
+                    key={child.id}
+                    onClick={() => setSelectedChild(child)}
+                    className={`w-full text-left p-3 rounded-xl transition-all ${
+                      selectedChild?.id === child.id
+                        ? "bg-[#b28b6a] text-white"
+                        : "bg-[#f7f2eb] hover:bg-[#dcc8b4]"
+                    }`}
+                  >
+                    <p className={`font-semibold ${selectedChild?.id === child.id ? "text-white" : "text-[#1e1916]"}`}>
+                      {child.name}
+                    </p>
+                    <p className={`text-sm ${selectedChild?.id === child.id ? "text-white/80" : "text-[#8a7e74]"}`}>
                       Age: {child.age} · Level: {child.reading_level}
                     </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Link
-                      href={`/read?child=${child.id}`}
-                      className="px-4 py-1 text-sm bg-[#b28b6a] text-white rounded-full hover:shadow-xl transition-all"
-                    >
-                      Read
-                    </Link>
                     <button
-                      onClick={() => deleteChild(child.id)}
-                      className="px-4 py-1 text-sm border border-red-200 text-red-500 rounded-full hover:bg-red-50 transition-all"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteChild(child.id);
+                      }}
+                      className={`text-xs mt-1 ${
+                        selectedChild?.id === child.id ? "text-white/70 hover:text-white" : "text-red-400 hover:text-red-600"
+                      } transition-colors`}
                     >
                       Remove
                     </button>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Stats Panel */}
+          <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm p-6">
+            <h2 className="text-xl font-semibold text-[#1e1916] mb-4">
+              {selectedChild ? `${selectedChild.name}'s Progress` : "Select a Child"}
+            </h2>
+            
+            {!selectedChild ? (
+              <p className="text-[#8a7e74] text-sm">Select a child from the list to view their progress.</p>
+            ) : isLoadingStats ? (
+              <p className="text-[#8a7e74]">Loading stats...</p>
+            ) : childStats ? (
+              <div>
+                {/* Stats Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-[#f7f2eb] p-4 rounded-xl text-center">
+                    <p className="text-2xl font-bold text-[#1e1916]">{childStats.totalSessions}</p>
+                    <p className="text-xs text-[#8a7e74]">Sessions</p>
+                  </div>
+                  <div className="bg-[#f7f2eb] p-4 rounded-xl text-center">
+                    <p className="text-2xl font-bold text-[#1e1916]">{childStats.totalWordsRead}</p>
+                    <p className="text-xs text-[#8a7e74]">Words Read</p>
+                  </div>
+                  <div className="bg-[#f7f2eb] p-4 rounded-xl text-center">
+                    <p className="text-2xl font-bold text-[#1e1916]">{formatDuration(childStats.totalDuration)}</p>
+                    <p className="text-xs text-[#8a7e74]">Total Reading Time</p>
+                  </div>
+                  <div className="bg-[#f7f2eb] p-4 rounded-xl text-center">
+                    <p className="text-2xl font-bold text-[#1e1916]">{childStats.totalStumbles}</p>
+                    <p className="text-xs text-[#8a7e74]">Words to Practice</p>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+
+                {/* Words to Practice */}
+                {childStats.uniqueStumbledWords.length > 0 && (
+                  <div className="border-t border-[#f0e8e0] pt-4">
+                    <p className="text-sm font-medium text-[#1e1916] mb-2">📝 Words to Practice</p>
+                    <div className="flex flex-wrap gap-2">
+                      {childStats.uniqueStumbledWords.slice(0, 20).map((word, i) => (
+                        <span key={i} className="px-3 py-1 bg-[#dcc8b4] bg-opacity-20 rounded-full text-sm text-[#b28b6a]">
+                          {word}
+                        </span>
+                      ))}
+                      {childStats.uniqueStumbledWords.length > 20 && (
+                        <span className="px-3 py-1 text-sm text-[#8a7e74]">
+                          +{childStats.uniqueStumbledWords.length - 20} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Button */}
+                <div className="mt-6">
+                  <Link
+                    href={`/read?child=${selectedChild.id}`}
+                    className="inline-block px-6 py-3 bg-[#b28b6a] text-white rounded-full text-sm font-medium hover:shadow-xl transition-all"
+                  >
+                    📖 Read with {selectedChild.name}
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <p className="text-[#8a7e74] text-sm">No reading data yet. Start a reading session!</p>
+            )}
+          </div>
         </div>
       </div>
     </main>
