@@ -162,6 +162,12 @@ export default function Dashboard() {
     return `${mins}m ${secs}s`;
   };
 
+  // 🔥 FIX: Logout goes to home page
+  const handleLogout = async () => {
+    await signOut();
+    router.push('/');
+  };
+
   if (loading) {
     return (
       <main className="min-h-screen bg-[#f7f2eb] flex items-center justify-center p-6">
@@ -204,7 +210,7 @@ export default function Dashboard() {
               </Link>
             )}
             <button
-              onClick={signOut}
+              onClick={handleLogout}
               className="px-4 py-2 border border-[#dcc8b4] text-[#4a423b] rounded-full text-sm font-medium hover:bg-black/5 transition-all"
             >
               Logout
