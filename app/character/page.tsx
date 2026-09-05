@@ -73,7 +73,21 @@ function drawClock(ctx: CanvasRenderingContext2D, width: number, height: number,
   ctx.fill();
 }
 
-const SCENARIOS = [
+// 🔥 Type definitions
+type Option = {
+  label: string;
+  lesson: string;
+  correct?: boolean;
+};
+
+type Scenario = {
+  id: string;
+  title: string;
+  description: string;
+  options: Option[];
+};
+
+const SCENARIOS: Scenario[] = [
   {
     id: 's1',
     title: 'What If Someone Calls You Fat?',
@@ -215,24 +229,31 @@ export default function CharacterBuilding() {
         )}
 
         <div className="space-y-3">
-          {scenario.options.map((option, i) => (
-            <button
-              key={i}
-              onClick={() => handleSelect(i)}
-              disabled={feedback !== null}
-              className={`w-full text-left px-6 py-4 rounded-xl transition-all font-medium ${
-                selectedIndex === i && feedback !== null
-                  ? option.correct !== undefined && option.correct
-                    ? 'bg-green-100 border-2 border-green-500 text-green-700'
-                    : option.correct !== undefined && !option.correct
-                    ? 'bg-red-100 border-2 border-red-500 text-red-700'
-                    : 'bg-[#f7f2eb]'
-                  : 'bg-[#f7f2eb] hover:bg-[#dcc8b4]'
-              } hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              {option.label}
-            </button>
-          ))}
+          {scenario.options.map((option, i) => {
+            // 🔥 Type-safe check for correct property
+            const isCorrect = option.correct === true;
+            const isIncorrect = option.correct === false;
+            const hasCorrect = option.correct !== undefined;
+            
+            return (
+              <button
+                key={i}
+                onClick={() => handleSelect(i)}
+                disabled={feedback !== null}
+                className={`w-full text-left px-6 py-4 rounded-xl transition-all font-medium ${
+                  selectedIndex === i && feedback !== null && hasCorrect
+                    ? isCorrect
+                      ? 'bg-green-100 border-2 border-green-500 text-green-700'
+                      : isIncorrect
+                      ? 'bg-red-100 border-2 border-red-500 text-red-700'
+                      : 'bg-[#f7f2eb]'
+                    : 'bg-[#f7f2eb] hover:bg-[#dcc8b4]'
+                } hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {option.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Feedback with Next button */}
