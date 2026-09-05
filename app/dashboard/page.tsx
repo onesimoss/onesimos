@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { getChildStats } from "@/lib/readingUtils";
+import { hasPassedPhonics } from "@/lib/dailyProgress";
 
 interface Child {
   id: string;
@@ -88,6 +89,7 @@ export default function Dashboard() {
     }
   }, [selectedChild]);
 
+  // 🔥 FIX: Add child with reading level = age
   const addChild = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -105,13 +107,17 @@ export default function Dashboard() {
       return;
     }
 
+    const age = parseInt(childAge);
+    // 🔥 Reading level = age (capped at 12, minimum 3)
+    const readingLevel = Math.min(Math.max(age, 3), 12);
+
     const { error } = await supabase
       .from("children")
       .insert({
         parent_id: user?.id,
         name: childName.trim(),
-        age: parseInt(childAge),
-        reading_level: 7,
+        age: age,
+        reading_level: readingLevel,
       });
 
     if (error) {
@@ -162,10 +168,19 @@ export default function Dashboard() {
     return `${mins}m ${secs}s`;
   };
 
-  // 🔥 FIX: Logout goes to home page
   const handleLogout = async () => {
     await signOut();
     router.push('/');
+  };
+
+  // 🔥 FIX: Handle reading button - check phonics first
+  const handleReadClick = async (childId: string) => {
+    const passed = await hasPassedPhonics(childId);
+    if (passed) {
+      router.push(`/read?child=${childId}`);
+    } else {
+      router.push(`/phonics?child=${childId}`);
+    }
   };
 
   if (loading) {
@@ -188,7 +203,6 @@ export default function Dashboard() {
             <p className="text-[#8a7e74]">Welcome, {user.email}</p>
           </div>
           <div className="flex gap-3 flex-wrap">
-            {/* Navigation Buttons */}
             <Link
               href="/phonics"
               className="px-4 py-2 bg-[#dcc8b4] text-[#1e1916] rounded-full text-sm font-medium hover:shadow-xl transition-all"
@@ -202,12 +216,12 @@ export default function Dashboard() {
               🧠 Character
             </Link>
             {selectedChild && (
-              <Link
-                href={`/read?child=${selectedChild.id}`}
+              <button
+                onClick={() => handleReadClick(selectedChild.id)}
                 className="px-4 py-2 bg-[#b28b6a] text-white rounded-full text-sm font-medium hover:shadow-xl transition-all"
               >
                 📖 Read with {selectedChild.name}
-              </Link>
+              </button>
             )}
             <button
               onClick={handleLogout}
@@ -352,23 +366,23 @@ export default function Dashboard() {
                 )}
 
                 <div className="mt-6">
-                  <Link
-                    href={`/read?child=${selectedChild.id}`}
+                  <button
+                    onClick={() => handleReadClick(selectedChild.id)}
                     className="inline-block px-6 py-3 bg-[#b28b6a] text-white rounded-full text-sm font-medium hover:shadow-xl transition-all"
                   >
                     📖 Read with {selectedChild.name}
-                  </Link>
+                  </button>
                 </div>
               </div>
             ) : (
               <div className="text-center py-8">
                 <p className="text-[#8a7e74] mb-4">No reading data yet for {selectedChild.name}.</p>
-                <Link
-                  href={`/read?child=${selectedChild.id}`}
+                <button
+                  onClick={() => handleReadClick(selectedChild.id)}
                   className="inline-block px-6 py-3 bg-[#b28b6a] text-white rounded-full text-sm font-medium hover:shadow-xl transition-all"
                 >
                   📖 Start First Reading Session
-                </Link>
+                </button>
               </div>
             )}
           </div>

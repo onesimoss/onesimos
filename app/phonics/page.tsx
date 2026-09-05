@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { markPhonicsPassed } from "@/lib/dailyProgress";
@@ -34,7 +34,7 @@ const PHONICS_QUESTIONS: PhonicsQuestion[] = [
   { id: "q17", level: "hard", question: 'What does "TCH" sound like?', options: ["/ch/ as in catch", "/sh/ as in ship", "/th/ as in that"], correct: 0, sound: "ch as in catch" },
 ];
 
-export default function PhonicsAssessment() {
+function PhonicsContent() {
   const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -87,12 +87,10 @@ export default function PhonicsAssessment() {
     }
   };
 
-  // 🔥 FIX: When child passes, mark phonics passed and go to Read
   const handlePassAndContinue = async () => {
     if (childId) {
       await markPhonicsPassed(childId);
     }
-    // Go to Read page
     router.push(`/read?child=${childId}`);
   };
 
@@ -102,7 +100,6 @@ export default function PhonicsAssessment() {
 
   if (!user) return null;
 
-  // Difficulty selection
   if (!difficulty) {
     return (
       <main className="min-h-screen bg-[#f7f2eb] flex items-center justify-center p-6">
@@ -120,7 +117,6 @@ export default function PhonicsAssessment() {
     );
   }
 
-  // Completion
   if (isComplete) {
     const passed = score >= Math.ceil(questions.length * 0.7);
     return (
@@ -136,28 +132,12 @@ export default function PhonicsAssessment() {
           {passed ? (
             <>
               <p className="text-[#b28b6a] font-medium mb-6">✅ You're ready to start reading!</p>
-              <button
-                onClick={handlePassAndContinue}
-                className="px-8 py-3 bg-[#b28b6a] text-white rounded-full font-medium hover:shadow-xl transition-all"
-              >
-                📖 Start Reading
-              </button>
+              <button onClick={handlePassAndContinue} className="px-8 py-3 bg-[#b28b6a] text-white rounded-full font-medium hover:shadow-xl transition-all">📖 Start Reading</button>
             </>
           ) : (
             <>
               <p className="text-[#b28b6a] font-medium mb-6">🔁 Review the sounds and try again!</p>
-              <button
-                onClick={() => {
-                  setDifficulty(null);
-                  setQuestions([]);
-                  setCurrentQuestion(0);
-                  setAnswers([]);
-                  setIsComplete(false);
-                }}
-                className="px-8 py-3 bg-[#1e1916] text-white rounded-full font-medium hover:shadow-xl transition-all"
-              >
-                🔄 Try Again
-              </button>
+              <button onClick={() => { setDifficulty(null); setQuestions([]); setCurrentQuestion(0); setAnswers([]); setIsComplete(false); }} className="px-8 py-3 bg-[#1e1916] text-white rounded-full font-medium hover:shadow-xl transition-all">🔄 Try Again</button>
             </>
           )}
           <button onClick={goToDashboard} className="mt-4 text-sm text-[#8a7e74] hover:underline block w-full">← Back to Dashboard</button>
@@ -166,7 +146,6 @@ export default function PhonicsAssessment() {
     );
   }
 
-  // Question
   const question = questions[currentQuestion];
   if (!question) return <div className="p-8 text-center">Loading...</div>;
 
@@ -196,5 +175,21 @@ export default function PhonicsAssessment() {
         </div>
       </div>
     </main>
+  );
+}
+
+function PhonicsFallback() {
+  return (
+    <main className="min-h-screen bg-[#f7f2eb] flex items-center justify-center p-6">
+      <div className="text-[#8a7e74]">Loading...</div>
+    </main>
+  );
+}
+
+export default function PhonicsAssessment() {
+  return (
+    <Suspense fallback={<PhonicsFallback />}>
+      <PhonicsContent />
+    </Suspense>
   );
 }
