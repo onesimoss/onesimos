@@ -4,7 +4,6 @@
 
 import { useState, useRef, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
 import { useTheme } from "@/context/ThemeContext";
 import { themes } from "@/lib/themes";
 import { saveReadingSession, getChild, getChildStats } from "@/lib/readingUtils";
@@ -110,7 +109,7 @@ function ReadingContent() {
     setIsClient(true);
   }, []);
 
-  // 🔥 FIX: Load data WITHOUT checking phonics
+  // Load data
   useEffect(() => {
     async function loadData() {
       if (!childId) {
@@ -154,9 +153,97 @@ function ReadingContent() {
     loadData();
   }, [childId]);
 
-  // ... rest of the file (timer, detectStumbles, startListening, etc.) remains the same ...
+  // Timer
+  useEffect(() => {
+    if (isTimerRunning) {
+      timerIntervalRef.current = setInterval(() => {
+        setReadingTime(prev => prev + 1);
+      }, 1000);
+    } else if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    };
+  }, [isTimerRunning]);
 
-  // 🔥 startListening - removed phonics check
+  // Auto-end after 20 minutes
+  useEffect(() => {
+    if (readingTime >= 1200 && isTimerRunning) {
+      endSession();
+    }
+  }, [readingTime, isTimerRunning]);
+
+  // 🔥 DETECT STUMBLES
+  const detectStumbles = (spokenText: string) => {
+    const cleanedSpoken = spokenText
+      .toLowerCase()
+      .replace(/\b(uh|um|er|ah|like|you know)\b/g, '')
+      .replace(/[^a-z\s']/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+      
+    const spokenWords = cleanedSpoken.split(' ');
+    const expectedWords = story.content.toLowerCase().split(/\s+/);
+    const newStumbles: string[] = [];
+    
+    expectedWords.forEach((expected, index) => {
+      const cleanExpected = expected.replace(/[^a-z']/g, '');
+      if (!cleanExpected || EASY_WORDS.has(cleanExpected)) return;
+      
+      let foundMatch = false;
+      if (index < spokenWords.length) {
+        const cleanSpoken = spokenWords[index]?.replace(/[^a-z']/g, '') || '';
+        if (cleanSpoken === cleanExpected) {
+          foundMatch = true;
+        }
+      }
+      
+      if (!foundMatch && !stumbledWords.includes(cleanExpected) && !newStumbles.includes(cleanExpected)) {
+        newStumbles.push(cleanExpected);
+      }
+    });
+    
+    if (newStumbles.length > 0) {
+      setStumbledWords(prev => [...prev, ...newStumbles]);
+      if (childId) {
+        newStumbles.forEach(word => saveStumbledWord(childId, word));
+      }
+    }
+  };
+
+  // 🔥 TRANSCRIBE AUDIO
+  const transcribeAudio = async (audioBlob: Blob) => {
+    try {
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'audio.webm');
+
+      const response = await fetch('/api/transcribe', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        console.error("Transcription API error:", response.status);
+        return;
+      }
+
+      const data = await response.json();
+      if (data.transcript) {
+        const newTranscript = data.transcript;
+        setTranscript(prev => prev + ' ' + newTranscript);
+        detectStumbles(newTranscript);
+      }
+    } catch (error) {
+      console.error("Transcription error:", error);
+    }
+  };
+
+  // 🔥 START LISTENING
   const startListening = () => {
     if (!childId) {
       alert("Please select a child first.");
@@ -210,9 +297,171 @@ function ReadingContent() {
     }
   };
 
-  // ... rest of the functions (transcribeAudio, stopListening, endSession, etc.) ...
+  // 🔥 STOP LISTENING
+  const stopListening = () => {
+    if (recognitionRef.current) {
+      if (typeof recognitionRef.current.stop === 'function') {
+        recognitionRef.current.stop();
+      }
+      recognitionRef.current = null;
+    }
+    
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    
+    setIsListening(false);
+    setIsTimerRunning(false);
+  };
 
-  // 🔥 Celebration screen - shows reading stats ONLY if child actually read
+  // 🔥 END SESSION
+  const endSession = async () => {
+    if (isSaving || sessionEnded) return;
+    setIsSaving(true);
+    setSessionEnded(true);
+    setIsTimerRunning(false);
+    
+    stopListening();
+
+    const wordsRead = transcript.split(' ').filter(w => w.length > 0).length || 1;
+
+    try {
+      const result = await saveReadingSession({
+        childId: childId!,
+        storyId: story.id,
+        durationSeconds: Math.max(readingTime, 1),
+        wordsRead: wordsRead,
+        wordsStumbled: stumbledWords,
+        endedAt: new Date(),
+      });
+
+      if (result.error) {
+        console.error("Save error:", result.error);
+        setSaveError(result.error.message || "Failed to save to database");
+        setShowQuestions(true);
+        setCurrentQuestionIndex(0);
+        setAnswers([]);
+      } else {
+        setShowQuestions(true);
+        setCurrentQuestionIndex(0);
+        setAnswers([]);
+        setSaveError(null);
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      setSaveError("An unexpected error occurred");
+      setShowQuestions(true);
+      setCurrentQuestionIndex(0);
+      setAnswers([]);
+    }
+
+    setIsSaving(false);
+  };
+
+  // 🔥 HANDLE ANSWER
+  const handleAnswer = (selected: number) => {
+    const newAnswers = [...answers, selected];
+    setAnswers(newAnswers);
+
+    const currentQuestion = story.questions[currentQuestionIndex];
+    if (selected === currentQuestion.correct) {
+      setComprehensionScore(prev => prev + 1);
+    }
+
+    if (currentQuestionIndex < story.questions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
+    } else {
+      finishStory(newAnswers);
+    }
+  };
+
+  // 🔥 FINISH STORY
+  const finishStory = async (finalAnswers: number[]) => {
+    const score = story.questions.reduce((acc, q, i) => {
+      return acc + (finalAnswers[i] === q.correct ? 1 : 0);
+    }, 0);
+    
+    setComprehensionScore(score);
+    
+    const completed = [...sessionStoriesCompleted, story.id];
+    setSessionStoriesCompleted(completed);
+
+    if (completed.length >= STORIES.length) {
+      await finishAllStories(score);
+    } else {
+      setStoryIndex(completed.length);
+      setTranscript("");
+      setSessionEnded(false);
+      setShowQuestions(false);
+      setAnswers([]);
+      setComprehensionScore(0);
+      setIsListening(false);
+    }
+  };
+
+  // 🔥 FINISH ALL STORIES
+  const finishAllStories = async (finalScore: number) => {
+    const hasReadStories = sessionStoriesCompleted.length > 0;
+    const badges: string[] = [];
+    
+    if (hasReadStories) {
+      if (finalScore === STORIES.length * 3) badges.push("⭐ Word Wizard");
+      if (stumbledWords.length === 0) badges.push("🎯 Perfect Reader");
+      if (readingTime < 600) badges.push("⚡ Fast Reader");
+      badges.push("📖 Story Explorer");
+    }
+    setBadgesEarned(badges);
+
+    try {
+      await saveDailyProgress({
+        childId: childId!,
+        storyId: 'all-stories',
+        wordsRead: transcript.split(' ').filter(w => w.length > 0).length,
+        comprehensionScore: hasReadStories ? finalScore : 0,
+        badgesEarned: badges,
+      });
+      
+      const alreadyPassed = await hasCompletedToday(childId!);
+      if (!alreadyPassed) {
+        await markPhonicsPassed(childId!);
+      }
+    } catch (err) {
+      console.error("Error saving daily progress:", err);
+    }
+
+    const streakResult = await getChildStreak(childId!);
+    setStreak(streakResult.streak || 0);
+    
+    setIsComplete(true);
+    setShowQuestions(false);
+  };
+
+  const goToDashboard = () => {
+    router.push('/dashboard');
+  };
+
+  if (isLoading || !isClient) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-6" style={{ background: currentTheme?.background || '#f7f2eb' }}>
+        <div className="text-[#8a7e74]">Loading...</div>
+      </main>
+    );
+  }
+
+  if (!childId) {
+    return (
+      <main className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: currentTheme?.background || '#f7f2eb' }}>
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md text-center">
+          <h1 className="text-2xl font-bold text-[#1e1916] mb-4">👶 Select a Child</h1>
+          <p className="text-[#8a7e74] mb-6">Please go back to the dashboard and select a child to start reading.</p>
+          <button onClick={goToDashboard} className="px-6 py-2 bg-[#b28b6a] text-white rounded-full font-medium hover:shadow-xl transition-all">Go to Dashboard</button>
+        </div>
+      </main>
+    );
+  }
+
+  // 🔥 CELEBRATION SCREEN
   if (isComplete) {
     const displayLevel = readingLevel || Math.min(Math.max(childAge || 7, 3), 12);
     const hasReadStories = sessionStoriesCompleted.length > 0;
@@ -263,16 +512,50 @@ function ReadingContent() {
               <p className="text-[#1e1916] italic">"{STORIES[STORIES.length - 1].characterLesson}"</p>
             </div>
           )}
-          <button onClick={() => router.push('/dashboard')} className="px-8 py-3 bg-[#1e1916] text-white rounded-full font-medium hover:shadow-xl transition-all">📊 Back to Dashboard</button>
+          <button onClick={goToDashboard} className="px-8 py-3 bg-[#1e1916] text-white rounded-full font-medium hover:shadow-xl transition-all">📊 Back to Dashboard</button>
           <p className="text-xs text-[#8a7e74] mt-4">🔒 {hasReadStories ? "Come back tomorrow for new stories!" : "Start reading to earn badges!"}</p>
         </div>
       </main>
     );
   }
 
-  // ... rest of the file (questions, main reading screen) ...
+  // 🔥 COMPREHENSION QUESTIONS
+  if (showQuestions) {
+    const question = story.questions[currentQuestionIndex];
+    if (!question) {
+      return <div className="flex items-center justify-center p-8">Loading...</div>;
+    }
 
-  // Return the main reading screen
+    return (
+      <main className="min-h-screen flex items-center justify-center p-6" style={{ background: currentTheme?.background || '#f7f2eb' }}>
+        <div className="bg-white rounded-3xl shadow-xl p-12 max-w-2xl w-full">
+          {saveError && (
+            <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-3 rounded-lg mb-4 text-sm">
+              ⚠️ {saveError} Your progress is saved locally.
+            </div>
+          )}
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold text-[#1e1916]">🤔 Comprehension Check</h2>
+            <span className="text-sm text-[#8a7e74]">Question {currentQuestionIndex + 1} of {story.questions.length}</span>
+          </div>
+          <p className="text-lg font-medium text-[#1e1916] mb-6">{question.q}</p>
+          <div className="space-y-3">
+            {question.options.map((option: string, i: number) => (
+              <button
+                key={i}
+                onClick={() => handleAnswer(i)}
+                className="w-full text-left px-6 py-4 bg-[#f7f2eb] hover:bg-[#dcc8b4] rounded-xl transition-all font-medium text-[#1e1916] hover:scale-[1.02]"
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // 🔥 MAIN READING SCREEN
   return (
     <main className="min-h-screen p-6 transition-colors duration-300" style={{ background: currentTheme?.background || '#f7f2eb' }}>
       <div className="max-w-4xl mx-auto rounded-3xl shadow-xl p-8 transition-colors duration-300" style={{ background: currentTheme?.card || '#fcf9f5', borderColor: currentTheme?.accentLight || '#dcc8b4' }}>
@@ -292,11 +575,7 @@ function ReadingContent() {
           <div className="flex items-center gap-4">
             <span className="text-sm font-medium text-[#1e1916] font-mono">⏱️ {Math.floor(readingTime / 60)}m {readingTime % 60}s</span>
             <button
-              onClick={isListening ? () => {
-                if (recognitionRef.current) recognitionRef.current.stop();
-                setIsListening(false);
-                setIsTimerRunning(false);
-              } : startListening}
+              onClick={isListening ? stopListening : startListening}
               disabled={sessionEnded || isComplete}
               className={`px-6 py-2 rounded-full font-medium transition-all ${
                 sessionEnded || isComplete
@@ -357,49 +636,7 @@ function ReadingContent() {
               <span className="text-sm text-[#b28b6a] font-medium">⏳ Answer the questions to finish!</span>
             ) : (
               <button
-                onClick={() => {
-                  if (isSaving || sessionEnded) return;
-                  setIsSaving(true);
-                  setSessionEnded(true);
-                  setIsTimerRunning(false);
-                  
-                  if (recognitionRef.current) {
-                    recognitionRef.current.stop();
-                    recognitionRef.current = null;
-                  }
-                  if (streamRef.current) {
-                    streamRef.current.getTracks().forEach(track => track.stop());
-                    streamRef.current = null;
-                  }
-                  setIsListening(false);
-
-                  const wordsRead = transcript.split(' ').filter(w => w.length > 0).length || 1;
-
-                  saveReadingSession({
-                    childId: childId!,
-                    storyId: story.id,
-                    durationSeconds: Math.max(readingTime, 1),
-                    wordsRead: wordsRead,
-                    wordsStumbled: stumbledWords,
-                    endedAt: new Date(),
-                  }).then(result => {
-                    if (result.error) {
-                      console.error("Save error:", result.error);
-                      setSaveError(result.error.message || "Failed to save to database");
-                    }
-                    setShowQuestions(true);
-                    setCurrentQuestionIndex(0);
-                    setAnswers([]);
-                    setIsSaving(false);
-                  }).catch(err => {
-                    console.error("Unexpected error:", err);
-                    setSaveError("An unexpected error occurred");
-                    setShowQuestions(true);
-                    setCurrentQuestionIndex(0);
-                    setAnswers([]);
-                    setIsSaving(false);
-                  });
-                }}
+                onClick={endSession}
                 disabled={!transcript || sessionEnded || isSaving || isListening}
                 className="text-sm bg-[#1e1916] text-white px-6 py-2 rounded-full hover:shadow-xl transition-all disabled:opacity-50"
               >
