@@ -133,6 +133,11 @@ function ReadingContent() {
         const passed = await hasPassedPhonics(childId);
         setPhonicsPassed(passed);
 
+        if (!passed) {
+          router.push(`/phonics?child=${childId}`);
+          return;
+        }
+
         const completed = await hasCompletedToday(childId);
         if (completed) {
           setIsComplete(true);
@@ -159,7 +164,7 @@ function ReadingContent() {
     }
 
     loadData();
-  }, [childId]);
+  }, [childId, router]);
 
   useEffect(() => {
     if (isTimerRunning) {
@@ -234,7 +239,7 @@ function ReadingContent() {
 
     if (!phonicsPassed) {
       alert("🔤 Please complete the Phonics assessment first!");
-      router.push("/phonics");
+      router.push(`/phonics?child=${childId}`);
       return;
     }
 
@@ -406,11 +411,15 @@ function ReadingContent() {
   };
 
   const finishAllStories = async (finalScore: number) => {
+    const hasReadStories = sessionStoriesCompleted.length > 0;
     const badges: string[] = [];
-    if (finalScore === STORIES.length * 3) badges.push("⭐ Word Wizard");
-    if (stumbledWords.length === 0) badges.push("🎯 Perfect Reader");
-    if (readingTime < 600) badges.push("⚡ Fast Reader");
-    badges.push("📖 Story Explorer");
+    
+    if (hasReadStories) {
+      if (finalScore === STORIES.length * 3) badges.push("⭐ Word Wizard");
+      if (stumbledWords.length === 0) badges.push("🎯 Perfect Reader");
+      if (readingTime < 600) badges.push("⚡ Fast Reader");
+      badges.push("📖 Story Explorer");
+    }
     setBadgesEarned(badges);
 
     try {
@@ -418,11 +427,14 @@ function ReadingContent() {
         childId: childId!,
         storyId: 'all-stories',
         wordsRead: transcript.split(' ').filter(w => w.length > 0).length,
-        comprehensionScore: finalScore,
+        comprehensionScore: hasReadStories ? finalScore : 0,
         badgesEarned: badges,
       });
       
-      await markPhonicsPassed(childId!);
+      const alreadyPassed = await hasPassedPhonics(childId!);
+      if (!alreadyPassed) {
+        await markPhonicsPassed(childId!);
+      }
     } catch (err) {
       console.error("Error saving daily progress:", err);
     }
@@ -471,7 +483,7 @@ function ReadingContent() {
             Don't worry – it's fun and you'll learn all the letter sounds!
           </p>
           <button
-            onClick={() => router.push('/phonics')}
+            onClick={() => router.push(`/phonics?child=${childId}`)}
             className="px-8 py-3 bg-[#b28b6a] text-white rounded-full font-medium hover:shadow-xl transition-all"
           >
             🔤 Start Phonics
@@ -487,28 +499,42 @@ function ReadingContent() {
     );
   }
 
+  // 🔥 FIX: Celebration screen - shows reading stats ONLY if child actually read
   if (isComplete) {
+    const displayLevel = readingLevel || Math.min(Math.max(childAge || 7, 3), 12);
+    const hasReadStories = sessionStoriesCompleted.length > 0;
+    
     return (
       <main className="min-h-screen flex items-center justify-center p-6" style={{ background: currentTheme?.background || '#f7f2eb' }}>
         <div className="bg-white rounded-3xl shadow-xl p-12 max-w-2xl w-full text-center">
           <div className="text-6xl mb-4">🌟</div>
           <h1 className="text-3xl font-bold text-[#1e1916] mb-2">You did it, {childName || "Champion"}!</h1>
-          <p className="text-[#4a423b] text-lg mb-6">You read {STORIES.length} stories and answered all the questions!</p>
+          <p className="text-[#4a423b] text-lg mb-6">
+            {hasReadStories 
+              ? `You read ${sessionStoriesCompleted.length} stories and answered all the questions!`
+              : "You completed your phonics assessment! Now you're ready to read stories."}
+          </p>
           <div className="grid grid-cols-3 gap-4 mb-8">
             <div className="bg-[#f7f2eb] p-4 rounded-xl">
               <p className="text-2xl font-bold text-[#b28b6a]">{readingTime > 0 ? `${Math.floor(readingTime / 60)}m` : '—'}</p>
               <p className="text-xs text-[#8a7e74]">Reading Time</p>
             </div>
             <div className="bg-[#f7f2eb] p-4 rounded-xl">
-              <p className="text-2xl font-bold text-[#b28b6a]">{comprehensionScore}/{STORIES.length * 3}</p>
-              <p className="text-xs text-[#8a7e74]">Questions Correct</p>
+              <p className="text-2xl font-bold text-[#b28b6a]">
+                {hasReadStories 
+                  ? `${comprehensionScore}/${sessionStoriesCompleted.length * 3}` 
+                  : "✅ Passed"}
+              </p>
+              <p className="text-xs text-[#8a7e74]">
+                {hasReadStories ? "Questions Correct" : "Phonics"}
+              </p>
             </div>
             <div className="bg-[#f7f2eb] p-4 rounded-xl">
               <p className="text-2xl font-bold text-[#b28b6a]">🔥 {streak}</p>
               <p className="text-xs text-[#8a7e74]">Day Streak</p>
             </div>
           </div>
-          {badgesEarned.length > 0 && (
+          {badgesEarned.length > 0 && hasReadStories && (
             <div className="mb-8">
               <p className="text-sm font-medium text-[#4a423b] mb-3">🏅 Badges Earned</p>
               <div className="flex flex-wrap justify-center gap-2">
@@ -518,12 +544,14 @@ function ReadingContent() {
               </div>
             </div>
           )}
-          <div className="bg-[#f3eee8] p-6 rounded-xl mb-8 text-left">
-            <p className="text-sm font-medium text-[#4a423b] mb-2">💡 Character Lesson</p>
-            <p className="text-[#1e1916] italic">"{STORIES[STORIES.length - 1].characterLesson}"</p>
-          </div>
+          {hasReadStories && (
+            <div className="bg-[#f3eee8] p-6 rounded-xl mb-8 text-left">
+              <p className="text-sm font-medium text-[#4a423b] mb-2">💡 Character Lesson</p>
+              <p className="text-[#1e1916] italic">"{STORIES[STORIES.length - 1].characterLesson}"</p>
+            </div>
+          )}
           <button onClick={goToDashboard} className="px-8 py-3 bg-[#1e1916] text-white rounded-full font-medium hover:shadow-xl transition-all">📊 Back to Dashboard</button>
-          <p className="text-xs text-[#8a7e74] mt-4">🔒 Come back tomorrow for new stories!</p>
+          <p className="text-xs text-[#8a7e74] mt-4">🔒 {hasReadStories ? "Come back tomorrow for new stories!" : "Start reading to earn badges!"}</p>
         </div>
       </main>
     );
