@@ -109,7 +109,7 @@ function ReadingContent() {
     setIsClient(true);
   }, []);
 
-  // Load data
+  // 🔥 Load data WITHOUT checking phonics
   useEffect(() => {
     async function loadData() {
       if (!childId) {
@@ -153,7 +153,6 @@ function ReadingContent() {
     loadData();
   }, [childId]);
 
-  // Timer
   useEffect(() => {
     if (isTimerRunning) {
       timerIntervalRef.current = setInterval(() => {
@@ -171,14 +170,12 @@ function ReadingContent() {
     };
   }, [isTimerRunning]);
 
-  // Auto-end after 20 minutes
   useEffect(() => {
     if (readingTime >= 1200 && isTimerRunning) {
       endSession();
     }
   }, [readingTime, isTimerRunning]);
 
-  // 🔥 DETECT STUMBLES
   const detectStumbles = (spokenText: string) => {
     const cleanedSpoken = spokenText
       .toLowerCase()
@@ -216,7 +213,6 @@ function ReadingContent() {
     }
   };
 
-  // 🔥 TRANSCRIBE AUDIO
   const transcribeAudio = async (audioBlob: Blob) => {
     try {
       const formData = new FormData();
@@ -243,7 +239,7 @@ function ReadingContent() {
     }
   };
 
-  // 🔥 START LISTENING
+  // 🔥 START LISTENING - NO PHONICS CHECK
   const startListening = () => {
     if (!childId) {
       alert("Please select a child first.");
@@ -297,7 +293,6 @@ function ReadingContent() {
     }
   };
 
-  // 🔥 STOP LISTENING
   const stopListening = () => {
     if (recognitionRef.current) {
       if (typeof recognitionRef.current.stop === 'function') {
@@ -315,7 +310,6 @@ function ReadingContent() {
     setIsTimerRunning(false);
   };
 
-  // 🔥 END SESSION
   const endSession = async () => {
     if (isSaving || sessionEnded) return;
     setIsSaving(true);
@@ -359,7 +353,6 @@ function ReadingContent() {
     setIsSaving(false);
   };
 
-  // 🔥 HANDLE ANSWER
   const handleAnswer = (selected: number) => {
     const newAnswers = [...answers, selected];
     setAnswers(newAnswers);
@@ -376,7 +369,6 @@ function ReadingContent() {
     }
   };
 
-  // 🔥 FINISH STORY
   const finishStory = async (finalAnswers: number[]) => {
     const score = story.questions.reduce((acc, q, i) => {
       return acc + (finalAnswers[i] === q.correct ? 1 : 0);
@@ -400,7 +392,6 @@ function ReadingContent() {
     }
   };
 
-  // 🔥 FINISH ALL STORIES
   const finishAllStories = async (finalScore: number) => {
     const hasReadStories = sessionStoriesCompleted.length > 0;
     const badges: string[] = [];
@@ -461,9 +452,8 @@ function ReadingContent() {
     );
   }
 
-  // 🔥 CELEBRATION SCREEN
+  // 🔥 CELEBRATION SCREEN - No phonics checks
   if (isComplete) {
-    const displayLevel = readingLevel || Math.min(Math.max(childAge || 7, 3), 12);
     const hasReadStories = sessionStoriesCompleted.length > 0;
     
     return (
@@ -519,7 +509,6 @@ function ReadingContent() {
     );
   }
 
-  // 🔥 COMPREHENSION QUESTIONS
   if (showQuestions) {
     const question = story.questions[currentQuestionIndex];
     if (!question) {
@@ -555,7 +544,6 @@ function ReadingContent() {
     );
   }
 
-  // 🔥 MAIN READING SCREEN
   return (
     <main className="min-h-screen p-6 transition-colors duration-300" style={{ background: currentTheme?.background || '#f7f2eb' }}>
       <div className="max-w-4xl mx-auto rounded-3xl shadow-xl p-8 transition-colors duration-300" style={{ background: currentTheme?.card || '#fcf9f5', borderColor: currentTheme?.accentLight || '#dcc8b4' }}>
