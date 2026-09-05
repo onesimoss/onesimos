@@ -35,6 +35,8 @@ export default function Dashboard() {
   const [selectedChild, setSelectedChild] = useState<Child | null>(null);
   const [childStats, setChildStats] = useState<ChildStats | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
+  const [generatingPin, setGeneratingPin] = useState<string | null>(null);
+  const [pinMessage, setPinMessage] = useState<{ child: string; pin: string } | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -89,7 +91,6 @@ export default function Dashboard() {
     }
   }, [selectedChild]);
 
-  // 🔥 FIX: Add child with reading level = age
   const addChild = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -108,7 +109,6 @@ export default function Dashboard() {
     }
 
     const age = parseInt(childAge);
-    // 🔥 Reading level = age (capped at 12, minimum 3)
     const readingLevel = Math.min(Math.max(age, 3), 12);
 
     const { error } = await supabase
@@ -153,6 +153,66 @@ export default function Dashboard() {
     await fetchChildren();
   };
 
+  // 🔥 STEP 4: Generate Kid PIN
+  const generateKidPin = async (child: Child) => {
+    setGeneratingPin(child.id);
+    setPinMessage(null);
+
+    try {
+      // Generate a random 4-digit PIN
+      const pin = String(Math.floor(1000 + Math.random() * 9000));
+      
+      // Check if a profile already exists for this child
+      const { data: existingProfile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", child.id)
+        .single();
+
+      if (existingProfile) {
+        // Update existing profile
+        const { error } = await supabase
+          .from("profiles")
+          .update({
+            display_name: child.name,
+            is_kid: true,
+            pin_code: pin,
+            role: 'child',
+          })
+          .eq("id", child.id);
+
+        if (error) throw error;
+      } else {
+        // Create new profile
+        const { error } = await supabase
+          .from("profiles")
+          .insert({
+            id: child.id,
+            email: `${child.id}@kid.local`,
+            display_name: child.name,
+            is_kid: true,
+            pin_code: pin,
+            role: 'child',
+          });
+
+        if (error) throw error;
+      }
+
+      setPinMessage({ child: child.name, pin: pin });
+      
+      // Clear message after 10 seconds
+      setTimeout(() => {
+        setPinMessage(null);
+      }, 10000);
+
+    } catch (error) {
+      console.error("Error generating PIN:", error);
+      alert("Failed to generate PIN. Please try again.");
+    } finally {
+      setGeneratingPin(null);
+    }
+  };
+
   const calculateReadingLevel = (stats: ChildStats | null) => {
     if (!stats || stats.totalSessions === 0) return 7;
     const baseLevel = 7;
@@ -173,7 +233,6 @@ export default function Dashboard() {
     router.push('/');
   };
 
-  // 🔥 FIX: Handle reading button - check phonics first
   const handleReadClick = async (childId: string) => {
     const passed = await hasPassedPhonics(childId);
     if (passed) {
@@ -215,6 +274,18 @@ export default function Dashboard() {
             >
               🧠 Character
             </Link>
+            <Link
+              href="/clock"
+              className="px-4 py-2 bg-[#dcc8b4] text-[#1e1916] rounded-full text-sm font-medium hover:shadow-xl transition-all"
+            >
+              🕐 Learn Time
+            </Link>
+            <Link
+              href="/kid-login"
+              className="px-4 py-2 bg-[#b28b6a] text-white rounded-full text-sm font-medium hover:shadow-xl transition-all"
+            >
+              🧒 Kid Login
+            </Link>
             {selectedChild && (
               <button
                 onClick={() => handleReadClick(selectedChild.id)}
@@ -231,6 +302,20 @@ export default function Dashboard() {
             </button>
           </div>
         </div>
+
+        {/* PIN Generation Message */}
+        {pinMessage && (
+          <div className="bg-green-50 border border-green-200 text-green-800 p-4 rounded-xl mb-6 text-center">
+            <p className="font-bold text-lg">🔑 Kid PIN Generated!</p>
+            <p className="text-sm">
+              <span className="font-semibold">{pinMessage.child}</span>'s PIN: 
+              <span className="text-2xl font-bold mx-2 text-[#b28b6a]">{pinMessage.pin}</span>
+            </p>
+            <p className="text-xs text-green-600 mt-1">
+              Share this PIN with your child to log in at the Kid Login page.
+            </p>
+          </div>
+        )}
 
         {/* Add Child Section */}
         <div className="bg-white rounded-2xl shadow-sm p-6 mb-8">
@@ -282,35 +367,52 @@ export default function Dashboard() {
                 No children added yet. Add your child above to start tracking progress.
               </p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {children.map((child) => (
-                  <button
+                  <div
                     key={child.id}
-                    onClick={() => setSelectedChild(child)}
-                    className={`w-full text-left p-3 rounded-xl transition-all ${
+                    className={`p-3 rounded-xl transition-all ${
                       selectedChild?.id === child.id
                         ? "bg-[#b28b6a] text-white"
-                        : "bg-[#f7f2eb] hover:bg-[#dcc8b4]"
+                        : "bg-[#f7f2eb]"
                     }`}
                   >
-                    <p className={`font-semibold ${selectedChild?.id === child.id ? "text-white" : "text-[#1e1916]"}`}>
-                      {child.name}
-                    </p>
-                    <p className={`text-sm ${selectedChild?.id === child.id ? "text-white/80" : "text-[#8a7e74]"}`}>
-                      Age: {child.age} · Level: {child.reading_level}
-                    </p>
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteChild(child.id);
-                      }}
-                      className={`text-xs mt-1 ${
-                        selectedChild?.id === child.id ? "text-white/70 hover:text-white" : "text-red-400 hover:text-red-600"
-                      } transition-colors`}
+                      onClick={() => setSelectedChild(child)}
+                      className="w-full text-left"
                     >
-                      Remove
+                      <p className={`font-semibold ${selectedChild?.id === child.id ? "text-white" : "text-[#1e1916]"}`}>
+                        {child.name}
+                      </p>
+                      <p className={`text-sm ${selectedChild?.id === child.id ? "text-white/80" : "text-[#8a7e74]"}`}>
+                        Age: {child.age} · Level: {child.reading_level}
+                      </p>
                     </button>
-                  </button>
+                    
+                    {/* 🔥 STEP 4: Generate Kid PIN Button */}
+                    <div className="mt-2 flex gap-2 flex-wrap">
+                      <button
+                        onClick={() => generateKidPin(child)}
+                        disabled={generatingPin === child.id}
+                        className="text-xs px-3 py-1 bg-[#dcc8b4] text-[#1e1916] rounded-full hover:shadow-xl transition-all disabled:opacity-50"
+                      >
+                        {generatingPin === child.id ? "Generating..." : "🔑 Generate Kid PIN"}
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteChild(child.id);
+                        }}
+                        className={`text-xs px-3 py-1 rounded-full transition-colors ${
+                          selectedChild?.id === child.id
+                            ? "bg-white/20 text-white hover:bg-white/30"
+                            : "bg-red-100 text-red-500 hover:bg-red-200"
+                        }`}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
