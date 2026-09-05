@@ -10,7 +10,31 @@ import { themes } from "@/lib/themes";
 import { saveReadingSession, getChild, getChildStats } from "@/lib/readingUtils";
 import { hasCompletedToday, saveDailyProgress, saveStumbledWord, getChildStreak } from "@/lib/dailyProgress";
 
-// EASY_WORDS set (unchanged)
+// 🔥 Check if child has passed phonics
+async function hasPassedPhonics(childId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("daily_progress")
+    .select("phonics_passed")
+    .eq("child_id", childId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error || !data) return false;
+  return data.phonics_passed === true;
+}
+
+// 🔥 Mark phonics as passed
+async function markPhonicsPassed(childId: string): Promise<void> {
+  await supabase
+    .from("daily_progress")
+    .upsert({
+      child_id: childId,
+      phonics_passed: true,
+      date: new Date().toISOString().split('T')[0],
+    }, { onConflict: 'child_id,date' });
+}
+
 const EASY_WORDS = new Set([
   'a', 'an', 'the', 'and', 'or', 'but', 'so', 'for', 'nor', 'yet',
   'i', 'me', 'my', 'you', 'your', 'he', 'him', 'his', 'she', 'her',
@@ -25,7 +49,7 @@ const EASY_WORDS = new Set([
   'said', 'asked', 'told', 'went', 'came', 'looked', 'saw', 'made'
 ]);
 
-// --- 3 Stories per Session ---
+// 🔥 3 Stories per Session
 const STORIES = [
   {
     id: 'story-1',
@@ -33,9 +57,9 @@ const STORIES = [
     theme: "Kindness & Compassion",
     content: `Ella was the biggest elephant in the forest, but she had the softest heart. One morning, she found a tiny bird with a broken wing. "I can help you," Ella whispered, though she was in a hurry to meet her friends. She gently lifted the bird onto her back and carried it to the old owl who knew about healing. Later, her friends asked why she was late. Ella could have made up an excuse. Instead, she told the truth. "I stopped to help a bird," she said, despite feeling shy. Her friends were quiet for a moment. Then they smiled. "That is why we love you," they said. Ella learned that kindness is never wasted.`,
     questions: [
-      { q: "Who did Ella help?", options: ["A bird", "A snake", "A monkey", "A rabbit"], correct: "A bird" },
-      { q: "Why was Ella late?", options: ["She got lost", "She was helping a bird", "She was sleeping", "She didn't want to go"], correct: "She was helping a bird" },
-      { q: "What did Ella learn?", options: ["Kindness is never wasted", "Being late is okay", "Birds are nice", "Friends don't matter"], correct: "Kindness is never wasted" },
+      { q: "Who did Ella help?", options: ["A bird", "A snake", "A monkey", "A rabbit"], correct: 0 },
+      { q: "Why was Ella late?", options: ["She got lost", "She was helping a bird", "She was sleeping", "She didn't want to go"], correct: 1 },
+      { q: "What did Ella learn?", options: ["Kindness is never wasted", "Being late is okay", "Birds are nice", "Friends don't matter"], correct: 0 },
     ],
     characterLesson: "Kindness is never wasted. Even small acts of kindness matter."
   },
@@ -45,9 +69,9 @@ const STORIES = [
     theme: "Courage & Perseverance",
     content: `Felix the fox loved to race. But he always came last. One day, he tripped and fell right in front of everyone. "I'll never be fast," he muttered. His mother sat beside him and said, "You just need to practice, despite how hard it feels." Felix decided to try again. Every morning, he ran through the meadow, though his legs ached. After many weeks, the forest held a race. Felix did not come first. But he did not fall either. He finished with a steady pace and a happy heart. "I did it," he said, because he kept going even when he wanted to stop. Felix learned that being brave means trying again.`,
     questions: [
-      { q: "What did Felix love to do?", options: ["Sing", "Race", "Sleep", "Read"], correct: "Race" },
-      { q: "What did Felix's mother tell him?", options: ["To give up", "To practice", "To sleep more", "To find a new hobby"], correct: "To practice" },
-      { q: "What did Felix learn?", options: ["Being brave means trying again", "Racing is scary", "He should stop racing", "He is always last"], correct: "Being brave means trying again" },
+      { q: "What did Felix love to do?", options: ["Sing", "Race", "Sleep", "Read"], correct: 1 },
+      { q: "What did Felix's mother tell him?", options: ["To give up", "To practice", "To sleep more", "To find a new hobby"], correct: 1 },
+      { q: "What did Felix learn?", options: ["Being brave means trying again", "Racing is scary", "He should stop racing", "He is always last"], correct: 0 },
     ],
     characterLesson: "Being brave means trying again, even when it's hard. Courage is not giving up."
   },
@@ -57,20 +81,13 @@ const STORIES = [
     theme: "Honesty & Integrity",
     content: `Ollie the owl found a shiny coin on the ground. He wanted to keep it, but he knew it belonged to someone else. His friends said, "Just keep it! No one will know." But Ollie thought about how sad he would feel if he lost something important. He took the coin to the town square and asked, "Has anyone lost a coin?" A little squirrel came forward. "That's mine!" she said. Ollie gave it back. The squirrel was so happy. She said, "Thank you, Ollie! You are the most honest owl I know." Ollie felt proud. He learned that being honest makes you feel good inside.`,
     questions: [
-      { q: "What did Ollie find?", options: ["A coin", "A feather", "A nut", "A shell"], correct: "A coin" },
-      { q: "What did Ollie do with the coin?", options: ["Kept it", "Gave it back", "Threw it away", "Sold it"], correct: "Gave it back" },
-      { q: "What did Ollie learn?", options: ["Honesty makes you feel good", "Keep what you find", "Don't help others", "Squirrels are mean"], correct: "Honesty makes you feel good" },
+      { q: "What did Ollie find?", options: ["A coin", "A feather", "A nut", "A shell"], correct: 0 },
+      { q: "What did Ollie do with the coin?", options: ["Kept it", "Gave it back", "Threw it away", "Sold it"], correct: 1 },
+      { q: "What did Ollie learn?", options: ["Honesty makes you feel good", "Keep what you find", "Don't help others", "Squirrels are mean"], correct: 0 },
     ],
     characterLesson: "Honesty is a gift you give to yourself and others."
   }
 ];
-
-function getWordsWithPunctuation(text: string): { word: string; clean: string }[] {
-  return text.split(/\s+/).map(w => ({
-    word: w,
-    clean: w.replace(/[^a-zA-Z']/g, '').toLowerCase()
-  }));
-}
 
 function ReadingContent() {
   const searchParams = useSearchParams();
@@ -91,32 +108,32 @@ function ReadingContent() {
   const [isComplete, setIsComplete] = useState(false);
   const [showQuestions, setShowQuestions] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<string[]>([]);
+  const [answers, setAnswers] = useState<number[]>([]);
   const [comprehensionScore, setComprehensionScore] = useState(0);
   const [badgesEarned, setBadgesEarned] = useState<string[]>([]);
   const [streak, setStreak] = useState(0);
   const [childName, setChildName] = useState("");
   const [sessionStoriesCompleted, setSessionStoriesCompleted] = useState<string[]>([]);
-  const [microphoneChecked, setMicrophoneChecked] = useState(false);
-  const [micCheckMessage, setMicCheckMessage] = useState("");
   const [showAllWords, setShowAllWords] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [childAge, setChildAge] = useState(7);
+  const [readingLevel, setReadingLevel] = useState(7);
+  const [phonicsPassed, setPhonicsPassed] = useState(false);
+  const [isCheckingPhonics, setIsCheckingPhonics] = useState(true);
 
   const recognitionRef = useRef<any>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const story = STORIES[storyIndex] || STORIES[0];
-  const storyWords = getWordsWithPunctuation(story.content);
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
+  // 🔥 Load child data and check phonics
   useEffect(() => {
     async function loadData() {
       if (!childId) {
         setIsLoading(false);
+        setIsCheckingPhonics(false);
         return;
       }
 
@@ -124,8 +141,17 @@ function ReadingContent() {
         const childResult = await getChild(childId);
         if (childResult.data) {
           setChildName(childResult.data.name || "Child");
+          setChildAge(childResult.data.age || 7);
+          // 🔥 Reading level = age (capped at 12)
+          const level = Math.min(Math.max(childResult.data.age || 7, 3), 12);
+          setReadingLevel(level);
         }
 
+        // 🔥 Check if phonics is passed
+        const passed = await hasPassedPhonics(childId);
+        setPhonicsPassed(passed);
+
+        // Check if already completed today
         const completed = await hasCompletedToday(childId);
         if (completed) {
           setIsComplete(true);
@@ -148,11 +174,13 @@ function ReadingContent() {
       }
 
       setIsLoading(false);
+      setIsCheckingPhonics(false);
     }
 
     loadData();
   }, [childId]);
 
+  // Timer
   useEffect(() => {
     if (isTimerRunning) {
       timerIntervalRef.current = setInterval(() => {
@@ -170,31 +198,14 @@ function ReadingContent() {
     };
   }, [isTimerRunning]);
 
+  // Auto-end after 20 minutes
   useEffect(() => {
     if (readingTime >= 1200 && isTimerRunning) {
       endSession();
     }
   }, [readingTime, isTimerRunning]);
 
-  // 🔥 Microphone Check
-  const runMicrophoneCheck = async () => {
-    try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setMicCheckMessage("❌ Microphone not available. Please use a device with a mic.");
-        return;
-      }
-
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach(track => track.stop());
-      setMicCheckMessage("✅ Microphone is working! Click 'Start Reading' to begin.");
-      setMicrophoneChecked(true);
-    } catch (err) {
-      setMicCheckMessage("❌ Could not access microphone. Please allow microphone permissions.");
-      console.error("Mic check error:", err);
-    }
-  };
-
-  // 🔥 Smart Stumble Detection: Only marks mispronounced words
+  // 🔥 Smart Stumble Detection: Only track mispronounced words
   const detectStumbles = (spokenText: string) => {
     const cleanedSpoken = spokenText
       .toLowerCase()
@@ -208,12 +219,11 @@ function ReadingContent() {
     
     const newStumbles: string[] = [];
     
-    // Compare each expected word to what was actually said
     expectedWords.forEach((expected, index) => {
       const cleanExpected = expected.replace(/[^a-z']/g, '');
       if (!cleanExpected || EASY_WORDS.has(cleanExpected)) return;
       
-      // Try to find a matching spoken word at approximately the same position
+      // Check if the child said a DIFFERENT word
       let foundMatch = false;
       if (index < spokenWords.length) {
         const cleanSpoken = spokenWords[index]?.replace(/[^a-z']/g, '') || '';
@@ -222,24 +232,20 @@ function ReadingContent() {
         }
       }
       
-      // If no match found, it's a stumble
-      if (!foundMatch) {
-        // Check if this word is already tracked
-        if (!stumbledWords.includes(cleanExpected) && !newStumbles.includes(cleanExpected)) {
-          newStumbles.push(cleanExpected);
-        }
+      if (!foundMatch && !stumbledWords.includes(cleanExpected) && !newStumbles.includes(cleanExpected)) {
+        newStumbles.push(cleanExpected);
       }
     });
     
     if (newStumbles.length > 0) {
       setStumbledWords(prev => [...prev, ...newStumbles]);
-      // Save to database
       if (childId) {
         newStumbles.forEach(word => saveStumbledWord(childId, word));
       }
     }
   };
 
+  // 🔥 Start Listening
   const startListening = () => {
     if (!childId) {
       alert("Please select a child first.");
@@ -251,14 +257,14 @@ function ReadingContent() {
       return;
     }
 
-    if (!process.env.NEXT_PUBLIC_DEEPGRAM_API_KEY) {
-      alert("Deepgram API key not configured. Please check your environment variables.");
+    if (!phonicsPassed) {
+      alert("🔤 Please complete the Phonics assessment first!");
+      router.push("/phonics");
       return;
     }
 
-    // Check microphone if not checked yet
-    if (!microphoneChecked) {
-      runMicrophoneCheck();
+    if (!process.env.NEXT_PUBLIC_DEEPGRAM_API_KEY) {
+      alert("Deepgram API key not configured. Please check your environment variables.");
       return;
     }
 
@@ -270,6 +276,7 @@ function ReadingContent() {
 
       navigator.mediaDevices.getUserMedia({ audio: true })
         .then(stream => {
+          streamRef.current = stream;
           const mediaRecorder = new MediaRecorder(stream);
           const audioChunks: BlobPart[] = [];
 
@@ -317,7 +324,6 @@ function ReadingContent() {
       if (data.transcript) {
         const newTranscript = data.transcript;
         setTranscript(prev => prev + ' ' + newTranscript);
-        // 🔥 Smart detection: only track REAL stumbles
         detectStumbles(newTranscript);
       }
     } catch (error) {
@@ -325,21 +331,33 @@ function ReadingContent() {
     }
   };
 
+  // 🔥 Stop Listening - Properly release the microphone
   const stopListening = () => {
     if (recognitionRef.current) {
       if (typeof recognitionRef.current.stop === 'function') {
         recognitionRef.current.stop();
       }
-      setIsListening(false);
-      setIsTimerRunning(false);
+      recognitionRef.current = null;
     }
+    
+    // 🔥 Release audio tracks
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    
+    setIsListening(false);
+    setIsTimerRunning(false);
   };
 
+  // 🔥 End Session - Stops mic, saves, shows questions
   const endSession = async () => {
     if (isSaving || sessionEnded) return;
     setIsSaving(true);
     setSessionEnded(true);
     setIsTimerRunning(false);
+    
+    // 🔥 Stop mic properly
     stopListening();
 
     const wordsRead = transcript.split(' ').filter(w => w.length > 0).length || 1;
@@ -377,12 +395,12 @@ function ReadingContent() {
     setIsSaving(false);
   };
 
-  const handleAnswer = (answer: string) => {
-    const newAnswers = [...answers, answer];
+  const handleAnswer = (selected: number) => {
+    const newAnswers = [...answers, selected];
     setAnswers(newAnswers);
 
     const currentQuestion = story.questions[currentQuestionIndex];
-    if (answer === currentQuestion.correct) {
+    if (selected === currentQuestion.correct) {
       setComprehensionScore(prev => prev + 1);
     }
 
@@ -393,18 +411,16 @@ function ReadingContent() {
     }
   };
 
-  const finishStory = async (finalAnswers: string[]) => {
+  const finishStory = async (finalAnswers: number[]) => {
     const score = story.questions.reduce((acc, q, i) => {
       return acc + (finalAnswers[i] === q.correct ? 1 : 0);
     }, 0);
     
     setComprehensionScore(score);
     
-    // Track completed stories
     const completed = [...sessionStoriesCompleted, story.id];
     setSessionStoriesCompleted(completed);
 
-    // If all 3 stories are done, finish the session
     if (completed.length >= STORIES.length) {
       await finishAllStories(score);
     } else {
@@ -415,6 +431,8 @@ function ReadingContent() {
       setShowQuestions(false);
       setAnswers([]);
       setComprehensionScore(0);
+      // 🔥 Reset mic state
+      setIsListening(false);
     }
   };
 
@@ -433,6 +451,7 @@ function ReadingContent() {
         wordsRead: transcript.split(' ').filter(w => w.length > 0).length,
         comprehensionScore: finalScore,
         badgesEarned: badges,
+        phonics_passed: true,
       });
     } catch (err) {
       console.error("Error saving daily progress:", err);
@@ -449,7 +468,8 @@ function ReadingContent() {
     router.push('/dashboard');
   };
 
-  if (isLoading || !isClient) {
+  // --- LOADING ---
+  if (isLoading || isCheckingPhonics || !isClient) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6" style={{ background: currentTheme?.background || '#f7f2eb' }}>
         <div className="text-[#8a7e74]">Loading...</div>
@@ -457,6 +477,7 @@ function ReadingContent() {
     );
   }
 
+  // --- NO CHILD SELECTED ---
   if (!childId) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: currentTheme?.background || '#f7f2eb' }}>
@@ -469,7 +490,37 @@ function ReadingContent() {
     );
   }
 
-  // Complete
+  // --- PHONICS NOT PASSED ---
+  if (!phonicsPassed) {
+    return (
+      <main className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: currentTheme?.background || '#f7f2eb' }}>
+        <div className="bg-white rounded-3xl shadow-xl p-12 max-w-2xl w-full text-center">
+          <div className="text-6xl mb-4">🔤</div>
+          <h1 className="text-3xl font-bold text-[#1e1916] mb-4">Phonics First!</h1>
+          <p className="text-[#4a423b] text-lg mb-6">
+            Before you can read stories, you need to complete the Phonics assessment.
+          </p>
+          <p className="text-sm text-[#8a7e74] mb-8">
+            Don't worry – it's fun and you'll learn all the letter sounds!
+          </p>
+          <button
+            onClick={() => router.push('/phonics')}
+            className="px-8 py-3 bg-[#b28b6a] text-white rounded-full font-medium hover:shadow-xl transition-all"
+          >
+            🔤 Start Phonics
+          </button>
+          <button
+            onClick={goToDashboard}
+            className="mt-4 text-sm text-[#8a7e74] hover:underline block w-full"
+          >
+            ← Back to Dashboard
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  // --- COMPLETION SCREEN ---
   if (isComplete) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6" style={{ background: currentTheme?.background || '#f7f2eb' }}>
@@ -512,7 +563,7 @@ function ReadingContent() {
     );
   }
 
-  // Questions
+  // --- QUESTIONS ---
   if (showQuestions) {
     const question = story.questions[currentQuestionIndex];
     if (!question) {
@@ -534,7 +585,13 @@ function ReadingContent() {
           <p className="text-lg font-medium text-[#1e1916] mb-6">{question.q}</p>
           <div className="space-y-3">
             {question.options.map((option: string, i: number) => (
-              <button key={i} onClick={() => handleAnswer(option)} className="w-full text-left px-6 py-4 bg-[#f7f2eb] hover:bg-[#dcc8b4] rounded-xl transition-all font-medium text-[#1e1916] hover:scale-[1.02]">{option}</button>
+              <button
+                key={i}
+                onClick={() => handleAnswer(i)}
+                className="w-full text-left px-6 py-4 bg-[#f7f2eb] hover:bg-[#dcc8b4] rounded-xl transition-all font-medium text-[#1e1916] hover:scale-[1.02]"
+              >
+                {option}
+              </button>
             ))}
           </div>
         </div>
@@ -542,17 +599,20 @@ function ReadingContent() {
     );
   }
 
-  // Reading screen
+  // --- MAIN READING SCREEN ---
   return (
     <main className="min-h-screen p-6 transition-colors duration-300" style={{ background: currentTheme?.background || '#f7f2eb' }}>
       <div className="max-w-4xl mx-auto rounded-3xl shadow-xl p-8 transition-colors duration-300" style={{ background: currentTheme?.card || '#fcf9f5', borderColor: currentTheme?.accentLight || '#dcc8b4' }}>
-        {/* Progress */}
+        {/* Progress Header */}
         <div className="flex justify-between items-center mb-4 text-sm text-[#8a7e74]">
           <span>Story {storyIndex + 1} of {STORIES.length}</span>
-          <span>📖 {story.title}</span>
+          <div className="flex items-center gap-4">
+            <span>Level: {readingLevel}</span>
+            <span>📖 {story.title}</span>
+          </div>
         </div>
 
-        {/* Header */}
+        {/* Main Header */}
         <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-semibold text-[#1e1916]">📖 {story.title}</h1>
@@ -560,25 +620,23 @@ function ReadingContent() {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm font-medium text-[#1e1916] font-mono">⏱️ {Math.floor(readingTime / 60)}m {readingTime % 60}s</span>
-            {!microphoneChecked ? (
-              <button onClick={runMicrophoneCheck} className="px-6 py-2 bg-[#b28b6a] text-white rounded-full font-medium hover:shadow-xl transition-all">
-                🎤 Check Mic
-              </button>
-            ) : (
-              <button onClick={isListening ? stopListening : startListening} disabled={sessionEnded || isComplete} className={`px-6 py-2 rounded-full font-medium transition-all ${sessionEnded || isComplete ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : isListening ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse' : 'bg-[#1e1916] text-white hover:bg-[#2d241e]'}`}>
-                {isListening ? '⏹ Stop' : '🎙️ Start Reading'}
-              </button>
-            )}
+            <button
+              onClick={isListening ? stopListening : startListening}
+              disabled={sessionEnded || isComplete}
+              className={`px-6 py-2 rounded-full font-medium transition-all ${
+                sessionEnded || isComplete
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : isListening 
+                    ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse' 
+                    : 'bg-[#1e1916] text-white hover:bg-[#2d241e]'
+              }`}
+            >
+              {isListening ? '⏹ Stop' : '🎙️ Start Reading'}
+            </button>
           </div>
         </div>
 
-        {micCheckMessage && (
-          <div className={`mb-4 p-3 rounded-lg text-sm ${micCheckMessage.includes('✅') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-yellow-50 text-yellow-700 border border-yellow-200'}`}>
-            {micCheckMessage}
-          </div>
-        )}
-
-        {/* Story */}
+        {/* Story Content */}
         <div className="prose max-w-none mb-6">
           <div className="text-lg leading-relaxed whitespace-pre-wrap font-serif text-[#1e1916]">
             {story.content}
@@ -621,13 +679,17 @@ function ReadingContent() {
         {/* Footer */}
         <div className="mt-6 flex justify-between items-center pt-4 border-t border-black/5 flex-wrap gap-3">
           <span className="text-sm text-[#8a7e74]">
-            {sessionEnded ? '✅ Story complete!' : `${Math.floor(readingTime / 60)}m ${readingTime % 60}s reading`}
+            {sessionEnded ? '✅ Story complete! Answer questions now.' : `${Math.floor(readingTime / 60)}m ${readingTime % 60}s reading`}
           </span>
           <div className="flex gap-3 flex-wrap">
             {sessionEnded ? (
               <span className="text-sm text-[#b28b6a] font-medium">⏳ Answer the questions to finish!</span>
             ) : (
-              <button onClick={endSession} disabled={!transcript || sessionEnded || isSaving || isListening} className="text-sm bg-[#1e1916] text-white px-6 py-2 rounded-full hover:shadow-xl transition-all disabled:opacity-50">
+              <button
+                onClick={endSession}
+                disabled={!transcript || sessionEnded || isSaving || isListening}
+                className="text-sm bg-[#1e1916] text-white px-6 py-2 rounded-full hover:shadow-xl transition-all disabled:opacity-50"
+              >
                 {isSaving ? 'Saving...' : '✅ End Story'}
               </button>
             )}
@@ -638,6 +700,7 @@ function ReadingContent() {
   );
 }
 
+// --- FALLBACK ---
 function ReadingFallback() {
   return (
     <main className="min-h-screen bg-[#f7f2eb] flex items-center justify-center p-6">
@@ -646,6 +709,7 @@ function ReadingFallback() {
   );
 }
 
+// --- MAIN EXPORT ---
 export default function ReadPage() {
   return (
     <Suspense fallback={<ReadingFallback />}>
