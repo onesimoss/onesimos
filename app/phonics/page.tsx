@@ -46,6 +46,7 @@ function PhonicsContent() {
   const [score, setScore] = useState(0);
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard" | null>(null);
   const [questions, setQuestions] = useState<PhonicsQuestion[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -87,11 +88,23 @@ function PhonicsContent() {
     }
   };
 
+  // 🔥 FIX: When child passes, mark phonics passed and go to Read
   const handlePassAndContinue = async () => {
-    if (childId) {
-      await markPhonicsPassed(childId);
+    if (!childId) {
+      router.push("/dashboard");
+      return;
     }
-    router.push(`/read?child=${childId}`);
+
+    setIsSaving(true);
+    try {
+      await markPhonicsPassed(childId);
+      // 🔥 Force redirect to Read page with child ID
+      router.push(`/read?child=${childId}`);
+    } catch (error) {
+      console.error("Error saving phonics progress:", error);
+      router.push(`/read?child=${childId}`);
+    }
+    setIsSaving(false);
   };
 
   const goToDashboard = () => {
@@ -132,12 +145,23 @@ function PhonicsContent() {
           {passed ? (
             <>
               <p className="text-[#b28b6a] font-medium mb-6">✅ You're ready to start reading!</p>
-              <button onClick={handlePassAndContinue} className="px-8 py-3 bg-[#b28b6a] text-white rounded-full font-medium hover:shadow-xl transition-all">📖 Start Reading</button>
+              <button
+                onClick={handlePassAndContinue}
+                disabled={isSaving}
+                className="px-8 py-3 bg-[#b28b6a] text-white rounded-full font-medium hover:shadow-xl transition-all disabled:opacity-50"
+              >
+                {isSaving ? "Saving..." : "📖 Start Reading"}
+              </button>
             </>
           ) : (
             <>
               <p className="text-[#b28b6a] font-medium mb-6">🔁 Review the sounds and try again!</p>
-              <button onClick={() => { setDifficulty(null); setQuestions([]); setCurrentQuestion(0); setAnswers([]); setIsComplete(false); }} className="px-8 py-3 bg-[#1e1916] text-white rounded-full font-medium hover:shadow-xl transition-all">🔄 Try Again</button>
+              <button
+                onClick={() => { setDifficulty(null); setQuestions([]); setCurrentQuestion(0); setAnswers([]); setIsComplete(false); }}
+                className="px-8 py-3 bg-[#1e1916] text-white rounded-full font-medium hover:shadow-xl transition-all"
+              >
+                🔄 Try Again
+              </button>
             </>
           )}
           <button onClick={goToDashboard} className="mt-4 text-sm text-[#8a7e74] hover:underline block w-full">← Back to Dashboard</button>

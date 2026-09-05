@@ -59,31 +59,50 @@ export async function saveDailyProgress({
   return { data, error: null };
 }
 
-// 🔥 NEW: Mark phonics as passed
+// 🔥 FIX: Mark phonics as passed - uses upsert
 export async function markPhonicsPassed(childId: string): Promise<void> {
   const today = new Date().toISOString().split('T')[0];
   
-  await supabase
+  const { error } = await supabase
     .from('daily_progress')
     .upsert({
       child_id: childId,
       date: today,
       phonics_passed: true,
+      completed_at: new Date().toISOString(),
     }, { onConflict: 'child_id,date' });
+
+  if (error) {
+    console.error('Error marking phonics passed:', error);
+  }
 }
 
-// 🔥 NEW: Check if phonics is passed
+// 🔥 FIX: Check if phonics is passed - looks for the most recent record
 export async function hasPassedPhonics(childId: string): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('daily_progress')
-    .select('phonics_passed')
-    .eq('child_id', childId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single();
+  try {
+    // Get the most recent daily_progress record for this child
+    const { data, error } = await supabase
+      .from('daily_progress')
+      .select('phonics_passed')
+      .eq('child_id', childId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
 
-  if (error || !data) return false;
-  return data.phonics_passed === true;
+    if (error) {
+      // If no record found, return false
+      if (error.code === 'PGRST116') {
+        return false;
+      }
+      console.error('Error checking phonics passed:', error);
+      return false;
+    }
+
+    return data?.phonics_passed === true;
+  } catch (error) {
+    console.error('Error in hasPassedPhonics:', error);
+    return false;
+  }
 }
 
 export async function getChildStreak(childId: string) {
@@ -100,7 +119,6 @@ export async function getChildStreak(childId: string) {
 
   if (!data || data.length === 0) return { streak: 0 };
 
-  // Calculate consecutive days
   let streak = 0;
   let currentDate = new Date();
   currentDate.setHours(0, 0, 0, 0);
@@ -154,7 +172,6 @@ export async function getStumbledWords(childId: string) {
     return { error };
   }
 
-  // Group by word and count occurrences
   const wordCount: Record<string, number> = {};
   data?.forEach((item: { word: string }) => {
     wordCount[item.word] = (wordCount[item.word] || 0) + 1;
@@ -166,4 +183,30 @@ export async function getStumbledWords(childId: string) {
     .map(([word, count]) => ({ word, count }));
 
   return { data: sortedWords, error: null };
+}
+
+// 🔥 NEW: Get child's reading level
+export async function getChildReadingLevel(childId: string): Promise<number> {
+  try {
+    const { data, error } = await supabase
+      .from('children')
+      .select('reading_level, age')
+      .eq('id', childId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching child reading level:', error);
+      return 7; // Default
+    }
+
+    // If reading_level is set, use it; otherwise use age
+    if (data?.reading_level) {
+      return data.reading_level;
+    }
+    // Fallback: use age (capped at 12, minimum 3)
+    return Math.min(Math.max(data?.age || 7, 3), 12);
+  } catch (error) {
+    console.error('Error in getChildReadingLevel:', error);
+    return 7;
+  }
 }
