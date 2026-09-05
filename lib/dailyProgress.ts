@@ -59,6 +59,33 @@ export async function saveDailyProgress({
   return { data, error: null };
 }
 
+// 🔥 NEW: Mark phonics as passed
+export async function markPhonicsPassed(childId: string): Promise<void> {
+  const today = new Date().toISOString().split('T')[0];
+  
+  await supabase
+    .from('daily_progress')
+    .upsert({
+      child_id: childId,
+      date: today,
+      phonics_passed: true,
+    }, { onConflict: 'child_id,date' });
+}
+
+// 🔥 NEW: Check if phonics is passed
+export async function hasPassedPhonics(childId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('daily_progress')
+    .select('phonics_passed')
+    .eq('child_id', childId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error || !data) return false;
+  return data.phonics_passed === true;
+}
+
 export async function getChildStreak(childId: string) {
   const { data, error } = await supabase
     .from('daily_progress')
