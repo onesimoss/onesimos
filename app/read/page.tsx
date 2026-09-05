@@ -34,7 +34,6 @@ const EASY_WORDS = new Set([
   'said', 'asked', 'told', 'went', 'came', 'looked', 'saw', 'made'
 ]);
 
-// Stories with comprehension questions and character lessons
 const STORIES = [
   {
     id: 'story-1',
@@ -61,11 +60,6 @@ const STORIES = [
     characterLesson: "Being brave means trying again, even when it's hard. Courage is not giving up."
   }
 ];
-
-// Helper function to chunk text into sentences
-function splitIntoSentences(text: string): string[] {
-  return text.match(/[^.!?]+[.!?]+/g) || [text];
-}
 
 // Main reading component
 function ReadingContent() {
@@ -94,14 +88,19 @@ function ReadingContent() {
   const [streak, setStreak] = useState(0);
   const [childName, setChildName] = useState("");
   const [showAllWords, setShowAllWords] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   
   const recognitionRef = useRef<any>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const story = STORIES[storyIndex] || STORIES[0];
-  const sentences = splitIntoSentences(story.content);
 
-  // Load child data and check if already completed today
+  // Fix: Client-side only rendering
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Load child data
   useEffect(() => {
     async function loadData() {
       if (!childId) {
@@ -110,23 +109,19 @@ function ReadingContent() {
       }
 
       try {
-        // Get child info
         const childResult = await getChild(childId);
         if (childResult.data) {
           setChildName(childResult.data.name || "Child");
         }
 
-        // Check if already completed today
         const completed = await hasCompletedToday(childId);
         if (completed) {
           setIsComplete(true);
         }
 
-        // Get streak
         const streakResult = await getChildStreak(childId);
         setStreak(streakResult.streak || 0);
 
-        // Get stats
         const stats = await getChildStats(childId);
         if (!stats.error) {
           const badges = [];
@@ -174,6 +169,8 @@ function ReadingContent() {
 
   // Real-time word highlighting
   const highlightWords = (text: string) => {
+    if (!text) return;
+    
     const spokenWords = text.toLowerCase().split(' ');
     const storyWords = story.content.toLowerCase().split(/\s+/);
     
@@ -193,7 +190,6 @@ function ReadingContent() {
     setHighlightedWords(newHighlighted);
   };
 
-  // Deepgram voice recognition via REST API
   const startListening = () => {
     if (!childId) {
       alert("Please select a child first.");
@@ -264,10 +260,7 @@ function ReadingContent() {
       const data = await response.json();
       if (data.transcript) {
         const newTranscript = data.transcript;
-        setTranscript(prev => {
-          const updated = prev + ' ' + newTranscript;
-          return updated;
-        });
+        setTranscript(prev => prev + ' ' + newTranscript);
         detectStumbles(newTranscript);
         highlightWords(newTranscript);
       }
@@ -402,7 +395,8 @@ function ReadingContent() {
     router.push('/dashboard');
   };
 
-  if (isLoading) {
+  // Fix: Loading state
+  if (isLoading || !isClient) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6" style={{ background: currentTheme?.background || '#f7f2eb' }}>
         <div className="text-[#8a7e74]">Loading...</div>
@@ -410,6 +404,7 @@ function ReadingContent() {
     );
   }
 
+  // Fix: No child selected
   if (!childId) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: currentTheme?.background || '#f7f2eb' }}>
@@ -427,7 +422,7 @@ function ReadingContent() {
     );
   }
 
-  // Celebration screen
+  // Fix: Celebration screen
   if (isComplete) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6" style={{ background: currentTheme?.background || '#f7f2eb' }}>
@@ -485,7 +480,7 @@ function ReadingContent() {
     );
   }
 
-  // Comprehension Questions
+  // Fix: Comprehension Questions
   if (showQuestions) {
     const question = story.questions[currentQuestionIndex];
     if (!question) {
@@ -520,7 +515,7 @@ function ReadingContent() {
     );
   }
 
-  // Main reading screen
+  // Fix: Main reading screen with theme
   return (
     <main 
       className="min-h-screen p-6 transition-colors duration-300"
@@ -561,7 +556,7 @@ function ReadingContent() {
           </div>
         </div>
 
-        {/* Story with real-time highlighting */}
+        {/* Fix: Story with real-time word highlighting using split and map */}
         <div className="prose max-w-none mb-6">
           <div className="text-lg leading-relaxed whitespace-pre-wrap font-serif text-[#1e1916]">
             {story.content.split(/\s+/).map((word, i) => {
@@ -595,7 +590,7 @@ function ReadingContent() {
           </div>
         )}
 
-        {/* Stumbled Words - Expandable */}
+        {/* Fix: Stumbled Words with expandable toggle */}
         {stumbledWords.length > 0 && (
           <div className="mt-4 p-4 bg-[#dcc8b4] bg-opacity-20 rounded-xl border border-[#b28b6a] border-opacity-30">
             <p className="text-sm text-[#4a423b] font-medium">📝 Words to practice:</p>
@@ -655,7 +650,7 @@ function ReadingContent() {
   );
 }
 
-// Loading fallback
+// Loading fallback for Suspense
 function ReadingFallback() {
   return (
     <main className="min-h-screen bg-[#f7f2eb] flex items-center justify-center p-6">
@@ -664,7 +659,7 @@ function ReadingFallback() {
   );
 }
 
-// Main page component
+// Main page component with Suspense
 export default function ReadPage() {
   return (
     <Suspense fallback={<ReadingFallback />}>

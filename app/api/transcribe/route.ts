@@ -14,6 +14,7 @@ export async function POST(request: NextRequest) {
 
     const apiKey = process.env.DEEPGRAM_API_KEY;
     if (!apiKey) {
+      console.error('DEEPGRAM_API_KEY is not set');
       return NextResponse.json(
         { error: 'Deepgram API key not configured' },
         { status: 500 }
@@ -22,7 +23,6 @@ export async function POST(request: NextRequest) {
 
     const buffer = Buffer.from(await audio.arrayBuffer());
 
-    // Call Deepgram REST API directly
     const response = await fetch('https://api.deepgram.com/v1/listen?model=nova-3&smart_format=true&punctuate=true', {
       method: 'POST',
       headers: {
