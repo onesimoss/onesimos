@@ -7,7 +7,7 @@ import Link from "next/link";
 
 export default function Home() {
   const { theme, setTheme } = useTheme();
-  const currentTheme = themes[theme];
+  const currentTheme = themes[theme] || themes.dinosaurs;
   const { user } = useAuth();
 
   return (
@@ -104,38 +104,42 @@ export default function Home() {
         {/* CTA */}
         <div className="text-center mb-16">
           <Link
-            href="/read"
+            href="/phonics"
             className="inline-block px-12 py-4 rounded-full text-lg font-medium hover:shadow-xl transition-all hover:-translate-y-0.5"
             style={{
               background: currentTheme.accent,
               color: theme === "space" || theme === "fantasy" ? "#fff" : currentTheme.primary,
             }}
           >
-            🎯 Start Reading
+            🎯 Start Learning
           </Link>
           <p className="text-sm mt-3" style={{ color: currentTheme.muted }}>
-            No credit card required • Cancel anytime
+            Start with Phonics, then unlock reading stories!
           </p>
         </div>
 
-        {/* Features */}
+        {/* 🔥 Active Tabs - Functional */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {[
-            { icon: "📖", label: "Reads Aloud", desc: "Every word, out loud" },
-            { icon: "🎙️", label: "Listens", desc: "Catches every stumble" },
-            { icon: "📊", label: "Tracks", desc: "Private parent log" },
-            { icon: "❤️", label: "Builds Character", desc: "Compassion & resilience" },
-          ].map((feature) => (
-            <div key={feature.label} className="text-center">
-              <div className="text-3xl mb-2">{feature.icon}</div>
-              <h3 className="font-semibold text-sm" style={{ color: currentTheme.primary }}>
-                {feature.label}
-              </h3>
-              <p className="text-xs" style={{ color: currentTheme.muted }}>
-                {feature.desc}
-              </p>
-            </div>
-          ))}
+          <Link href="/phonics" className="text-center hover:scale-105 transition-all group">
+            <div className="text-3xl mb-2">🔤</div>
+            <h3 className="font-semibold text-sm" style={{ color: currentTheme.primary }}>Phonics</h3>
+            <p className="text-xs" style={{ color: currentTheme.muted }}>Learn letter sounds</p>
+          </Link>
+          <Link href="/read?child=" className="text-center hover:scale-105 transition-all group">
+            <div className="text-3xl mb-2">📖</div>
+            <h3 className="font-semibold text-sm" style={{ color: currentTheme.primary }}>Read</h3>
+            <p className="text-xs" style={{ color: currentTheme.muted }}>Practice reading stories</p>
+          </Link>
+          <Link href="/character" className="text-center hover:scale-105 transition-all group">
+            <div className="text-3xl mb-2">🧠</div>
+            <h3 className="font-semibold text-sm" style={{ color: currentTheme.primary }}>Character</h3>
+            <p className="text-xs" style={{ color: currentTheme.muted }}>Build good habits</p>
+          </Link>
+          <Link href="/dashboard" className="text-center hover:scale-105 transition-all group">
+            <div className="text-3xl mb-2">📊</div>
+            <h3 className="font-semibold text-sm" style={{ color: currentTheme.primary }}>Dashboard</h3>
+            <p className="text-xs" style={{ color: currentTheme.muted }}>Track progress</p>
+          </Link>
         </div>
 
         {/* Testimonial */}
