@@ -5,21 +5,12 @@
 import { useState, useRef, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { 
-  saveReadingSession, 
-  getChild,
-  getChildStats 
-} from "@/lib/readingUtils";
-import { 
-  hasCompletedToday, 
-  saveDailyProgress, 
-  saveStumbledWord,
-  getChildStreak
-} from "@/lib/dailyProgress";
 import { useTheme } from "@/context/ThemeContext";
 import { themes } from "@/lib/themes";
+import { saveReadingSession, getChild, getChildStats } from "@/lib/readingUtils";
+import { hasCompletedToday, saveDailyProgress, saveStumbledWord, getChildStreak } from "@/lib/dailyProgress";
 
-// Common easy words to ignore
+// EASY_WORDS set (unchanged)
 const EASY_WORDS = new Set([
   'a', 'an', 'the', 'and', 'or', 'but', 'so', 'for', 'nor', 'yet',
   'i', 'me', 'my', 'you', 'your', 'he', 'him', 'his', 'she', 'her',
@@ -34,6 +25,7 @@ const EASY_WORDS = new Set([
   'said', 'asked', 'told', 'went', 'came', 'looked', 'saw', 'made'
 ]);
 
+// --- 3 Stories per Session ---
 const STORIES = [
   {
     id: 'story-1',
@@ -58,10 +50,21 @@ const STORIES = [
       { q: "What did Felix learn?", options: ["Being brave means trying again", "Racing is scary", "He should stop racing", "He is always last"], correct: "Being brave means trying again" },
     ],
     characterLesson: "Being brave means trying again, even when it's hard. Courage is not giving up."
+  },
+  {
+    id: 'story-3',
+    title: "Ollie the Honest Owl",
+    theme: "Honesty & Integrity",
+    content: `Ollie the owl found a shiny coin on the ground. He wanted to keep it, but he knew it belonged to someone else. His friends said, "Just keep it! No one will know." But Ollie thought about how sad he would feel if he lost something important. He took the coin to the town square and asked, "Has anyone lost a coin?" A little squirrel came forward. "That's mine!" she said. Ollie gave it back. The squirrel was so happy. She said, "Thank you, Ollie! You are the most honest owl I know." Ollie felt proud. He learned that being honest makes you feel good inside.`,
+    questions: [
+      { q: "What did Ollie find?", options: ["A coin", "A feather", "A nut", "A shell"], correct: "A coin" },
+      { q: "What did Ollie do with the coin?", options: ["Kept it", "Gave it back", "Threw it away", "Sold it"], correct: "Gave it back" },
+      { q: "What did Ollie learn?", options: ["Honesty makes you feel good", "Keep what you find", "Don't help others", "Squirrels are mean"], correct: "Honesty makes you feel good" },
+    ],
+    characterLesson: "Honesty is a gift you give to yourself and others."
   }
 ];
 
-// Helper: split story into word array with punctuation attached
 function getWordsWithPunctuation(text: string): { word: string; clean: string }[] {
   return text.split(/\s+/).map(w => ({
     word: w,
@@ -75,7 +78,7 @@ function ReadingContent() {
   const childId = searchParams.get('child');
   const { theme } = useTheme();
   const currentTheme = themes[theme] || themes.dinosaurs;
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
@@ -85,7 +88,6 @@ function ReadingContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [sessionEnded, setSessionEnded] = useState(false);
   const [storyIndex, setStoryIndex] = useState(0);
-  const [highlightedIndices, setHighlightedIndices] = useState<Set<number>>(new Set());
   const [isComplete, setIsComplete] = useState(false);
   const [showQuestions, setShowQuestions] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -94,10 +96,13 @@ function ReadingContent() {
   const [badgesEarned, setBadgesEarned] = useState<string[]>([]);
   const [streak, setStreak] = useState(0);
   const [childName, setChildName] = useState("");
+  const [sessionStoriesCompleted, setSessionStoriesCompleted] = useState<string[]>([]);
+  const [microphoneChecked, setMicrophoneChecked] = useState(false);
+  const [micCheckMessage, setMicCheckMessage] = useState("");
   const [showAllWords, setShowAllWords] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  
+
   const recognitionRef = useRef<any>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -148,7 +153,6 @@ function ReadingContent() {
     loadData();
   }, [childId]);
 
-  // Timer
   useEffect(() => {
     if (isTimerRunning) {
       timerIntervalRef.current = setInterval(() => {
@@ -166,71 +170,76 @@ function ReadingContent() {
     };
   }, [isTimerRunning]);
 
-  // Auto-end after 20 minutes
   useEffect(() => {
     if (readingTime >= 1200 && isTimerRunning) {
       endSession();
     }
   }, [readingTime, isTimerRunning]);
 
-  // 🔥 FIX: Real-time word highlighting - instant
-  const highlightWords = (text: string) => {
-    if (!text) return;
-    
-    const spokenWords = text.toLowerCase().split(' ');
-    const newHighlighted = new Set<number>();
-    
-    storyWords.forEach((item, index) => {
-      const cleanStory = item.clean;
-      if (!cleanStory) return;
-      
-      // Check if this story word appears in the spoken text
-      for (const spoken of spokenWords) {
-        const cleanSpoken = spoken.replace(/[^a-z']/g, '');
-        if (cleanSpoken && cleanStory === cleanSpoken) {
-          newHighlighted.add(index);
-          break;
-        }
+  // 🔥 Microphone Check
+  const runMicrophoneCheck = async () => {
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setMicCheckMessage("❌ Microphone not available. Please use a device with a mic.");
+        return;
       }
-    });
-    
-    setHighlightedIndices(newHighlighted);
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(track => track.stop());
+      setMicCheckMessage("✅ Microphone is working! Click 'Start Reading' to begin.");
+      setMicrophoneChecked(true);
+    } catch (err) {
+      setMicCheckMessage("❌ Could not access microphone. Please allow microphone permissions.");
+      console.error("Mic check error:", err);
+    }
   };
 
-  // Detect stumbles from transcript
-  const detectStumbles = (text: string) => {
-    const cleaned = text
+  // 🔥 Smart Stumble Detection: Only marks mispronounced words
+  const detectStumbles = (spokenText: string) => {
+    const cleanedSpoken = spokenText
       .toLowerCase()
       .replace(/\b(uh|um|er|ah|like|you know)\b/g, '')
       .replace(/[^a-z\s']/g, '')
       .replace(/\s+/g, ' ')
       .trim();
       
-    const words = cleaned.split(' ');
-    const storyWordSet = new Set(storyWords.map(w => w.clean).filter(Boolean));
+    const spokenWords = cleanedSpoken.split(' ');
+    const expectedWords = story.content.toLowerCase().split(/\s+/);
     
     const newStumbles: string[] = [];
-    words.forEach((word: string) => {
-      const cleanWord = word.replace(/[^a-z']/g, '');
-      if (!cleanWord || 
-          EASY_WORDS.has(cleanWord) || 
-          !storyWordSet.has(cleanWord) ||
-          stumbledWords.includes(cleanWord) ||
-          /^[0-9]+$/.test(cleanWord)) {
-        return;
+    
+    // Compare each expected word to what was actually said
+    expectedWords.forEach((expected, index) => {
+      const cleanExpected = expected.replace(/[^a-z']/g, '');
+      if (!cleanExpected || EASY_WORDS.has(cleanExpected)) return;
+      
+      // Try to find a matching spoken word at approximately the same position
+      let foundMatch = false;
+      if (index < spokenWords.length) {
+        const cleanSpoken = spokenWords[index]?.replace(/[^a-z']/g, '') || '';
+        if (cleanSpoken === cleanExpected) {
+          foundMatch = true;
+        }
       }
-      newStumbles.push(cleanWord);
-      if (childId) {
-        saveStumbledWord(childId, cleanWord);
+      
+      // If no match found, it's a stumble
+      if (!foundMatch) {
+        // Check if this word is already tracked
+        if (!stumbledWords.includes(cleanExpected) && !newStumbles.includes(cleanExpected)) {
+          newStumbles.push(cleanExpected);
+        }
       }
     });
     
     if (newStumbles.length > 0) {
       setStumbledWords(prev => [...prev, ...newStumbles]);
+      // Save to database
+      if (childId) {
+        newStumbles.forEach(word => saveStumbledWord(childId, word));
+      }
     }
   };
 
-  // Voice: start listening
   const startListening = () => {
     if (!childId) {
       alert("Please select a child first.");
@@ -244,6 +253,12 @@ function ReadingContent() {
 
     if (!process.env.NEXT_PUBLIC_DEEPGRAM_API_KEY) {
       alert("Deepgram API key not configured. Please check your environment variables.");
+      return;
+    }
+
+    // Check microphone if not checked yet
+    if (!microphoneChecked) {
+      runMicrophoneCheck();
       return;
     }
 
@@ -283,7 +298,6 @@ function ReadingContent() {
     }
   };
 
-  // Transcribe via Deepgram
   const transcribeAudio = async (audioBlob: Blob) => {
     try {
       const formData = new FormData();
@@ -302,13 +316,8 @@ function ReadingContent() {
       const data = await response.json();
       if (data.transcript) {
         const newTranscript = data.transcript;
-        // 🔥 FIX: Update transcript and trigger highlighting immediately
-        setTranscript(prev => {
-          const updated = prev + ' ' + newTranscript;
-          return updated;
-        });
-        // 🔥 FIX: Highlight instantly
-        highlightWords(newTranscript);
+        setTranscript(prev => prev + ' ' + newTranscript);
+        // 🔥 Smart detection: only track REAL stumbles
         detectStumbles(newTranscript);
       }
     } catch (error) {
@@ -326,7 +335,6 @@ function ReadingContent() {
     }
   };
 
-  // 🔥 FIX: End session with proper save handling
   const endSession = async () => {
     if (isSaving || sessionEnded) return;
     setIsSaving(true);
@@ -337,7 +345,6 @@ function ReadingContent() {
     const wordsRead = transcript.split(' ').filter(w => w.length > 0).length || 1;
 
     try {
-      // Attempt to save to Supabase
       const result = await saveReadingSession({
         childId: childId!,
         storyId: story.id,
@@ -350,12 +357,10 @@ function ReadingContent() {
       if (result.error) {
         console.error("Save error:", result.error);
         setSaveError(result.error.message || "Failed to save to database");
-        // 🔥 FIX: Still show questions even if save fails (local progress)
         setShowQuestions(true);
         setCurrentQuestionIndex(0);
         setAnswers([]);
       } else {
-        // Success! Show questions
         setShowQuestions(true);
         setCurrentQuestionIndex(0);
         setAnswers([]);
@@ -364,7 +369,6 @@ function ReadingContent() {
     } catch (err) {
       console.error("Unexpected error:", err);
       setSaveError("An unexpected error occurred");
-      // Still show questions
       setShowQuestions(true);
       setCurrentQuestionIndex(0);
       setAnswers([]);
@@ -385,19 +389,38 @@ function ReadingContent() {
     if (currentQuestionIndex < story.questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
     } else {
-      finishReading(newAnswers);
+      finishStory(newAnswers);
     }
   };
 
-  const finishReading = async (finalAnswers: string[]) => {
+  const finishStory = async (finalAnswers: string[]) => {
     const score = story.questions.reduce((acc, q, i) => {
       return acc + (finalAnswers[i] === q.correct ? 1 : 0);
     }, 0);
     
     setComprehensionScore(score);
     
+    // Track completed stories
+    const completed = [...sessionStoriesCompleted, story.id];
+    setSessionStoriesCompleted(completed);
+
+    // If all 3 stories are done, finish the session
+    if (completed.length >= STORIES.length) {
+      await finishAllStories(score);
+    } else {
+      // Move to next story
+      setStoryIndex(completed.length);
+      setTranscript("");
+      setSessionEnded(false);
+      setShowQuestions(false);
+      setAnswers([]);
+      setComprehensionScore(0);
+    }
+  };
+
+  const finishAllStories = async (finalScore: number) => {
     const badges: string[] = [];
-    if (score === story.questions.length) badges.push("⭐ Word Wizard");
+    if (finalScore === STORIES.length * 3) badges.push("⭐ Word Wizard");
     if (stumbledWords.length === 0) badges.push("🎯 Perfect Reader");
     if (readingTime < 600) badges.push("⚡ Fast Reader");
     badges.push("📖 Story Explorer");
@@ -406,9 +429,9 @@ function ReadingContent() {
     try {
       await saveDailyProgress({
         childId: childId!,
-        storyId: story.id,
+        storyId: 'all-stories',
         wordsRead: transcript.split(' ').filter(w => w.length > 0).length,
-        comprehensionScore: score,
+        comprehensionScore: finalScore,
         badgesEarned: badges,
       });
     } catch (err) {
@@ -426,7 +449,6 @@ function ReadingContent() {
     router.push('/dashboard');
   };
 
-  // Loading
   if (isLoading || !isClient) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6" style={{ background: currentTheme?.background || '#f7f2eb' }}>
@@ -435,7 +457,6 @@ function ReadingContent() {
     );
   }
 
-  // No child
   if (!childId) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: currentTheme?.background || '#f7f2eb' }}>
@@ -448,22 +469,21 @@ function ReadingContent() {
     );
   }
 
-  // Celebration
+  // Complete
   if (isComplete) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6" style={{ background: currentTheme?.background || '#f7f2eb' }}>
         <div className="bg-white rounded-3xl shadow-xl p-12 max-w-2xl w-full text-center">
           <div className="text-6xl mb-4">🌟</div>
           <h1 className="text-3xl font-bold text-[#1e1916] mb-2">You did it, {childName || "Champion"}!</h1>
-          <p className="text-[#4a423b] text-lg mb-6">You read a whole story and answered all the questions!</p>
-          
+          <p className="text-[#4a423b] text-lg mb-6">You read {STORIES.length} stories and answered all the questions!</p>
           <div className="grid grid-cols-3 gap-4 mb-8">
             <div className="bg-[#f7f2eb] p-4 rounded-xl">
               <p className="text-2xl font-bold text-[#b28b6a]">{readingTime > 0 ? `${Math.floor(readingTime / 60)}m` : '—'}</p>
               <p className="text-xs text-[#8a7e74]">Reading Time</p>
             </div>
             <div className="bg-[#f7f2eb] p-4 rounded-xl">
-              <p className="text-2xl font-bold text-[#b28b6a]">{comprehensionScore}/{story.questions.length}</p>
+              <p className="text-2xl font-bold text-[#b28b6a]">{comprehensionScore}/{STORIES.length * 3}</p>
               <p className="text-xs text-[#8a7e74]">Questions Correct</p>
             </div>
             <div className="bg-[#f7f2eb] p-4 rounded-xl">
@@ -471,7 +491,6 @@ function ReadingContent() {
               <p className="text-xs text-[#8a7e74]">Day Streak</p>
             </div>
           </div>
-
           {badgesEarned.length > 0 && (
             <div className="mb-8">
               <p className="text-sm font-medium text-[#4a423b] mb-3">🏅 Badges Earned</p>
@@ -482,20 +501,18 @@ function ReadingContent() {
               </div>
             </div>
           )}
-
           <div className="bg-[#f3eee8] p-6 rounded-xl mb-8 text-left">
             <p className="text-sm font-medium text-[#4a423b] mb-2">💡 Character Lesson</p>
-            <p className="text-[#1e1916] italic">"{story.characterLesson}"</p>
+            <p className="text-[#1e1916] italic">"{STORIES[STORIES.length - 1].characterLesson}"</p>
           </div>
-
           <button onClick={goToDashboard} className="px-8 py-3 bg-[#1e1916] text-white rounded-full font-medium hover:shadow-xl transition-all">📊 Back to Dashboard</button>
-          <p className="text-xs text-[#8a7e74] mt-4">🔒 Come back tomorrow for a new story!</p>
+          <p className="text-xs text-[#8a7e74] mt-4">🔒 Come back tomorrow for new stories!</p>
         </div>
       </main>
     );
   }
 
-  // Comprehension Questions
+  // Questions
   if (showQuestions) {
     const question = story.questions[currentQuestionIndex];
     if (!question) {
@@ -525,10 +542,16 @@ function ReadingContent() {
     );
   }
 
-  // Main reading screen
+  // Reading screen
   return (
     <main className="min-h-screen p-6 transition-colors duration-300" style={{ background: currentTheme?.background || '#f7f2eb' }}>
       <div className="max-w-4xl mx-auto rounded-3xl shadow-xl p-8 transition-colors duration-300" style={{ background: currentTheme?.card || '#fcf9f5', borderColor: currentTheme?.accentLight || '#dcc8b4' }}>
+        {/* Progress */}
+        <div className="flex justify-between items-center mb-4 text-sm text-[#8a7e74]">
+          <span>Story {storyIndex + 1} of {STORIES.length}</span>
+          <span>📖 {story.title}</span>
+        </div>
+
         {/* Header */}
         <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
           <div>
@@ -537,26 +560,28 @@ function ReadingContent() {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm font-medium text-[#1e1916] font-mono">⏱️ {Math.floor(readingTime / 60)}m {readingTime % 60}s</span>
-            <button onClick={isListening ? stopListening : startListening} disabled={sessionEnded || isComplete} className={`px-6 py-2 rounded-full font-medium transition-all ${sessionEnded || isComplete ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : isListening ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse' : 'bg-[#1e1916] text-white hover:bg-[#2d241e]'}`}>
-              {isListening ? '⏹ Stop' : '🎙️ Start Reading'}
-            </button>
+            {!microphoneChecked ? (
+              <button onClick={runMicrophoneCheck} className="px-6 py-2 bg-[#b28b6a] text-white rounded-full font-medium hover:shadow-xl transition-all">
+                🎤 Check Mic
+              </button>
+            ) : (
+              <button onClick={isListening ? stopListening : startListening} disabled={sessionEnded || isComplete} className={`px-6 py-2 rounded-full font-medium transition-all ${sessionEnded || isComplete ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : isListening ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse' : 'bg-[#1e1916] text-white hover:bg-[#2d241e]'}`}>
+                {isListening ? '⏹ Stop' : '🎙️ Start Reading'}
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Story with INSTANT highlighting */}
+        {micCheckMessage && (
+          <div className={`mb-4 p-3 rounded-lg text-sm ${micCheckMessage.includes('✅') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-yellow-50 text-yellow-700 border border-yellow-200'}`}>
+            {micCheckMessage}
+          </div>
+        )}
+
+        {/* Story */}
         <div className="prose max-w-none mb-6">
           <div className="text-lg leading-relaxed whitespace-pre-wrap font-serif text-[#1e1916]">
-            {storyWords.map((item, i) => {
-              const cleanWord = item.clean;
-              const isHighlighted = highlightedIndices.has(i);
-              const isStumbled = stumbledWords.includes(cleanWord);
-              
-              return (
-                <span key={i} className={`transition-all duration-150 ${isStumbled ? 'bg-[#dcc8b4] bg-opacity-40 px-1 rounded text-[#b28b6a] font-bold underline decoration-wavy' : isHighlighted ? 'bg-[#b28b6a] bg-opacity-25 px-1 rounded' : ''}`}>
-                  {item.word}{' '}
-                </span>
-              );
-            })}
+            {story.content}
           </div>
         </div>
 
@@ -568,7 +593,7 @@ function ReadingContent() {
           </div>
         )}
 
-        {/* Stumbled Words - Expandable */}
+        {/* Stumbled Words */}
         {stumbledWords.length > 0 && (
           <div className="mt-4 p-4 bg-[#dcc8b4] bg-opacity-20 rounded-xl border border-[#b28b6a] border-opacity-30">
             <p className="text-sm text-[#4a423b] font-medium">📝 Words to practice:</p>
@@ -596,14 +621,14 @@ function ReadingContent() {
         {/* Footer */}
         <div className="mt-6 flex justify-between items-center pt-4 border-t border-black/5 flex-wrap gap-3">
           <span className="text-sm text-[#8a7e74]">
-            {sessionEnded ? '✅ Session complete! Answer questions now.' : `${Math.floor(readingTime / 60)}m ${readingTime % 60}s reading`}
+            {sessionEnded ? '✅ Story complete!' : `${Math.floor(readingTime / 60)}m ${readingTime % 60}s reading`}
           </span>
           <div className="flex gap-3 flex-wrap">
             {sessionEnded ? (
               <span className="text-sm text-[#b28b6a] font-medium">⏳ Answer the questions to finish!</span>
             ) : (
               <button onClick={endSession} disabled={!transcript || sessionEnded || isSaving || isListening} className="text-sm bg-[#1e1916] text-white px-6 py-2 rounded-full hover:shadow-xl transition-all disabled:opacity-50">
-                {isSaving ? 'Saving...' : '✅ End Session'}
+                {isSaving ? 'Saving...' : '✅ End Story'}
               </button>
             )}
           </div>
