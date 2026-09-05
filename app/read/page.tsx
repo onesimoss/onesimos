@@ -8,32 +8,14 @@ import { supabase } from "@/lib/supabaseClient";
 import { useTheme } from "@/context/ThemeContext";
 import { themes } from "@/lib/themes";
 import { saveReadingSession, getChild, getChildStats } from "@/lib/readingUtils";
-import { hasCompletedToday, saveDailyProgress, saveStumbledWord, getChildStreak } from "@/lib/dailyProgress";
-
-// 🔥 Check if child has passed phonics
-async function hasPassedPhonics(childId: string): Promise<boolean> {
-  const { data, error } = await supabase
-    .from("daily_progress")
-    .select("phonics_passed")
-    .eq("child_id", childId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .single();
-
-  if (error || !data) return false;
-  return data.phonics_passed === true;
-}
-
-// 🔥 Mark phonics as passed
-async function markPhonicsPassed(childId: string): Promise<void> {
-  await supabase
-    .from("daily_progress")
-    .upsert({
-      child_id: childId,
-      phonics_passed: true,
-      date: new Date().toISOString().split('T')[0],
-    }, { onConflict: 'child_id,date' });
-}
+import { 
+  hasCompletedToday, 
+  saveDailyProgress, 
+  saveStumbledWord, 
+  getChildStreak,
+  hasPassedPhonics,
+  markPhonicsPassed
+} from "@/lib/dailyProgress";
 
 const EASY_WORDS = new Set([
   'a', 'an', 'the', 'and', 'or', 'but', 'so', 'for', 'nor', 'yet',
@@ -49,7 +31,6 @@ const EASY_WORDS = new Set([
   'said', 'asked', 'told', 'went', 'came', 'looked', 'saw', 'made'
 ]);
 
-// 🔥 3 Stories per Session
 const STORIES = [
   {
     id: 'story-1',
@@ -128,7 +109,10 @@ function ReadingContent() {
 
   const story = STORIES[storyIndex] || STORIES[0];
 
-  // 🔥 Load child data and check phonics
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   useEffect(() => {
     async function loadData() {
       if (!childId) {
@@ -142,16 +126,13 @@ function ReadingContent() {
         if (childResult.data) {
           setChildName(childResult.data.name || "Child");
           setChildAge(childResult.data.age || 7);
-          // 🔥 Reading level = age (capped at 12)
           const level = Math.min(Math.max(childResult.data.age || 7, 3), 12);
           setReadingLevel(level);
         }
 
-        // 🔥 Check if phonics is passed
         const passed = await hasPassedPhonics(childId);
         setPhonicsPassed(passed);
 
-        // Check if already completed today
         const completed = await hasCompletedToday(childId);
         if (completed) {
           setIsComplete(true);
@@ -180,7 +161,6 @@ function ReadingContent() {
     loadData();
   }, [childId]);
 
-  // Timer
   useEffect(() => {
     if (isTimerRunning) {
       timerIntervalRef.current = setInterval(() => {
@@ -198,14 +178,12 @@ function ReadingContent() {
     };
   }, [isTimerRunning]);
 
-  // Auto-end after 20 minutes
   useEffect(() => {
     if (readingTime >= 1200 && isTimerRunning) {
       endSession();
     }
   }, [readingTime, isTimerRunning]);
 
-  // 🔥 Smart Stumble Detection: Only track mispronounced words
   const detectStumbles = (spokenText: string) => {
     const cleanedSpoken = spokenText
       .toLowerCase()
@@ -216,14 +194,12 @@ function ReadingContent() {
       
     const spokenWords = cleanedSpoken.split(' ');
     const expectedWords = story.content.toLowerCase().split(/\s+/);
-    
     const newStumbles: string[] = [];
     
     expectedWords.forEach((expected, index) => {
       const cleanExpected = expected.replace(/[^a-z']/g, '');
       if (!cleanExpected || EASY_WORDS.has(cleanExpected)) return;
       
-      // Check if the child said a DIFFERENT word
       let foundMatch = false;
       if (index < spokenWords.length) {
         const cleanSpoken = spokenWords[index]?.replace(/[^a-z']/g, '') || '';
@@ -245,7 +221,6 @@ function ReadingContent() {
     }
   };
 
-  // 🔥 Start Listening
   const startListening = () => {
     if (!childId) {
       alert("Please select a child first.");
@@ -331,7 +306,6 @@ function ReadingContent() {
     }
   };
 
-  // 🔥 Stop Listening - Properly release the microphone
   const stopListening = () => {
     if (recognitionRef.current) {
       if (typeof recognitionRef.current.stop === 'function') {
@@ -340,7 +314,6 @@ function ReadingContent() {
       recognitionRef.current = null;
     }
     
-    // 🔥 Release audio tracks
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
@@ -350,14 +323,12 @@ function ReadingContent() {
     setIsTimerRunning(false);
   };
 
-  // 🔥 End Session - Stops mic, saves, shows questions
   const endSession = async () => {
     if (isSaving || sessionEnded) return;
     setIsSaving(true);
     setSessionEnded(true);
     setIsTimerRunning(false);
     
-    // 🔥 Stop mic properly
     stopListening();
 
     const wordsRead = transcript.split(' ').filter(w => w.length > 0).length || 1;
@@ -424,14 +395,12 @@ function ReadingContent() {
     if (completed.length >= STORIES.length) {
       await finishAllStories(score);
     } else {
-      // Move to next story
       setStoryIndex(completed.length);
       setTranscript("");
       setSessionEnded(false);
       setShowQuestions(false);
       setAnswers([]);
       setComprehensionScore(0);
-      // 🔥 Reset mic state
       setIsListening(false);
     }
   };
@@ -451,8 +420,9 @@ function ReadingContent() {
         wordsRead: transcript.split(' ').filter(w => w.length > 0).length,
         comprehensionScore: finalScore,
         badgesEarned: badges,
-        phonics_passed: true,
       });
+      
+      await markPhonicsPassed(childId!);
     } catch (err) {
       console.error("Error saving daily progress:", err);
     }
@@ -468,7 +438,6 @@ function ReadingContent() {
     router.push('/dashboard');
   };
 
-  // --- LOADING ---
   if (isLoading || isCheckingPhonics || !isClient) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6" style={{ background: currentTheme?.background || '#f7f2eb' }}>
@@ -477,7 +446,6 @@ function ReadingContent() {
     );
   }
 
-  // --- NO CHILD SELECTED ---
   if (!childId) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: currentTheme?.background || '#f7f2eb' }}>
@@ -490,7 +458,6 @@ function ReadingContent() {
     );
   }
 
-  // --- PHONICS NOT PASSED ---
   if (!phonicsPassed) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: currentTheme?.background || '#f7f2eb' }}>
@@ -520,7 +487,6 @@ function ReadingContent() {
     );
   }
 
-  // --- COMPLETION SCREEN ---
   if (isComplete) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6" style={{ background: currentTheme?.background || '#f7f2eb' }}>
@@ -563,7 +529,6 @@ function ReadingContent() {
     );
   }
 
-  // --- QUESTIONS ---
   if (showQuestions) {
     const question = story.questions[currentQuestionIndex];
     if (!question) {
@@ -599,11 +564,9 @@ function ReadingContent() {
     );
   }
 
-  // --- MAIN READING SCREEN ---
   return (
     <main className="min-h-screen p-6 transition-colors duration-300" style={{ background: currentTheme?.background || '#f7f2eb' }}>
       <div className="max-w-4xl mx-auto rounded-3xl shadow-xl p-8 transition-colors duration-300" style={{ background: currentTheme?.card || '#fcf9f5', borderColor: currentTheme?.accentLight || '#dcc8b4' }}>
-        {/* Progress Header */}
         <div className="flex justify-between items-center mb-4 text-sm text-[#8a7e74]">
           <span>Story {storyIndex + 1} of {STORIES.length}</span>
           <div className="flex items-center gap-4">
@@ -612,7 +575,6 @@ function ReadingContent() {
           </div>
         </div>
 
-        {/* Main Header */}
         <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-semibold text-[#1e1916]">📖 {story.title}</h1>
@@ -636,14 +598,12 @@ function ReadingContent() {
           </div>
         </div>
 
-        {/* Story Content */}
         <div className="prose max-w-none mb-6">
           <div className="text-lg leading-relaxed whitespace-pre-wrap font-serif text-[#1e1916]">
             {story.content}
           </div>
         </div>
 
-        {/* Transcript */}
         {transcript && (
           <div className="mt-4 p-4 bg-[#f3eee8] rounded-xl">
             <p className="text-sm text-[#4a423b] font-medium">What you read:</p>
@@ -651,7 +611,6 @@ function ReadingContent() {
           </div>
         )}
 
-        {/* Stumbled Words */}
         {stumbledWords.length > 0 && (
           <div className="mt-4 p-4 bg-[#dcc8b4] bg-opacity-20 rounded-xl border border-[#b28b6a] border-opacity-30">
             <p className="text-sm text-[#4a423b] font-medium">📝 Words to practice:</p>
@@ -676,7 +635,6 @@ function ReadingContent() {
           </div>
         )}
 
-        {/* Footer */}
         <div className="mt-6 flex justify-between items-center pt-4 border-t border-black/5 flex-wrap gap-3">
           <span className="text-sm text-[#8a7e74]">
             {sessionEnded ? '✅ Story complete! Answer questions now.' : `${Math.floor(readingTime / 60)}m ${readingTime % 60}s reading`}
@@ -700,7 +658,6 @@ function ReadingContent() {
   );
 }
 
-// --- FALLBACK ---
 function ReadingFallback() {
   return (
     <main className="min-h-screen bg-[#f7f2eb] flex items-center justify-center p-6">
@@ -709,7 +666,6 @@ function ReadingFallback() {
   );
 }
 
-// --- MAIN EXPORT ---
 export default function ReadPage() {
   return (
     <Suspense fallback={<ReadingFallback />}>
