@@ -61,7 +61,14 @@ const STORIES = [
   }
 ];
 
-// Main reading component
+// Helper: split story into word array with punctuation attached
+function getWordsWithPunctuation(text: string): { word: string; clean: string }[] {
+  return text.split(/\s+/).map(w => ({
+    word: w,
+    clean: w.replace(/[^a-zA-Z']/g, '').toLowerCase()
+  }));
+}
+
 function ReadingContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -78,7 +85,7 @@ function ReadingContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [sessionEnded, setSessionEnded] = useState(false);
   const [storyIndex, setStoryIndex] = useState(0);
-  const [highlightedWords, setHighlightedWords] = useState<Set<number>>(new Set());
+  const [highlightedIndices, setHighlightedIndices] = useState<Set<number>>(new Set());
   const [isComplete, setIsComplete] = useState(false);
   const [showQuestions, setShowQuestions] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -89,18 +96,18 @@ function ReadingContent() {
   const [childName, setChildName] = useState("");
   const [showAllWords, setShowAllWords] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   
   const recognitionRef = useRef<any>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const story = STORIES[storyIndex] || STORIES[0];
+  const storyWords = getWordsWithPunctuation(story.content);
 
-  // Fix: Client-side only rendering
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Load child data
   useEffect(() => {
     async function loadData() {
       if (!childId) {
@@ -141,7 +148,7 @@ function ReadingContent() {
     loadData();
   }, [childId]);
 
-  // Timer logic
+  // Timer
   useEffect(() => {
     if (isTimerRunning) {
       timerIntervalRef.current = setInterval(() => {
@@ -151,7 +158,6 @@ function ReadingContent() {
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
     }
-
     return () => {
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
@@ -160,36 +166,71 @@ function ReadingContent() {
     };
   }, [isTimerRunning]);
 
-  // Auto-end session after 20 minutes
+  // Auto-end after 20 minutes
   useEffect(() => {
     if (readingTime >= 1200 && isTimerRunning) {
       endSession();
     }
   }, [readingTime, isTimerRunning]);
 
-  // Real-time word highlighting
+  // 🔥 FIX: Real-time word highlighting - instant
   const highlightWords = (text: string) => {
     if (!text) return;
     
     const spokenWords = text.toLowerCase().split(' ');
-    const storyWords = story.content.toLowerCase().split(/\s+/);
-    
     const newHighlighted = new Set<number>();
-    spokenWords.forEach((spokenWord: string) => {
-      const cleanSpoken = spokenWord.replace(/[^a-z']/g, '');
-      if (!cleanSpoken) return;
+    
+    storyWords.forEach((item, index) => {
+      const cleanStory = item.clean;
+      if (!cleanStory) return;
       
-      storyWords.forEach((storyWord: string, index: number) => {
-        const cleanStory = storyWord.replace(/[^a-z']/g, '');
-        if (cleanStory === cleanSpoken && !newHighlighted.has(index)) {
+      // Check if this story word appears in the spoken text
+      for (const spoken of spokenWords) {
+        const cleanSpoken = spoken.replace(/[^a-z']/g, '');
+        if (cleanSpoken && cleanStory === cleanSpoken) {
           newHighlighted.add(index);
+          break;
         }
-      });
+      }
     });
     
-    setHighlightedWords(newHighlighted);
+    setHighlightedIndices(newHighlighted);
   };
 
+  // Detect stumbles from transcript
+  const detectStumbles = (text: string) => {
+    const cleaned = text
+      .toLowerCase()
+      .replace(/\b(uh|um|er|ah|like|you know)\b/g, '')
+      .replace(/[^a-z\s']/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+      
+    const words = cleaned.split(' ');
+    const storyWordSet = new Set(storyWords.map(w => w.clean).filter(Boolean));
+    
+    const newStumbles: string[] = [];
+    words.forEach((word: string) => {
+      const cleanWord = word.replace(/[^a-z']/g, '');
+      if (!cleanWord || 
+          EASY_WORDS.has(cleanWord) || 
+          !storyWordSet.has(cleanWord) ||
+          stumbledWords.includes(cleanWord) ||
+          /^[0-9]+$/.test(cleanWord)) {
+        return;
+      }
+      newStumbles.push(cleanWord);
+      if (childId) {
+        saveStumbledWord(childId, cleanWord);
+      }
+    });
+    
+    if (newStumbles.length > 0) {
+      setStumbledWords(prev => [...prev, ...newStumbles]);
+    }
+  };
+
+  // Voice: start listening
   const startListening = () => {
     if (!childId) {
       alert("Please select a child first.");
@@ -242,6 +283,7 @@ function ReadingContent() {
     }
   };
 
+  // Transcribe via Deepgram
   const transcribeAudio = async (audioBlob: Blob) => {
     try {
       const formData = new FormData();
@@ -260,9 +302,14 @@ function ReadingContent() {
       const data = await response.json();
       if (data.transcript) {
         const newTranscript = data.transcript;
-        setTranscript(prev => prev + ' ' + newTranscript);
-        detectStumbles(newTranscript);
+        // 🔥 FIX: Update transcript and trigger highlighting immediately
+        setTranscript(prev => {
+          const updated = prev + ' ' + newTranscript;
+          return updated;
+        });
+        // 🔥 FIX: Highlight instantly
         highlightWords(newTranscript);
+        detectStumbles(newTranscript);
       }
     } catch (error) {
       console.error("Transcription error:", error);
@@ -279,43 +326,7 @@ function ReadingContent() {
     }
   };
 
-  const detectStumbles = (text: string) => {
-    const cleaned = text
-      .toLowerCase()
-      .replace(/\b(uh|um|er|ah|like|you know)\b/g, '')
-      .replace(/[^a-z\s']/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-      
-    const words = cleaned.split(' ');
-    const storyWords = story.content.toLowerCase().split(/\s+/);
-    const storyWordCount: Record<string, number> = {};
-    storyWords.forEach((w: string) => {
-      const clean = w.replace(/[^a-z']/g, '');
-      if (clean) storyWordCount[clean] = (storyWordCount[clean] || 0) + 1;
-    });
-    
-    const newStumbles: string[] = [];
-    words.forEach((word: string) => {
-      const cleanWord = word.replace(/[^a-z']/g, '');
-      if (!cleanWord || 
-          EASY_WORDS.has(cleanWord) || 
-          !storyWordCount[cleanWord] ||
-          stumbledWords.includes(cleanWord) ||
-          /^[0-9]+$/.test(cleanWord)) {
-        return;
-      }
-      newStumbles.push(cleanWord);
-      if (childId) {
-        saveStumbledWord(childId, cleanWord);
-      }
-    });
-    
-    if (newStumbles.length > 0) {
-      setStumbledWords(prev => [...prev, ...newStumbles]);
-    }
-  };
-
+  // 🔥 FIX: End session with proper save handling
   const endSession = async () => {
     if (isSaving || sessionEnded) return;
     setIsSaving(true);
@@ -325,22 +336,38 @@ function ReadingContent() {
 
     const wordsRead = transcript.split(' ').filter(w => w.length > 0).length || 1;
 
-    const result = await saveReadingSession({
-      childId: childId!,
-      storyId: story.id,
-      durationSeconds: Math.max(readingTime, 1),
-      wordsRead: wordsRead,
-      wordsStumbled: stumbledWords,
-      endedAt: new Date(),
-    });
+    try {
+      // Attempt to save to Supabase
+      const result = await saveReadingSession({
+        childId: childId!,
+        storyId: story.id,
+        durationSeconds: Math.max(readingTime, 1),
+        wordsRead: wordsRead,
+        wordsStumbled: stumbledWords,
+        endedAt: new Date(),
+      });
 
-    if (!result.error) {
+      if (result.error) {
+        console.error("Save error:", result.error);
+        setSaveError(result.error.message || "Failed to save to database");
+        // 🔥 FIX: Still show questions even if save fails (local progress)
+        setShowQuestions(true);
+        setCurrentQuestionIndex(0);
+        setAnswers([]);
+      } else {
+        // Success! Show questions
+        setShowQuestions(true);
+        setCurrentQuestionIndex(0);
+        setAnswers([]);
+        setSaveError(null);
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      setSaveError("An unexpected error occurred");
+      // Still show questions
       setShowQuestions(true);
       setCurrentQuestionIndex(0);
       setAnswers([]);
-    } else {
-      console.error("Save error:", result.error);
-      alert("There was an error saving your session. Your progress has been saved locally.");
     }
 
     setIsSaving(false);
@@ -376,13 +403,17 @@ function ReadingContent() {
     badges.push("📖 Story Explorer");
     setBadgesEarned(badges);
 
-    await saveDailyProgress({
-      childId: childId!,
-      storyId: story.id,
-      wordsRead: transcript.split(' ').filter(w => w.length > 0).length,
-      comprehensionScore: score,
-      badgesEarned: badges,
-    });
+    try {
+      await saveDailyProgress({
+        childId: childId!,
+        storyId: story.id,
+        wordsRead: transcript.split(' ').filter(w => w.length > 0).length,
+        comprehensionScore: score,
+        badgesEarned: badges,
+      });
+    } catch (err) {
+      console.error("Error saving daily progress:", err);
+    }
 
     const streakResult = await getChildStreak(childId!);
     setStreak(streakResult.streak || 0);
@@ -395,7 +426,7 @@ function ReadingContent() {
     router.push('/dashboard');
   };
 
-  // Fix: Loading state
+  // Loading
   if (isLoading || !isClient) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6" style={{ background: currentTheme?.background || '#f7f2eb' }}>
@@ -404,36 +435,27 @@ function ReadingContent() {
     );
   }
 
-  // Fix: No child selected
+  // No child
   if (!childId) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: currentTheme?.background || '#f7f2eb' }}>
         <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md text-center">
           <h1 className="text-2xl font-bold text-[#1e1916] mb-4">👶 Select a Child</h1>
           <p className="text-[#8a7e74] mb-6">Please go back to the dashboard and select a child to start reading.</p>
-          <button
-            onClick={goToDashboard}
-            className="px-6 py-2 bg-[#b28b6a] text-white rounded-full font-medium hover:shadow-xl transition-all"
-          >
-            Go to Dashboard
-          </button>
+          <button onClick={goToDashboard} className="px-6 py-2 bg-[#b28b6a] text-white rounded-full font-medium hover:shadow-xl transition-all">Go to Dashboard</button>
         </div>
       </main>
     );
   }
 
-  // Fix: Celebration screen
+  // Celebration
   if (isComplete) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6" style={{ background: currentTheme?.background || '#f7f2eb' }}>
         <div className="bg-white rounded-3xl shadow-xl p-12 max-w-2xl w-full text-center">
           <div className="text-6xl mb-4">🌟</div>
-          <h1 className="text-3xl font-bold text-[#1e1916] mb-2">
-            You did it, {childName || "Champion"}!
-          </h1>
-          <p className="text-[#4a423b] text-lg mb-6">
-            You read a whole story and answered all the questions!
-          </p>
+          <h1 className="text-3xl font-bold text-[#1e1916] mb-2">You did it, {childName || "Champion"}!</h1>
+          <p className="text-[#4a423b] text-lg mb-6">You read a whole story and answered all the questions!</p>
           
           <div className="grid grid-cols-3 gap-4 mb-8">
             <div className="bg-[#f7f2eb] p-4 rounded-xl">
@@ -455,9 +477,7 @@ function ReadingContent() {
               <p className="text-sm font-medium text-[#4a423b] mb-3">🏅 Badges Earned</p>
               <div className="flex flex-wrap justify-center gap-2">
                 {badgesEarned.map((badge, i) => (
-                  <span key={i} className="px-4 py-2 bg-[#dcc8b4] bg-opacity-20 rounded-full text-sm font-medium text-[#b28b6a]">
-                    {badge}
-                  </span>
+                  <span key={i} className="px-4 py-2 bg-[#dcc8b4] bg-opacity-20 rounded-full text-sm font-medium text-[#b28b6a]">{badge}</span>
                 ))}
               </div>
             </div>
@@ -468,19 +488,14 @@ function ReadingContent() {
             <p className="text-[#1e1916] italic">"{story.characterLesson}"</p>
           </div>
 
-          <button
-            onClick={goToDashboard}
-            className="px-8 py-3 bg-[#1e1916] text-white rounded-full font-medium hover:shadow-xl transition-all"
-          >
-            📊 Back to Dashboard
-          </button>
+          <button onClick={goToDashboard} className="px-8 py-3 bg-[#1e1916] text-white rounded-full font-medium hover:shadow-xl transition-all">📊 Back to Dashboard</button>
           <p className="text-xs text-[#8a7e74] mt-4">🔒 Come back tomorrow for a new story!</p>
         </div>
       </main>
     );
   }
 
-  // Fix: Comprehension Questions
+  // Comprehension Questions
   if (showQuestions) {
     const question = story.questions[currentQuestionIndex];
     if (!question) {
@@ -490,24 +505,19 @@ function ReadingContent() {
     return (
       <main className="min-h-screen flex items-center justify-center p-6" style={{ background: currentTheme?.background || '#f7f2eb' }}>
         <div className="bg-white rounded-3xl shadow-xl p-12 max-w-2xl w-full">
+          {saveError && (
+            <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-3 rounded-lg mb-4 text-sm">
+              ⚠️ {saveError} Your progress is saved locally.
+            </div>
+          )}
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold text-[#1e1916]">🤔 Comprehension Check</h2>
-            <span className="text-sm text-[#8a7e74]">
-              Question {currentQuestionIndex + 1} of {story.questions.length}
-            </span>
+            <span className="text-sm text-[#8a7e74]">Question {currentQuestionIndex + 1} of {story.questions.length}</span>
           </div>
-          
           <p className="text-lg font-medium text-[#1e1916] mb-6">{question.q}</p>
-          
           <div className="space-y-3">
             {question.options.map((option: string, i: number) => (
-              <button
-                key={i}
-                onClick={() => handleAnswer(option)}
-                className="w-full text-left px-6 py-4 bg-[#f7f2eb] hover:bg-[#dcc8b4] rounded-xl transition-all font-medium text-[#1e1916] hover:scale-[1.02]"
-              >
-                {option}
-              </button>
+              <button key={i} onClick={() => handleAnswer(option)} className="w-full text-left px-6 py-4 bg-[#f7f2eb] hover:bg-[#dcc8b4] rounded-xl transition-all font-medium text-[#1e1916] hover:scale-[1.02]">{option}</button>
             ))}
           </div>
         </div>
@@ -515,67 +525,35 @@ function ReadingContent() {
     );
   }
 
-  // Fix: Main reading screen with theme
+  // Main reading screen
   return (
-    <main 
-      className="min-h-screen p-6 transition-colors duration-300"
-      style={{ background: currentTheme?.background || '#f7f2eb' }}
-    >
-      <div 
-        className="max-w-4xl mx-auto rounded-3xl shadow-xl p-8 transition-colors duration-300"
-        style={{ 
-          background: currentTheme?.card || '#fcf9f5',
-          borderColor: currentTheme?.accentLight || '#dcc8b4',
-        }}
-      >
+    <main className="min-h-screen p-6 transition-colors duration-300" style={{ background: currentTheme?.background || '#f7f2eb' }}>
+      <div className="max-w-4xl mx-auto rounded-3xl shadow-xl p-8 transition-colors duration-300" style={{ background: currentTheme?.card || '#fcf9f5', borderColor: currentTheme?.accentLight || '#dcc8b4' }}>
         {/* Header */}
         <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-semibold text-[#1e1916]">📖 {story.title}</h1>
-            <p className="text-sm text-[#8a7e74]">
-              Theme: {story.theme} · {childName || "Child"}
-            </p>
+            <p className="text-sm text-[#8a7e74]">Theme: {story.theme} · {childName || "Child"}</p>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm font-medium text-[#1e1916] font-mono">
-              ⏱️ {Math.floor(readingTime / 60)}m {readingTime % 60}s
-            </span>
-            <button
-              onClick={isListening ? stopListening : startListening}
-              disabled={sessionEnded || isComplete}
-              className={`px-6 py-2 rounded-full font-medium transition-all ${
-                sessionEnded || isComplete
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : isListening 
-                    ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse' 
-                    : 'bg-[#1e1916] text-white hover:bg-[#2d241e]'
-              }`}
-            >
+            <span className="text-sm font-medium text-[#1e1916] font-mono">⏱️ {Math.floor(readingTime / 60)}m {readingTime % 60}s</span>
+            <button onClick={isListening ? stopListening : startListening} disabled={sessionEnded || isComplete} className={`px-6 py-2 rounded-full font-medium transition-all ${sessionEnded || isComplete ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : isListening ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse' : 'bg-[#1e1916] text-white hover:bg-[#2d241e]'}`}>
               {isListening ? '⏹ Stop' : '🎙️ Start Reading'}
             </button>
           </div>
         </div>
 
-        {/* Fix: Story with real-time word highlighting using split and map */}
+        {/* Story with INSTANT highlighting */}
         <div className="prose max-w-none mb-6">
           <div className="text-lg leading-relaxed whitespace-pre-wrap font-serif text-[#1e1916]">
-            {story.content.split(/\s+/).map((word, i) => {
-              const cleanWord = word.replace(/[^a-zA-Z']/g, '');
-              const isHighlighted = highlightedWords.has(i);
-              const isStumbled = stumbledWords.includes(cleanWord.toLowerCase());
+            {storyWords.map((item, i) => {
+              const cleanWord = item.clean;
+              const isHighlighted = highlightedIndices.has(i);
+              const isStumbled = stumbledWords.includes(cleanWord);
               
               return (
-                <span
-                  key={i}
-                  className={`transition-all duration-300 ${
-                    isStumbled 
-                      ? 'bg-[#dcc8b4] bg-opacity-30 px-1 rounded text-[#b28b6a] font-bold underline decoration-wavy' 
-                      : isHighlighted 
-                        ? 'bg-[#b28b6a] bg-opacity-20 px-1 rounded' 
-                        : ''
-                  }`}
-                >
-                  {word}{' '}
+                <span key={i} className={`transition-all duration-150 ${isStumbled ? 'bg-[#dcc8b4] bg-opacity-40 px-1 rounded text-[#b28b6a] font-bold underline decoration-wavy' : isHighlighted ? 'bg-[#b28b6a] bg-opacity-25 px-1 rounded' : ''}`}>
+                  {item.word}{' '}
                 </span>
               );
             })}
@@ -590,21 +568,16 @@ function ReadingContent() {
           </div>
         )}
 
-        {/* Fix: Stumbled Words with expandable toggle */}
+        {/* Stumbled Words - Expandable */}
         {stumbledWords.length > 0 && (
           <div className="mt-4 p-4 bg-[#dcc8b4] bg-opacity-20 rounded-xl border border-[#b28b6a] border-opacity-30">
             <p className="text-sm text-[#4a423b] font-medium">📝 Words to practice:</p>
             <div className="flex flex-wrap gap-2 mt-2">
               {stumbledWords.slice(0, 15).map((word, i) => (
-                <span key={i} className="px-3 py-1 bg-white rounded-full text-sm font-medium text-[#b28b6a]">
-                  {word}
-                </span>
+                <span key={i} className="px-3 py-1 bg-white rounded-full text-sm font-medium text-[#b28b6a]">{word}</span>
               ))}
               {stumbledWords.length > 15 && (
-                <button
-                  onClick={() => setShowAllWords(!showAllWords)}
-                  className="px-3 py-1 text-sm text-[#b28b6a] hover:underline cursor-pointer bg-white rounded-full"
-                >
+                <button onClick={() => setShowAllWords(!showAllWords)} className="px-3 py-1 text-sm text-[#b28b6a] hover:underline cursor-pointer bg-white rounded-full">
                   {showAllWords ? 'Show less' : `+${stumbledWords.length - 15} more`}
                 </button>
               )}
@@ -612,15 +585,11 @@ function ReadingContent() {
             {showAllWords && stumbledWords.length > 15 && (
               <div className="flex flex-wrap gap-2 mt-2">
                 {stumbledWords.slice(15).map((word, i) => (
-                  <span key={i} className="px-3 py-1 bg-white rounded-full text-sm font-medium text-[#b28b6a]">
-                    {word}
-                  </span>
+                  <span key={i} className="px-3 py-1 bg-white rounded-full text-sm font-medium text-[#b28b6a]">{word}</span>
                 ))}
               </div>
             )}
-            <p className="text-xs text-[#8a7e74] mt-2">
-              {stumbledWords.length} challenging words detected
-            </p>
+            <p className="text-xs text-[#8a7e74] mt-2">{stumbledWords.length} challenging words detected</p>
           </div>
         )}
 
@@ -631,15 +600,9 @@ function ReadingContent() {
           </span>
           <div className="flex gap-3 flex-wrap">
             {sessionEnded ? (
-              <span className="text-sm text-[#b28b6a] font-medium">
-                ⏳ Answer the questions to finish!
-              </span>
+              <span className="text-sm text-[#b28b6a] font-medium">⏳ Answer the questions to finish!</span>
             ) : (
-              <button
-                onClick={endSession}
-                disabled={!transcript || sessionEnded || isSaving || isListening}
-                className="text-sm bg-[#1e1916] text-white px-6 py-2 rounded-full hover:shadow-xl transition-all disabled:opacity-50"
-              >
+              <button onClick={endSession} disabled={!transcript || sessionEnded || isSaving || isListening} className="text-sm bg-[#1e1916] text-white px-6 py-2 rounded-full hover:shadow-xl transition-all disabled:opacity-50">
                 {isSaving ? 'Saving...' : '✅ End Session'}
               </button>
             )}
@@ -650,7 +613,6 @@ function ReadingContent() {
   );
 }
 
-// Loading fallback for Suspense
 function ReadingFallback() {
   return (
     <main className="min-h-screen bg-[#f7f2eb] flex items-center justify-center p-6">
@@ -659,7 +621,6 @@ function ReadingFallback() {
   );
 }
 
-// Main page component with Suspense
 export default function ReadPage() {
   return (
     <Suspense fallback={<ReadingFallback />}>
