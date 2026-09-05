@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { AnalogClock } from "@/components/AnalogClock";
 
 const SCENARIOS = [
   {
@@ -41,12 +42,12 @@ const SCENARIOS = [
   {
     id: 's4',
     title: 'Telling Time Challenge!',
-    description: 'It\'s 3:45 PM. What time is it?',
+    description: 'The clock shows 3:45. Which time is it?',
     options: [
-      { label: '🕒 3:45', lesson: 'Correct! The clock shows 3:45 PM. You\'re learning to tell time!' },
-      { label: '🕑 4:45', lesson: 'Not quite. The minute hand is on the 9, which means 45 minutes past the hour. The hour hand is just before the 4, so the time is 3:45.' },
-      { label: '🕐 3:30', lesson: 'Look again. The minute hand is on the 9, not the 6. That means 45 minutes past the hour, not 30.' },
-      { label: '🕔 5:45', lesson: 'Not quite. The hour hand is just before 4, which means the time is in the 3 o\'clock hour, not the 5 o\'clock hour.' },
+      { label: '🕒 3:45', lesson: '✅ Correct! The clock shows 3:45 PM. You\'re learning to tell time!' },
+      { label: '🕑 4:45', lesson: '❌ Not quite. The minute hand is on the 9, which means 45 minutes past the hour. The hour hand is just before the 4, so the time is 3:45.' },
+      { label: '🕐 3:30', lesson: '❌ Look again. The minute hand is on the 9, not the 6. That means 45 minutes past the hour, not 30.' },
+      { label: '🕔 5:45', lesson: '❌ Not quite. The hour hand is just before 4, which means the time is in the 3 o\'clock hour, not the 5 o\'clock hour.' },
     ],
   },
 ];
@@ -57,9 +58,11 @@ export default function CharacterBuilding() {
   const [currentScenario, setCurrentScenario] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState<number[]>([]);
   const [isComplete, setIsComplete] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [showClock, setShowClock] = useState(false);
 
   if (!user) {
-    router.push('/login');
+    router.push('/');
     return null;
   }
 
@@ -67,11 +70,26 @@ export default function CharacterBuilding() {
     const newOptions = [...selectedOptions, optionIndex];
     setSelectedOptions(newOptions);
 
-    if (currentScenario < SCENARIOS.length - 1) {
-      setCurrentScenario(currentScenario + 1);
-    } else {
-      setIsComplete(true);
-    }
+    const scenario = SCENARIOS[currentScenario];
+    const selectedLesson = scenario.options[optionIndex].lesson;
+
+    // Show feedback
+    setFeedback(selectedLesson);
+
+    setTimeout(() => {
+      setFeedback(null);
+      if (currentScenario < SCENARIOS.length - 1) {
+        setCurrentScenario(currentScenario + 1);
+        // Reset clock visibility for next scenario
+        if (SCENARIOS[currentScenario + 1]?.id === 's4') {
+          setShowClock(true);
+        } else {
+          setShowClock(false);
+        }
+      } else {
+        setIsComplete(true);
+      }
+    }, 2500);
   };
 
   const goToDashboard = () => {
@@ -105,6 +123,7 @@ export default function CharacterBuilding() {
   }
 
   const scenario = SCENARIOS[currentScenario];
+  const isClockScenario = scenario.id === 's4';
 
   return (
     <main className="min-h-screen bg-[#f7f2eb] flex items-center justify-center p-6">
@@ -119,17 +138,38 @@ export default function CharacterBuilding() {
         <h3 className="text-xl font-bold text-[#1e1916] mb-2">{scenario.title}</h3>
         <p className="text-[#4a423b] mb-6">{scenario.description}</p>
 
+        {/* Show analog clock for the clock scenario */}
+        {isClockScenario && (
+          <div className="flex justify-center mb-6">
+            <AnalogClock hour={3} minute={45} />
+          </div>
+        )}
+
         <div className="space-y-3">
           {scenario.options.map((option, i) => (
             <button
               key={i}
               onClick={() => handleSelect(i)}
-              className="w-full text-left px-6 py-4 bg-[#f7f2eb] hover:bg-[#dcc8b4] rounded-xl transition-all font-medium text-[#1e1916] hover:scale-[1.02]"
+              disabled={feedback !== null}
+              className="w-full text-left px-6 py-4 bg-[#f7f2eb] hover:bg-[#dcc8b4] rounded-xl transition-all font-medium text-[#1e1916] hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {option.label}
             </button>
           ))}
         </div>
+
+        {/* Feedback popup */}
+        {feedback && (
+          <div className={`mt-4 p-4 rounded-xl text-sm ${
+            feedback.startsWith('✅') 
+              ? 'bg-green-50 text-green-700 border border-green-200' 
+              : feedback.startsWith('❌')
+              ? 'bg-yellow-50 text-yellow-700 border border-yellow-200'
+              : 'bg-blue-50 text-blue-700 border border-blue-200'
+          }`}>
+            {feedback}
+          </div>
+        )}
       </div>
     </main>
   );
