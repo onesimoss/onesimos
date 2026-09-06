@@ -2,79 +2,92 @@
 
 export default function LandingPage() {
   return (
-    <main className="min-h-screen bg-white flex flex-col relative overflow-hidden">
+    <main className="min-h-screen bg-gradient-to-b from-[#0a3d62] via-[#1E90FF] to-[#4db8ff] text-white font-sans relative overflow-hidden">
       
-      {/* Clean Nav Bar */}
-      <nav className="relative z-10 max-w-7xl mx-auto w-full flex justify-between items-center py-6 px-6 md:px-10">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-[#FCD34D] rounded-full flex items-center justify-center text-2xl shadow-lg">⚓</div>
-          <span className="text-3xl font-extrabold tracking-tight text-[#2A5B2E]">ONSIMOS</span>
+      {/* Subtle Background Decorations (No heavy animations) */}
+      <div className="absolute top-10 left-10 text-6xl opacity-20 select-none pointer-events-none">☁️</div>
+      <div className="absolute top-24 right-16 text-4xl opacity-20 select-none pointer-events-none">☁️</div>
+      <div className="absolute bottom-10 left-1/4 text-5xl opacity-20 select-none pointer-events-none">🌿</div>
+
+      {/* Navigation */}
+      <nav className="relative z-10 max-w-7xl mx-auto w-full flex justify-between items-center py-8 px-6 md:px-12">
+        <div className="flex items-center gap-2">
+          <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-[#1E90FF] font-extrabold text-xl">O</div>
+          <span className="text-3xl font-extrabold tracking-tight">ONSIMOS</span>
         </div>
+        
+        <div className="hidden md:flex items-center gap-8 text-sm font-medium tracking-wide text-white/90">
+          <a href="#" className="hover:text-white transition-colors">HOW IT WORKS</a>
+          <a href="#" className="hover:text-white transition-colors">THE STORY</a>
+          <a href="#" className="hover:text-white transition-colors">PARENT PORTAL</a>
+        </div>
+        
+        <Link 
+          href="/parent/login"
+          className="px-6 py-2 bg-white text-[#1E90FF] rounded-full font-bold hover:scale-105 transition-transform shadow-lg"
+        >
+          LOG IN
+        </Link>
       </nav>
 
-      {/* Main Content Area */}
-      <div className="relative z-10 max-w-7xl mx-auto w-full flex-1 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center px-6 md:px-10 pb-12">
+      {/* Main Content Area - Balanced Grid */}
+      <div className="relative z-10 max-w-7xl mx-auto w-full flex-1 flex flex-col lg:flex-row items-center px-6 md:px-12 pb-20 pt-10 lg:pt-0">
         
-        {/* Left Side: Text & CTAs */}
-        <div className="flex flex-col justify-center">
-          <div className="bg-[#2A5B2E] text-white text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full w-fit mb-8">
-            A World of Adventures Awaits
+        {/* Left: Text & CTAs */}
+        <div className="w-full lg:w-1/2 flex flex-col justify-center items-start text-left mb-10 lg:mb-0">
+          <div className="bg-[#FFD166] text-[#0a3d62] px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-widest mb-6">
+            New: Phonics Adventures
           </div>
           
-          <h1 className="text-5xl md:text-7xl font-black leading-[1.1] text-[#2A5B2E] mb-6">
-            EXPLORE. READ.
+          <h1 className="text-5xl md:text-6xl xl:text-7xl font-black leading-[1.05] tracking-tighter mb-6">
+            WHERE 
             <br />
-            <span className="text-[#E76F51]">DISCOVER.</span>
+            <span className="text-[#FFD166]">CURIOSITY</span> 
+            <br />
+            MEETS STORYTIME.
           </h1>
           
-          <p className="text-lg text-gray-600 max-w-md mb-10">
-            Join the journey! Create an account to unlock immersive stories, phonics games, and a world of imagination for your little ones.
+          <p className="text-lg md:text-xl text-white/85 max-w-md mb-10 leading-relaxed">
+            A safe, immersive world of reading where your child unlocks new stories, explores magical places, and builds confidence—one page at a time.
           </p>
-
-          {/* Login / Signup Area */}
-          <div className="bg-white border border-gray-100 rounded-3xl p-6 max-w-md shadow-xl">
-            <div className="flex gap-3 mb-6">
-              <Link 
-                href="/parent/login"
-                className="flex-1 text-center py-3 bg-[#2A5B2E] text-white rounded-full font-bold hover:bg-[#1B3B1E] transition-colors"
-              >
-                Login
-              </Link>
-              <Link 
-                href="/parent/signup"
-                className="flex-1 text-center py-3 bg-[#E76F51] text-white rounded-full font-bold hover:bg-[#D65B3E] transition-colors"
-              >
-                Signup
-              </Link>
-            </div>
-
-            {/* Divider */}
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-px flex-1 bg-gray-300"></div>
-              <span className="text-xs text-gray-500 font-semibold uppercase">Or Get The App</span>
-              <div className="h-px flex-1 bg-gray-300"></div>
-            </div>
-
-            {/* Future Download Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button className="flex-1 flex items-center justify-center gap-2 bg-black text-white px-4 py-3 rounded-xl font-bold hover:bg-gray-900 transition-colors">
-                <span className="text-xl">🍎</span> App Store
-              </button>
-              <button className="flex-1 flex items-center justify-center gap-2 bg-black text-white px-4 py-3 rounded-xl font-bold hover:bg-gray-900 transition-colors">
-                <span className="text-xl">🤖</span> Google Play
-              </button>
-            </div>
+          
+          <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md">
+            <Link 
+              href="/parent/signup"
+              className="flex-1 text-center px-8 py-4 bg-[#FFD166] text-[#0a3d62] rounded-full font-black text-lg hover:bg-[#fecf23] hover:scale-105 transition-all"
+            >
+              Create Family Account
+            </Link>
+            <Link 
+              href="/parent/login"
+              className="flex-1 text-center px-8 py-4 border-2 border-white/40 text-white rounded-full font-bold text-lg hover:bg-white/10 transition-colors"
+            >
+              Parent Login
+            </Link>
           </div>
         </div>
 
-        {/* Right Side: The Exact Art */}
-        <div className="relative hidden lg:flex justify-center items-center h-[500px]">
-          {/* INSERT THE IMAGE HERE */}
-          <img 
-            src="/hero-art.jpg" 
-            alt="Pirate adventure illustration" 
-            className="w-full h-full object-contain drop-shadow-2xl"
-          />
+        {/* Right: The Fox Character */}
+        <div className="w-full lg:w-1/2 relative flex justify-center items-center h-[300px] md:h-[450px] lg:h-[600px]">
+          {/* Soft Glow Behind Fox */}
+          <div className="absolute w-3/4 h-3/4 bg-[#0a3d62] rounded-full blur-3xl opacity-50"></div>
+          
+          {/* The Fox */}
+          <div className="relative z-10 text-[12rem] md:text-[18rem] lg:text-[24rem] leading-none drop-shadow-2xl">
+            🦊
+          </div>
+
+          {/* Floating Elements (Static) */}
+          <div className="absolute top-10 right-0 bg-white/20 backdrop-blur-md border border-white/30 p-4 rounded-2xl shadow-xl">
+            <p className="text-xs text-white/90 font-bold">TOP READ</p>
+            <p className="text-xl font-black">The Moon Rabbit</p>
+            <p className="text-xs text-white/80">⭐ 4.9 (1.2k)</p>
+          </div>
+          
+          <div className="absolute bottom-10 left-10 bg-white/20 backdrop-blur-md border border-white/30 p-4 rounded-2xl shadow-xl">
+            <p className="text-3xl">📚</p>
+            <p className="text-xs font-bold text-white mt-1">100+ Stories</p>
+          </div>
         </div>
       </div>
     </main>
