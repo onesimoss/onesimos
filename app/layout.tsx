@@ -1,6 +1,8 @@
 ﻿import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { AuthProvider } from "@/context/AuthContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 
 // Load Achiko (for the logo)
 const achiko = localFont({
@@ -15,7 +17,6 @@ const switzer = localFont({
     { path: "./fonts/Switzer-Regular.otf", weight: "400", style: "normal" },
     { path: "./fonts/Switzer-Bold.otf", weight: "700", style: "normal" },
     { path: "./fonts/Switzer-Black.otf", weight: "900", style: "normal" },
-    // Add more weights here if needed, e.g., Medium, Semibold
   ],
   variable: "--font-switzer",
   display: "swap",
@@ -34,7 +35,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${achiko.variable} ${switzer.variable} antialiased`}>
-        {children}
+        {/* Wrap the app in both providers */}
+        <AuthProvider>
+          <ThemeProvider>
+            {children}
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );
