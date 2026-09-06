@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { markPhonicsPassed } from "@/lib/dailyProgress";
+import { forceMarkPhonicsPassed } from "@/lib/dailyProgress";
 
 type PhonicsQuestion = {
   id: string;
@@ -88,7 +88,7 @@ function PhonicsContent() {
     }
   };
 
-  // 🔥 FIX: When child passes phonics, mark and go to Read
+  // 🔥 FIX: Force redirect with window.location
   const handlePassAndContinue = async () => {
     if (!childId) {
       router.push("/dashboard");
@@ -97,12 +97,12 @@ function PhonicsContent() {
 
     setIsSaving(true);
     try {
-      await markPhonicsPassed(childId);
-      // 🔥 Go to Read page - this is a fresh reading session, not a completion
-      router.push(`/read?child=${childId}`);
+      await forceMarkPhonicsPassed(childId);
+      // 🔥 Force redirect using window.location
+      window.location.href = `/read?child=${childId}`;
     } catch (error) {
       console.error("Error saving phonics progress:", error);
-      router.push(`/read?child=${childId}`);
+      window.location.href = `/read?child=${childId}`;
     }
     setIsSaving(false);
   };
@@ -130,7 +130,6 @@ function PhonicsContent() {
     );
   }
 
-  // 🔥 FIX: Phonics completion screen - NO reading celebration
   if (isComplete) {
     const passed = score >= Math.ceil(questions.length * 0.7);
     return (
@@ -138,14 +137,14 @@ function PhonicsContent() {
         <div className="bg-white rounded-3xl shadow-xl p-12 max-w-2xl w-full text-center">
           <div className="text-6xl mb-4">{passed ? "🎉" : "📚"}</div>
           <h1 className="text-3xl font-bold text-[#1e1916] mb-2">
-            {passed ? "Phonics Complete!" : "Keep Practicing!"}
+            {passed ? "Phonics Test Complete!" : "Keep Practicing!"}
           </h1>
           <p className="text-[#4a423b] text-lg mb-4">
             You got {score} out of {questions.length} correct.
           </p>
           {passed ? (
             <>
-              <p className="text-[#b28b6a] font-medium mb-6">✅ You're ready to start reading stories!</p>
+              <p className="text-[#b28b6a] font-medium mb-6">✅ You're ready to start reading!</p>
               <button
                 onClick={handlePassAndContinue}
                 disabled={isSaving}
