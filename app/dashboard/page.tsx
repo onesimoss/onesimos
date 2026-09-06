@@ -187,7 +187,6 @@ export default function Dashboard() {
             display_name: child.name,
             is_kid: true,
             pin_code: pin,
-            role: 'child',
           })
           .eq("id", child.id);
       } else {
@@ -197,11 +196,9 @@ export default function Dashboard() {
           .from("profiles")
           .insert({
             id: child.id,
-            email: `${child.id}@kid.local`,
             display_name: child.name,
             is_kid: true,
             pin_code: pin,
-            role: 'child',
           });
       }
 
@@ -321,7 +318,7 @@ export default function Dashboard() {
           <div className="bg-green-50 border border-green-200 text-green-800 p-4 rounded-xl mb-6 text-center">
             <p className="font-bold text-lg">🔑 Kid PIN Generated!</p>
             <p className="text-sm">
-              <span className="font-semibold">{pinMessage.child}</span>'s PIN: 
+              <span className="font-semibold">{pinMessage.child}</span>&apos;s PIN: 
               <span className="text-2xl font-bold mx-2 text-[#b28b6a]">{pinMessage.pin}</span>
             </p>
             <p className="text-xs text-green-600 mt-1">
