@@ -5,10 +5,10 @@ export default function LandingPage() {
   return (
     <main className="relative min-h-screen w-full overflow-hidden bg-[#8B5CF6]">
       
-      {/* 1. THE BACKGROUND IMAGE - Fills the entire screen */}
+      {/* THE TRANSPARENT PNG BACKGROUND - Positioned to cover the screen */}
       <div className="absolute inset-0 z-0">
         <Image 
-          src="/hero-background.png" 
+          src="/background.png" 
           alt="Onesimos background illustration"
           fill
           priority
@@ -16,11 +16,7 @@ export default function LandingPage() {
         />
       </div>
 
-      {/* 2. DARK OVERLAY (Optional, for text readability) */}
-      {/* Remove this div if your background is already dark enough */}
-      <div className="absolute inset-0 z-[1] bg-[#6D28D9]/20"></div>
-
-      {/* 3. THE CONTENT ON TOP */}
+      {/* THE CONTENT ON TOP */}
       <div className="relative z-10 h-full flex flex-col items-center justify-center">
         
         {/* NAVIGATION - Signup & Login */}
