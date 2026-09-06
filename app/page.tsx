@@ -1,8 +1,9 @@
 ﻿import Link from "next/link";
+import Image from "next/image";
 
 export default function LandingPage() {
   return (
-    <main className="min-h-screen bg-[#8B5CF6] font-achiko overflow-hidden">
+    <main className="min-h-screen bg-[#8B5CF6] overflow-hidden">
       
       {/* NAVIGATION - Signup & Login */}
       <nav className="relative z-20 max-w-7xl mx-auto px-6 md:px-12 flex justify-center items-center pt-8 mb-16">
@@ -18,7 +19,7 @@ export default function LandingPage() {
 
       {/* HERO TEXT */}
       <div className="relative z-10 max-w-4xl mx-auto text-center px-6">
-        <h1 className="text-7xl md:text-9xl font-black text-white mb-4 drop-shadow-[0_10px_20px_rgba(0,0,0,0.3)]">
+        <h1 className="font-achiko text-7xl md:text-9xl font-black text-white mb-4 drop-shadow-[0_10px_20px_rgba(0,0,0,0.3)]">
           ONESIMOS
         </h1>
         <p className="text-xl md:text-2xl text-white/90 font-medium mb-10 max-w-2xl mx-auto">
@@ -31,6 +32,25 @@ export default function LandingPage() {
         <span>🛡️ Kid-Friendly</span>
         <span>🚫 No Ads</span>
         <span>🎯 Ages 3-9</span>
+      </div>
+
+      {/* DOWNLOAD BUTTONS */}
+      <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center">
+        <Link href="#" className="flex items-center gap-3 bg-black text-white px-6 py-3 rounded-xl hover:bg-gray-900 transition-colors shadow-lg">
+          <Image src="/icons/apple-store.svg" alt="Apple Logo" width={24} height={24} />
+          <div className="text-left">
+            <p className="text-[10px] leading-none opacity-80">Download on the</p>
+            <p className="text-lg font-bold leading-none mt-1">App Store</p>
+          </div>
+        </Link>
+        
+        <Link href="#" className="flex items-center gap-3 bg-black text-white px-6 py-3 rounded-xl hover:bg-gray-900 transition-colors shadow-lg">
+          <Image src="/icons/google-play.svg" alt="Google Play Logo" width={24} height={24} />
+          <div className="text-left">
+            <p className="text-[10px] leading-none opacity-80">Get it on</p>
+            <p className="text-lg font-bold leading-none mt-1">Google Play</p>
+          </div>
+        </Link>
       </div>
 
       {/* CURVED BLOB TRANSITION */}

@@ -2,22 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Load Achiko Custom Font */
-@font-face {
-  font-family: "Achiko";
-  /* CHANGE THE URL AND FORMAT BELOW IF YOUR FILE IS .ttf OR .woff2 */
-  src: url("/fonts/Achiko.otf") format("opentype");
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
-/* Custom Utility Class for the font */
-.font-achiko {
-  font-family: "Achiko", sans-serif;
-}
-
+/* Set Switzer as the default body font */
 body {
-  margin: 0;
-  padding: 0;
+  font-family: var(--font-switzer), sans-serif;
+}
+
+/* Utility class for the logo */
+.font-achiko {
+  font-family: var(--font-achiko), sans-serif;
 }

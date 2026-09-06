@@ -1,19 +1,29 @@
 ﻿import type { Metadata } from "next";
-import { Fredoka, Inter } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
-import { Analytics } from "@vercel/analytics/next";
-import { ThemeProvider } from "@/context/ThemeContext";
-import { AuthProvider } from "@/context/AuthContext";
 
-const childFont = Fredoka({ 
-  subsets: ["latin"], 
-  weight: ["400", "500", "600", "700"] 
+// Load Achiko (for the logo)
+const achiko = localFont({
+  src: "./fonts/achiko.otf",
+  variable: "--font-achiko",
+  weight: "100 900",
 });
-const parentFont = Inter({ subsets: ["latin"] });
+
+// Load Switzer (for everything else)
+const switzer = localFont({
+  src: [
+    { path: "./fonts/Switzer-Regular.otf", weight: "400", style: "normal" },
+    { path: "./fonts/Switzer-Bold.otf", weight: "700", style: "normal" },
+    { path: "./fonts/Switzer-Black.otf", weight: "900", style: "normal" },
+    // Add more weights here if needed, e.g., Medium, Semibold
+  ],
+  variable: "--font-switzer",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
-  title: "Onesimos – The Useful Tutor",
-  description: "Read aloud. Get better. Quietly.",
+  title: "Onesimos",
+  description: "A playful learning platform for kids",
 };
 
 export default function RootLayout({
@@ -23,13 +33,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${childFont.className} ${parentFont.className} antialiased`}>
-        <AuthProvider>
-          <ThemeProvider>
-            {children}
-            <Analytics />
-          </ThemeProvider>
-        </AuthProvider>
+      <body className={`${achiko.variable} ${switzer.variable} antialiased`}>
+        {children}
       </body>
     </html>
   );
