@@ -1,57 +1,69 @@
 ﻿import Link from "next/link";
-import { AVATARS } from "@/lib/avatars";
 
-export default function KidHome() {
-  // NOTE: In Phase 2, we will use Supabase to fetch the ACTUAL family from the DB.
-  // For now, we will show the grid for the "Returning User" state.
-
+export default function LandingPage() {
   return (
-    <main className="min-h-screen bg-gradient-to-b from-kid-sky via-sky-100 to-white flex flex-col items-center justify-center p-6 overflow-hidden relative">
+    <main className="min-h-screen bg-gradient-to-b from-[#0F172A] via-[#1E3A8A] to-[#3B82F6] text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
       
-      {/* Decorative floating clouds */}
-      <div className="absolute top-10 left-10 text-6xl opacity-50 animate-bounce">☁️</div>
-      <div className="absolute top-20 right-20 text-4xl opacity-40 animate-pulse">☁️</div>
-      <div className="absolute bottom-20 left-20 text-5xl opacity-30 animate-bounce">🎈</div>
+      {/* Decorative Background Elements (Immersive feel) */}
+      <div className="absolute top-20 left-10 text-8xl opacity-20 animate-bounce">🦖</div>
+      <div className="absolute bottom-20 right-10 text-9xl opacity-20 animate-pulse">🌊</div>
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-[20rem] opacity-10 select-none pointer-events-none">🐋</div>
 
-      {/* "New User" Gate - Added */}
-      <div className="absolute top-4 left-4 bg-white/80 backdrop-blur-sm rounded-full px-4 py-2 shadow-sm">
-        <Link href="/parent/login" className="text-kid-navy text-xs font-bold">
-          ➕ New Family Setup
-        </Link>
+      {/* Logo / Header */}
+      <div className="z-10 flex flex-col items-center mb-8">
+        <h1 className="text-5xl md:text-7xl font-kid font-extrabold text-white drop-shadow-lg tracking-tight">
+          Wonder<span className="text-kid-sun">Quest</span>
+        </h1>
+        <p className="text-kid-sky font-kid text-xl mt-2 tracking-widest uppercase">
+          Learning
+        </p>
       </div>
 
-      <h1 className="text-5xl font-kid font-bold text-kid-navy mb-2 drop-shadow-sm">
-        Who is reading today?
-      </h1>
-      <p className="text-kid-navy/70 font-kid text-lg mb-10">
-        Tap your buddy to jump in!
-      </p>
+      {/* Hero Content */}
+      <div className="z-10 max-w-3xl text-center mb-12">
+        <h2 className="text-4xl md:text-6xl font-kid font-bold mb-6 leading-tight drop-shadow-lg">
+          Let the world be <br />
+          <span className="text-kid-sun">their classroom.</span>
+        </h2>
+        <p className="text-xl md:text-2xl text-blue-100 font-kid mb-10">
+          Immersive reading adventures, phonics, and exploration designed for curious young minds.
+        </p>
 
-      {/* Avatar Grid */}
-      <div className="grid grid-cols-3 gap-6 max-w-lg w-full">
-        {AVATARS.map((avatar) => (
-          <button
-            key={avatar.id}
-            // disabled button for now, will be connected in Phase 3
-            className="group flex flex-col items-center justify-center p-6 bg-kid-cream rounded-blob shadow-kid-soft transition-all duration-200 hover:-translate-y-2 hover:shadow-kid-hover border-4 border-transparent hover:border-kid-sun cursor-pointer"
+        {/* Call to Action Buttons */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Link 
+            href="/parent/login" 
+            className="px-10 py-4 bg-kid-sun text-kid-navy rounded-full font-kid font-bold text-xl hover:scale-105 hover:shadow-xl transition-all duration-200"
           >
-            <div className="text-6xl mb-2 group-hover:scale-110 transition-transform duration-300">
-              {avatar.emoji}
-            </div>
-            <span className="font-kid font-bold text-kid-navy text-lg">
-              {avatar.name}
-            </span>
-          </button>
-        ))}
+            🚀 Get Started
+          </Link>
+          
+          <Link 
+            href="/kids" 
+            className="px-10 py-4 border-2 border-white/30 text-white rounded-full font-kid font-bold text-xl hover:bg-white/10 hover:border-white/50 transition-all duration-200"
+          >
+            👧 Returning Kids
+          </Link>
+        </div>
       </div>
 
-      {/* Parent Gate - The only link to the backend */}
-      <Link 
-        href="/parent/login" 
-        className="mt-12 text-sm font-kid text-kid-navy/60 hover:text-kid-navy underline underline-offset-4"
-      >
-        🔒 Grown-Ups Click Here
-      </Link>
+      {/* App Store / Footer Note */}
+      <div className="z-10 mt-8 flex flex-col items-center gap-4">
+        <button className="flex items-center gap-3 bg-black border border-white/20 px-6 py-3 rounded-xl hover:bg-gray-900 transition-colors">
+          <svg className="w-8 h-8 fill-white" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+          </svg>
+          <div className="text-left">
+            <p className="text-[10px] leading-none text-gray-400">Download on the</p>
+            <p className="text-lg leading-none font-bold">App Store</p>
+          </div>
+        </button>
+        
+        <p className="text-xs text-blue-300/50 font-parent mt-4">
+          © 2024 WonderQuest. A safe space for families.
+        </p>
+      </div>
+      
     </main>
   );
 }
