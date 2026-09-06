@@ -2,20 +2,21 @@
 
 export default function LandingPage() {
   return (
-    <main className="relative min-h-screen w-full overflow-hidden bg-[#8B5CF6]">
+    <main className="relative min-h-screen w-full bg-[#8B5CF6] overflow-hidden">
       
-      {/* THE PNG BACKGROUND */}
-      <div className="absolute inset-0 z-0">
+      {/* THE PNG BACKGROUND - Perfectly centered, not stretched */}
+      <div className="absolute inset-0 flex items-center justify-center z-0">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img 
           src="/background.png" 
           alt="Onesimos background illustration"
-          className="w-full h-full object-cover"
+          className="w-[150%] max-w-none object-contain" 
+          // 150% makes it larger than the screen so it goes off the edges
         />
       </div>
 
       {/* THE CONTENT ON TOP */}
-      <div className="relative z-10 h-full flex flex-col items-center justify-center">
+      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen">
         
         {/* NAVIGATION - Signup & Login */}
         <nav className="absolute top-0 left-0 right-0 flex justify-center items-center pt-8">
@@ -30,8 +31,8 @@ export default function LandingPage() {
         </nav>
 
         {/* HERO TEXT */}
-        <div className="max-w-4xl mx-auto text-center px-6 mt-20">
-          <h1 className="font-achiko text-7xl md:text-9xl font-black text-white mb-4 drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]">
+        <div className="max-w-4xl mx-auto text-center px-6 mt-24 mb-12">
+          <h1 className="font-achiko text-7xl md:text-9xl font-black text-white mb-4 drop-shadow-[0_10px_20px_rgba(0,0,0,0.4)]">
             ONESIMOS
           </h1>
           <p className="text-xl md:text-2xl text-white font-medium mb-10 max-w-2xl mx-auto drop-shadow-lg">
