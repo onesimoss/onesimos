@@ -153,7 +153,7 @@ export default function Dashboard() {
     await fetchChildren();
   };
 
-  // 🔥 STEP 4: Generate Kid PIN
+  // 🔥 FIXED: Generate Kid PIN with proper error handling
   const generateKidPin = async (child: Child) => {
     setGeneratingPin(child.id);
     setPinMessage(null);
@@ -162,16 +162,26 @@ export default function Dashboard() {
       // Generate a random 4-digit PIN
       const pin = String(Math.floor(1000 + Math.random() * 9000));
       
+      console.log("Generating PIN for child:", child.id, child.name);
+      console.log("PIN:", pin);
+      
       // Check if a profile already exists for this child
-      const { data: existingProfile } = await supabase
+      const { data: existingProfile, error: checkError } = await supabase
         .from("profiles")
         .select("id")
         .eq("id", child.id)
-        .single();
+        .maybeSingle();
 
+      if (checkError) {
+        console.error("Error checking existing profile:", checkError);
+        throw checkError;
+      }
+
+      let result;
       if (existingProfile) {
         // Update existing profile
-        const { error } = await supabase
+        console.log("Updating existing profile for:", child.id);
+        result = await supabase
           .from("profiles")
           .update({
             display_name: child.name,
@@ -180,11 +190,10 @@ export default function Dashboard() {
             role: 'child',
           })
           .eq("id", child.id);
-
-        if (error) throw error;
       } else {
         // Create new profile
-        const { error } = await supabase
+        console.log("Creating new profile for:", child.id);
+        result = await supabase
           .from("profiles")
           .insert({
             id: child.id,
@@ -194,10 +203,14 @@ export default function Dashboard() {
             pin_code: pin,
             role: 'child',
           });
-
-        if (error) throw error;
       }
 
+      if (result.error) {
+        console.error("Error saving profile:", result.error);
+        throw result.error;
+      }
+
+      console.log("PIN saved successfully for:", child.name);
       setPinMessage({ child: child.name, pin: pin });
       
       // Clear message after 10 seconds
@@ -389,7 +402,6 @@ export default function Dashboard() {
                       </p>
                     </button>
                     
-                    {/* 🔥 STEP 4: Generate Kid PIN Button */}
                     <div className="mt-2 flex gap-2 flex-wrap">
                       <button
                         onClick={() => generateKidPin(child)}
