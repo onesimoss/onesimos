@@ -12,6 +12,7 @@ import {
   saveDailyProgress, 
   saveStumbledWord, 
   getChildStreak,
+  hasPassedPhonics,
   markPhonicsPassed
 } from "@/lib/dailyProgress";
 
@@ -109,7 +110,7 @@ function ReadingContent() {
     setIsClient(true);
   }, []);
 
-  // 🔥 Load data WITHOUT checking phonics
+  // 🔥 FIX: Load data and trust the database
   useEffect(() => {
     async function loadData() {
       if (!childId) {
@@ -126,6 +127,18 @@ function ReadingContent() {
           setReadingLevel(level);
         }
 
+        // 🔥 FIX: Check if the child has passed phonics
+        const passed = await hasPassedPhonics(childId);
+        
+        // 🔥 FIX: If NOT passed, redirect to phonics
+        if (!passed) {
+          console.log("🔤 Redirecting to Phonics for child:", childId);
+          router.push(`/phonics?child=${childId}`);
+          setIsLoading(false);
+          return;
+        }
+
+        // Only check daily completion if phonics is passed
         const completed = await hasCompletedToday(childId);
         if (completed) {
           setIsComplete(true);
@@ -151,8 +164,9 @@ function ReadingContent() {
     }
 
     loadData();
-  }, [childId]);
+  }, [childId, router]);
 
+  // Timer logic
   useEffect(() => {
     if (isTimerRunning) {
       timerIntervalRef.current = setInterval(() => {
@@ -170,6 +184,7 @@ function ReadingContent() {
     };
   }, [isTimerRunning]);
 
+  // Auto-end after 20 minutes
   useEffect(() => {
     if (readingTime >= 1200 && isTimerRunning) {
       endSession();
@@ -239,7 +254,6 @@ function ReadingContent() {
     }
   };
 
-  // 🔥 START LISTENING - NO PHONICS CHECK
   const startListening = () => {
     if (!childId) {
       alert("Please select a child first.");
@@ -413,7 +427,7 @@ function ReadingContent() {
         badgesEarned: badges,
       });
       
-      const alreadyPassed = await hasCompletedToday(childId!);
+      const alreadyPassed = await hasPassedPhonics(childId!);
       if (!alreadyPassed) {
         await markPhonicsPassed(childId!);
       }
@@ -452,7 +466,7 @@ function ReadingContent() {
     );
   }
 
-  // 🔥 CELEBRATION SCREEN - No phonics checks
+  // 🔥 FIX: Celebration Screen - Shows reading stats only if child actually read
   if (isComplete) {
     const hasReadStories = sessionStoriesCompleted.length > 0;
     
