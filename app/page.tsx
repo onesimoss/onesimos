@@ -3,7 +3,7 @@ import Image from "next/image";
 
 export default function LandingPage() {
   return (
-    <main className="min-h-screen bg-[#8B5CF6] overflow-hidden">
+    <main className="min-h-screen bg-[#8B5CF6] overflow-hidden relative">
       
       {/* NAVIGATION - Signup & Login */}
       <nav className="relative z-20 max-w-7xl mx-auto px-6 md:px-12 flex justify-center items-center pt-8 mb-16">
@@ -17,40 +17,69 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      {/* HERO TEXT */}
-      <div className="relative z-10 max-w-4xl mx-auto text-center px-6">
-        <h1 className="font-achiko text-7xl md:text-9xl font-black text-white mb-4 drop-shadow-[0_10px_20px_rgba(0,0,0,0.3)]">
-          ONESIMOS
-        </h1>
-        <p className="text-xl md:text-2xl text-white/90 font-medium mb-10 max-w-2xl mx-auto">
-          A playful learning platform where kids unlock incredible stories, phonics adventures, and build a lifelong love for reading.
-        </p>
-      </div>
-
-      {/* SOCIAL PROOF BADGES */}
-      <div className="mt-6 flex justify-center gap-6 text-white/80 text-sm font-semibold">
-        <span>🛡️ Kid-Friendly</span>
-        <span>🚫 No Ads</span>
-        <span>🎯 Ages 3-9</span>
-      </div>
-
-      {/* DOWNLOAD BUTTONS */}
-      <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center">
-        <Link href="#" className="flex items-center gap-3 bg-black text-white px-6 py-3 rounded-xl hover:bg-gray-900 transition-colors shadow-lg">
-          <Image src="/icons/apple-store.svg" alt="Apple Logo" width={24} height={24} />
-          <div className="text-left">
-            <p className="text-[10px] leading-none opacity-80">Download on the</p>
-            <p className="text-lg font-bold leading-none mt-1">App Store</p>
-          </div>
-        </Link>
+      {/* MAIN HERO AREA WITH CHARACTER */}
+      <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-12 flex flex-col lg:flex-row items-center justify-between gap-10 pb-20">
         
-        <Link href="#" className="flex items-center gap-3 bg-black text-white px-6 py-3 rounded-xl hover:bg-gray-900 transition-colors shadow-lg">
-          <Image src="/icons/google-play.svg" alt="Google Play Logo" width={24} height={24} />
-          <div className="text-left">
-            <p className="text-[10px] leading-none opacity-80">Get it on</p>
-            <p className="text-lg font-bold leading-none mt-1">Google Play</p>
+        {/* LEFT SIDE: TEXT & BUTTONS */}
+        <div className="w-full lg:w-1/2 text-center lg:text-left">
+          <h1 className="font-achiko text-7xl md:text-9xl font-black text-white mb-4 drop-shadow-[0_10px_20px_rgba(0,0,0,0.3)]">
+            ONESIMOS
+          </h1>
+          <p className="text-xl md:text-2xl text-white/90 font-medium mb-8 max-w-xl mx-auto lg:mx-0">
+            A playful learning platform where kids unlock incredible stories, phonics adventures, and build a lifelong love for reading.
+          </p>
+
+          {/* SOCIAL PROOF BADGES */}
+          <div className="flex justify-center lg:justify-start gap-6 text-white/80 text-sm font-semibold mb-10">
+            <span>🛡️ Kid-Friendly</span>
+            <span>🚫 No Ads</span>
+            <span>🎯 Ages 3-9</span>
           </div>
-        </Link>
+
+          {/* DOWNLOAD BUTTONS */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+            <Link href="#" className="flex items-center gap-3 bg-black text-white px-6 py-3 rounded-xl hover:bg-gray-900 transition-colors shadow-lg">
+              {/* Make sure you put 'apple-store.svg' in public/icons/ */}
+              <Image src="/icons/apple-store.svg" alt="Apple Logo" width={24} height={24} />
+              <div className="text-left">
+                <p className="text-[10px] leading-none opacity-80">Download on the</p>
+                <p className="text-lg font-bold leading-none mt-1">App Store</p>
+              </div>
+            </Link>
+            
+            <Link href="#" className="flex items-center gap-3 bg-black text-white px-6 py-3 rounded-xl hover:bg-gray-900 transition-colors shadow-lg">
+              {/* Make sure you put 'google-play.svg' in public/icons/ */}
+              <Image src="/icons/google-play.svg" alt="Google Play Logo" width={24} height={24} />
+              <div className="text-left">
+                <p className="text-[10px] leading-none opacity-80">Get it on</p>
+                <p className="text-lg font-bold leading-none mt-1">Google Play</p>
+              </div>
+            </Link>
+          </div>
+        </div>
+
+        {/* RIGHT SIDE: THE CHARACTER */}
+        <div className="w-full lg:w-1/2 relative flex justify-center items-center h-[300px] md:h-[400px] lg:h-[600px]">
+          {/* Soft Glow Behind Fox */}
+          <div className="absolute w-3/4 h-3/4 bg-[#6D28D9] rounded-full blur-3xl opacity-50"></div>
+          
+          {/* The Character (3D Fox) */}
+          <div className="relative z-10 text-[12rem] md:text-[16rem] lg:text-[22rem] leading-none drop-shadow-2xl">
+            🦊
+          </div>
+          
+          {/* Floating Elements (Static, for depth) */}
+          <div className="absolute top-10 left-0 bg-white/20 backdrop-blur-md border border-white/30 p-4 rounded-2xl shadow-xl">
+            <p className="text-xs text-white/90 font-bold">TOP READ</p>
+            <p className="text-xl font-black text-white">The Moon Rabbit</p>
+            <p className="text-xs text-white/80">⭐ 4.9 (1.2k)</p>
+          </div>
+          
+          <div className="absolute bottom-20 right-0 bg-white/20 backdrop-blur-md border border-white/30 p-4 rounded-2xl shadow-xl">
+            <p className="text-3xl">📚</p>
+            <p className="text-xs font-bold text-white mt-1">100+ Stories</p>
+          </div>
+        </div>
       </div>
 
       {/* CURVED BLOB TRANSITION */}
