@@ -99,6 +99,7 @@ function ReadingContent() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [childAge, setChildAge] = useState(7);
   const [readingLevel, setReadingLevel] = useState(7);
+  const [isCheckingPhonics, setIsCheckingPhonics] = useState(true);
 
   const recognitionRef = useRef<any>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -110,11 +111,12 @@ function ReadingContent() {
     setIsClient(true);
   }, []);
 
-  // 🔥 FIX: Load data and trust the database
+  // 🔥 Load data and CHECK phonics
   useEffect(() => {
     async function loadData() {
       if (!childId) {
         setIsLoading(false);
+        setIsCheckingPhonics(false);
         return;
       }
 
@@ -127,18 +129,18 @@ function ReadingContent() {
           setReadingLevel(level);
         }
 
-        // 🔥 FIX: Check if the child has passed phonics
+        // 🔥 Check if child has passed phonics
         const passed = await hasPassedPhonics(childId);
         
-        // 🔥 FIX: If NOT passed, redirect to phonics
         if (!passed) {
-          console.log("🔤 Redirecting to Phonics for child:", childId);
+          // 🔥 Redirect to phonics
           router.push(`/phonics?child=${childId}`);
           setIsLoading(false);
+          setIsCheckingPhonics(false);
           return;
         }
 
-        // Only check daily completion if phonics is passed
+        // Check if completed today
         const completed = await hasCompletedToday(childId);
         if (completed) {
           setIsComplete(true);
@@ -161,6 +163,7 @@ function ReadingContent() {
       }
 
       setIsLoading(false);
+      setIsCheckingPhonics(false);
     }
 
     loadData();
@@ -446,7 +449,7 @@ function ReadingContent() {
     router.push('/dashboard');
   };
 
-  if (isLoading || !isClient) {
+  if (isLoading || isCheckingPhonics || !isClient) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6" style={{ background: currentTheme?.background || '#f7f2eb' }}>
         <div className="text-[#8a7e74]">Loading...</div>
@@ -466,7 +469,7 @@ function ReadingContent() {
     );
   }
 
-  // 🔥 FIX: Celebration Screen - Shows reading stats only if child actually read
+  // 🔥 Celebration Screen
   if (isComplete) {
     const hasReadStories = sessionStoriesCompleted.length > 0;
     
