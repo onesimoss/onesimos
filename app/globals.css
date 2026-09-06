@@ -2,35 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Load Achiko Custom Font */
+@font-face {
+  font-family: "Achiko";
+  /* CHANGE THE URL AND FORMAT BELOW IF YOUR FILE IS .ttf OR .woff2 */
+  src: url("/fonts/Achiko.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Custom Utility Class for the font */
+.font-achiko {
+  font-family: "Achiko", sans-serif;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-/* Add any custom animations here (like the floating fox or clouds) */
-@keyframes float-big {
-  0%,
-  100% {
-    transform: translateY(0) rotate(-5deg);
-  }
-  50% {
-    transform: translateY(-20px) rotate(5deg);
-  }
-}
-
-.animate-float-big {
-  animation: float-big 8s ease-in-out infinite;
+  margin: 0;
+  padding: 0;
 }
