@@ -20,7 +20,6 @@ export default function KidLogin() {
     setError("");
     setLoading(true);
 
-    // 🔥 Find the kid profile with this PIN
     const { data, error } = await supabase
       .from("profiles")
       .select("id, display_name, is_kid")
@@ -34,11 +33,8 @@ export default function KidLogin() {
       return;
     }
 
-    // 🔥 Store kid session
     sessionStorage.setItem("kidId", data.id);
-    sessionStorage.setItem("kidName", data.display_name);
-    
-    // 🔥 Redirect to the reading dashboard
+    sessionStorage.setItem("kidName", data.display_name || "Reader");
     router.push("/kid/dashboard");
   };
 
@@ -72,10 +68,9 @@ export default function KidLogin() {
               maxLength={4}
               value={pin}
               onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-              className="w-full px-4 py-3 text-2xl text-center rounded-xl border focus:ring-2 focus:outline-none"
+              className="w-full px-4 py-3 text-2xl text-center rounded-xl border-2 focus:ring-2 focus:outline-none"
               style={{ 
                 borderColor: currentTheme.accentLight,
-                focusRingColor: currentTheme.accent,
                 background: currentTheme.background,
                 color: currentTheme.primary
               }}
