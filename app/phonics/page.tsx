@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { forceMarkPhonicsPassed } from "@/lib/dailyProgress";
+import { markPhonicsPassed } from "@/lib/dailyProgress";
 
 type PhonicsQuestion = {
   id: string;
@@ -88,7 +88,6 @@ function PhonicsContent() {
     }
   };
 
-  // 🔥 FIX: Force redirect with window.location
   const handlePassAndContinue = async () => {
     if (!childId) {
       router.push("/dashboard");
@@ -97,8 +96,8 @@ function PhonicsContent() {
 
     setIsSaving(true);
     try {
-      await forceMarkPhonicsPassed(childId);
-      // 🔥 Force redirect using window.location
+      await markPhonicsPassed(childId);
+      // Force redirect
       window.location.href = `/read?child=${childId}`;
     } catch (error) {
       console.error("Error saving phonics progress:", error);
