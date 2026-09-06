@@ -2,12 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Set Switzer as the default body font */
 body {
+  margin: 0;
+  padding: 0;
   font-family: var(--font-switzer), sans-serif;
 }
 
-/* Utility class for the logo */
 .font-achiko {
   font-family: var(--font-achiko), sans-serif;
 }

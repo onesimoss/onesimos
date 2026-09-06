@@ -4,14 +4,12 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 
-// Load Achiko (for the logo)
 const achiko = localFont({
   src: "./fonts/achiko.otf",
   variable: "--font-achiko",
   weight: "100 900",
 });
 
-// Load Switzer (for everything else)
 const switzer = localFont({
   src: [
     { path: "./fonts/Switzer-Regular.otf", weight: "400", style: "normal" },
@@ -35,7 +33,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${achiko.variable} ${switzer.variable} antialiased`}>
-        {/* Wrap the app in both providers */}
         <AuthProvider>
           <ThemeProvider>
             {children}
