@@ -2,68 +2,122 @@
 
 export default function LandingPage() {
   return (
-    <main className="min-h-screen bg-gradient-to-b from-[#0F172A] via-[#1E3A8A] to-[#3B82F6] text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <main className="min-h-screen bg-[#FFF8EE] text-[#4A3B32] font-sans overflow-hidden relative">
       
-      {/* Decorative Background Elements (Immersive feel) */}
-      <div className="absolute top-20 left-10 text-8xl opacity-20 animate-bounce">🦖</div>
-      <div className="absolute bottom-20 right-10 text-9xl opacity-20 animate-pulse">🌊</div>
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-[20rem] opacity-10 select-none pointer-events-none">🐋</div>
+      {/* Decorative Background Shapes (Soft pastel blobs) */}
+      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-[#FDEBD0] rounded-full blur-3xl opacity-60"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-[#D8F3DC] rounded-full blur-3xl opacity-60"></div>
+      
+      {/* Navigation Bar */}
+      <nav className="relative z-10 max-w-6xl mx-auto flex justify-between items-center py-6 px-6">
+        <div className="flex items-center gap-2">
+          {/* Logo */}
+          <div className="w-10 h-10 bg-[#FFB703] rounded-full flex items-center justify-center text-2xl shadow-md">🦊</div>
+          <span className="text-2xl font-extrabold tracking-tight text-[#3A2E2A]">WonderQuest</span>
+        </div>
+        <div className="hidden md:flex gap-6 text-sm font-semibold text-[#6D5D55]">
+          <Link href="/parent/login" className="hover:text-[#FFB703] transition-colors">Parent Portal</Link>
+          <Link href="/kids" className="hover:text-[#FFB703] transition-colors">Kid Login</Link>
+        </div>
+      </nav>
 
-      {/* Logo / Header */}
-      <div className="z-10 flex flex-col items-center mb-8">
-        <h1 className="text-5xl md:text-7xl font-kid font-extrabold text-white drop-shadow-lg tracking-tight">
-          Wonder<span className="text-kid-sun">Quest</span>
-        </h1>
-        <p className="text-kid-sky font-kid text-xl mt-2 tracking-widest uppercase">
-          Learning
-        </p>
-      </div>
-
-      {/* Hero Content */}
-      <div className="z-10 max-w-3xl text-center mb-12">
-        <h2 className="text-4xl md:text-6xl font-kid font-bold mb-6 leading-tight drop-shadow-lg">
-          Let the world be <br />
-          <span className="text-kid-sun">their classroom.</span>
-        </h2>
-        <p className="text-xl md:text-2xl text-blue-100 font-kid mb-10">
-          Immersive reading adventures, phonics, and exploration designed for curious young minds.
-        </p>
-
-        {/* Call to Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link 
-            href="/parent/login" 
-            className="px-10 py-4 bg-kid-sun text-kid-navy rounded-full font-kid font-bold text-xl hover:scale-105 hover:shadow-xl transition-all duration-200"
-          >
-            🚀 Get Started
-          </Link>
+      {/* Hero Section */}
+      <div className="relative z-10 max-w-6xl mx-auto px-6 py-16 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+        
+        {/* Left: Text and CTAs */}
+        <div>
+          <div className="inline-block bg-[#FFE5D9] text-[#E76F51] px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-6">
+            A Digital Library for Curious Kids
+          </div>
+          <h1 className="text-5xl md:text-7xl font-extrabold leading-tight mb-6 text-[#3A2E2A]">
+            Learn to <br />
+            <span className="text-[#E76F51]">Love Reading</span>
+          </h1>
+          <p className="text-lg text-[#6D5D55] mb-8 max-w-md">
+            Interactive stories, phonics games, and cozy bedtime tales designed to nurture literacy, empathy, and focus.
+          </p>
           
-          <Link 
-            href="/kids" 
-            className="px-10 py-4 border-2 border-white/30 text-white rounded-full font-kid font-bold text-xl hover:bg-white/10 hover:border-white/50 transition-all duration-200"
-          >
-            👧 Returning Kids
-          </Link>
+          <div className="flex flex-wrap gap-4">
+            <Link 
+              href="/parent/login" 
+              className="px-8 py-4 bg-[#E76F51] text-white rounded-full font-bold shadow-lg hover:bg-[#D65B3E] hover:scale-105 transition-all"
+            >
+              Get 7 Days Free →
+            </Link>
+            <Link 
+              href="/kids" 
+              className="px-8 py-4 bg-white text-[#4A3B32] rounded-full font-bold border border-[#EAD5C3] hover:bg-[#FFF8EE] hover:scale-105 transition-all"
+            >
+              View Kid Login
+            </Link>
+          </div>
+          
+          {/* Trust Badges */}
+          <div className="mt-10 flex gap-8">
+            <div className="text-center">
+              <p className="text-3xl font-extrabold text-[#3A2E2A]">3K+</p>
+              <p className="text-xs text-[#8C7B72]">Expertly Curated</p>
+            </div>
+            <div className="text-center">
+              <p className="text-3xl font-extrabold text-[#3A2E2A]">850K</p>
+              <p className="text-xs text-[#8C7B72]">Families Subscribed</p>
+            </div>
+            <div className="text-center">
+              <p className="text-3xl font-extrabold text-[#3A2E2A]">4.9/5</p>
+              <p className="text-xs text-[#8C7B72]">App Store Rating</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Character Showcase */}
+        <div className="relative flex justify-center items-center">
+          {/* Floating Character (Panda) */}
+          <div className="w-64 h-64 md:w-80 md:h-80 bg-[#FFF] rounded-full shadow-2xl flex items-center justify-center border-8 border-[#FFE5D9] relative z-10">
+            <span className="text-8xl md:text-9xl animate-float">🐼</span>
+          </div>
+          
+          {/* Floating Cards */}
+          <div className="absolute -bottom-4 -left-4 bg-[#FFB703] text-white px-4 py-2 rounded-2xl shadow-lg text-sm font-bold rotate-[-6deg] z-20">
+            Bedtime Stories
+          </div>
+          <div className="absolute top-0 -right-4 bg-[#D8F3DC] text-[#3A5A40] px-4 py-2 rounded-2xl shadow-lg text-sm font-bold rotate-[6deg] z-20">
+            🔤 Phonics Fun
+          </div>
+
+          {/* Decorative Sun / Stars */}
+          <div className="absolute top-10 right-20 text-4xl animate-spin-slow text-[#FFB703]">⭐</div>
+          <div className="absolute bottom-10 left-0 text-3xl text-[#FFB703]">✨</div>
         </div>
       </div>
 
-      {/* App Store / Footer Note */}
-      <div className="z-10 mt-8 flex flex-col items-center gap-4">
-        <button className="flex items-center gap-3 bg-black border border-white/20 px-6 py-3 rounded-xl hover:bg-gray-900 transition-colors">
-          <svg className="w-8 h-8 fill-white" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-          </svg>
-          <div className="text-left">
-            <p className="text-[10px] leading-none text-gray-400">Download on the</p>
-            <p className="text-lg leading-none font-bold">App Store</p>
+      {/* Bottom "Book" Feature Strip */}
+      <div className="relative z-10 max-w-6xl mx-auto px-6 pb-16">
+        <div className="bg-white rounded-[2rem] shadow-xl p-8 grid grid-cols-1 md:grid-cols-3 gap-6 border border-[#F0E6DA]">
+          
+          {/* Feature 1 */}
+          <div className="flex flex-col items-start">
+            <div className="w-12 h-12 rounded-full bg-[#FFE5D9] flex items-center justify-center text-2xl mb-4">📱</div>
+            <h3 className="text-xl font-bold text-[#3A2E2A] mb-2">Take the Library Anywhere</h3>
+            <p className="text-sm text-[#6D5D55]">Download favorites for car rides, flights, and camping trips.</p>
           </div>
-        </button>
-        
-        <p className="text-xs text-blue-300/50 font-parent mt-4">
-          © 2024 WonderQuest. A safe space for families.
-        </p>
+
+          {/* Feature 2 */}
+          <div className="flex flex-col items-start">
+            <div className="w-12 h-12 rounded-full bg-[#D8F3DC] flex items-center justify-center text-2xl mb-4">🌱</div>
+            <h3 className="text-xl font-bold text-[#3A2E2A] mb-2">Discover Your Next Favorite</h3>
+            <p className="text-sm text-[#6D5D55]">Seasonal picks updated every Monday morning.</p>
+          </div>
+
+          {/* Feature 3 */}
+          <div className="flex flex-col items-start">
+            <div className="w-12 h-12 rounded-full bg-[#E0AAFF] flex items-center justify-center text-2xl mb-4">🎧</div>
+            <h3 className="text-xl font-bold text-[#3A2E2A] mb-2">Bedtime Stories & Audio</h3>
+            <p className="text-sm text-[#6D5D55]">High-fidelity narration and soundscapes designed to help kids drift off.</p>
+          </div>
+
+        </div>
       </div>
-      
+
     </main>
   );
 }
