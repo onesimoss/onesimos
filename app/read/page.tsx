@@ -11,9 +11,7 @@ import {
   hasCompletedToday, 
   saveDailyProgress, 
   saveStumbledWord, 
-  getChildStreak,
-  hasPassedPhonics,
-  markPhonicsPassed
+  getChildStreak
 } from "@/lib/dailyProgress";
 
 const EASY_WORDS = new Set([
@@ -99,7 +97,6 @@ function ReadingContent() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [childAge, setChildAge] = useState(7);
   const [readingLevel, setReadingLevel] = useState(7);
-  const [isCheckingPhonics, setIsCheckingPhonics] = useState(true);
 
   const recognitionRef = useRef<any>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -111,11 +108,11 @@ function ReadingContent() {
     setIsClient(true);
   }, []);
 
+  // 🔥 LOAD DATA - NO PHONICS CHECK
   useEffect(() => {
     async function loadData() {
       if (!childId) {
         setIsLoading(false);
-        setIsCheckingPhonics(false);
         return;
       }
 
@@ -126,15 +123,6 @@ function ReadingContent() {
           setChildAge(childResult.data.age || 7);
           const level = Math.min(Math.max(childResult.data.age || 7, 3), 12);
           setReadingLevel(level);
-        }
-
-        const passed = await hasPassedPhonics(childId);
-        
-        if (!passed) {
-          router.push(`/phonics?child=${childId}`);
-          setIsLoading(false);
-          setIsCheckingPhonics(false);
-          return;
         }
 
         const completed = await hasCompletedToday(childId);
@@ -159,12 +147,12 @@ function ReadingContent() {
       }
 
       setIsLoading(false);
-      setIsCheckingPhonics(false);
     }
 
     loadData();
-  }, [childId, router]);
+  }, [childId]);
 
+  // Timer logic
   useEffect(() => {
     if (isTimerRunning) {
       timerIntervalRef.current = setInterval(() => {
@@ -182,6 +170,7 @@ function ReadingContent() {
     };
   }, [isTimerRunning]);
 
+  // Auto-end after 20 minutes
   useEffect(() => {
     if (readingTime >= 1200 && isTimerRunning) {
       endSession();
@@ -423,11 +412,6 @@ function ReadingContent() {
         comprehensionScore: hasReadStories ? finalScore : 0,
         badgesEarned: badges,
       });
-      
-      const alreadyPassed = await hasPassedPhonics(childId!);
-      if (!alreadyPassed) {
-        await markPhonicsPassed(childId!);
-      }
     } catch (err) {
       console.error("Error saving daily progress:", err);
     }
@@ -443,7 +427,7 @@ function ReadingContent() {
     router.push('/dashboard');
   };
 
-  if (isLoading || isCheckingPhonics || !isClient) {
+  if (isLoading || !isClient) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6" style={{ background: currentTheme?.background || '#f7f2eb' }}>
         <div className="text-[#8a7e74]">Loading...</div>
