@@ -1,18 +1,16 @@
 ﻿import Link from "next/link";
-import Image from "next/image";
 
 export default function LandingPage() {
   return (
     <main className="relative min-h-screen w-full overflow-hidden bg-[#8B5CF6]">
       
-      {/* THE TRANSPARENT PNG BACKGROUND - Positioned to cover the screen */}
+      {/* THE PNG BACKGROUND */}
       <div className="absolute inset-0 z-0">
-        <Image 
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img 
           src="/background.png" 
           alt="Onesimos background illustration"
-          fill
-          priority
-          className="object-cover"
+          className="w-full h-full object-cover"
         />
       </div>
 
