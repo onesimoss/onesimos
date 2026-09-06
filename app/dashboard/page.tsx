@@ -184,6 +184,7 @@ export default function Dashboard() {
         result = await supabase
           .from("profiles")
           .update({
+            email: `${child.id}@kid.local`, // Added back
             display_name: child.name,
             is_kid: true,
             pin_code: pin,
@@ -196,6 +197,7 @@ export default function Dashboard() {
           .from("profiles")
           .insert({
             id: child.id,
+            email: `${child.id}@kid.local`, // Added back
             display_name: child.name,
             is_kid: true,
             pin_code: pin,
