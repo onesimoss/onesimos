@@ -111,7 +111,6 @@ function ReadingContent() {
     setIsClient(true);
   }, []);
 
-  // 🔥 Load data and CHECK phonics
   useEffect(() => {
     async function loadData() {
       if (!childId) {
@@ -129,18 +128,15 @@ function ReadingContent() {
           setReadingLevel(level);
         }
 
-        // 🔥 Check if child has passed phonics
         const passed = await hasPassedPhonics(childId);
         
         if (!passed) {
-          // 🔥 Redirect to phonics
           router.push(`/phonics?child=${childId}`);
           setIsLoading(false);
           setIsCheckingPhonics(false);
           return;
         }
 
-        // Check if completed today
         const completed = await hasCompletedToday(childId);
         if (completed) {
           setIsComplete(true);
@@ -169,7 +165,6 @@ function ReadingContent() {
     loadData();
   }, [childId, router]);
 
-  // Timer logic
   useEffect(() => {
     if (isTimerRunning) {
       timerIntervalRef.current = setInterval(() => {
@@ -187,7 +182,6 @@ function ReadingContent() {
     };
   }, [isTimerRunning]);
 
-  // Auto-end after 20 minutes
   useEffect(() => {
     if (readingTime >= 1200 && isTimerRunning) {
       endSession();
@@ -469,7 +463,6 @@ function ReadingContent() {
     );
   }
 
-  // 🔥 Celebration Screen
   if (isComplete) {
     const hasReadStories = sessionStoriesCompleted.length > 0;
     
