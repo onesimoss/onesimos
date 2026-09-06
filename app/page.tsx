@@ -2,7 +2,7 @@
 
 export default function LandingPage() {
   return (
-    <main className="min-h-screen bg-[#5f2fd0b3] overflow-hidden flex flex-col items-center justify-center">
+    <main className="min-h-screen bg-[#371f6ec9] overflow-hidden flex flex-col items-center justify-center">
       
       {/* NAVIGATION - Signup & Login */}
       <nav className="absolute top-0 left-0 right-0 z-20 flex justify-center items-center pt-8">
