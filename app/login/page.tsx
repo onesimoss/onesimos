@@ -27,7 +27,10 @@ export default function Login() {
       return;
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     if (user) {
       const exists = await hasAnyChildren(user.id);
       router.push(exists ? "/dashboard" : "/onboarding");
@@ -72,9 +75,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="parent@example.com"
-                className="w-full px-4 py-3 bg-cream border border-border rounded-2xl
-                           focus:ring-2 focus:ring-coral/40 focus:border-coral focus:outline-none
-                           text-bark placeholder:text-bark-muted/50 transition-all"
+                className="w-full px-4 py-3 bg-cream border border-border rounded-2xl focus:ring-2 focus:ring-coral/40 focus:border-coral focus:outline-none text-bark placeholder:text-bark-muted/50 transition-all"
                 required
               />
             </div>
@@ -88,9 +89,7 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Your password"
-                className="w-full px-4 py-3 bg-cream border border-border rounded-2xl
-                           focus:ring-2 focus:ring-coral/40 focus:border-coral focus:outline-none
-                           text-bark placeholder:text-bark-muted/50 transition-all"
+                className="w-full px-4 py-3 bg-cream border border-border rounded-2xl focus:ring-2 focus:ring-coral/40 focus:border-coral focus:outline-none text-bark placeholder:text-bark-muted/50 transition-all"
                 required
               />
             </div>
