@@ -23,6 +23,7 @@ export default function KidHomePage() {
     async function load() {
       if (!user || !childId) return;
       setFetching(true);
+
       const { data, error } = await supabase
         .from("children")
         .select("*")
@@ -80,7 +81,7 @@ export default function KidHomePage() {
         </div>
 
         <div className="card text-center !p-8 mb-6">
-          <div className="text-5xl mb-4">📚</div>
+          <div className="text-5xl mb-4">{"\u{1F4DA}"}</div>
           <h2 className="font-heading text-2xl font-bold text-bark mb-2">
             Stories coming next
           </h2>
@@ -95,12 +96,12 @@ export default function KidHomePage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div className="card text-center">
-            <div className="text-2xl mb-1">⭐</div>
+            <div className="text-2xl mb-1">{"\u2B50"}</div>
             <div className="font-heading font-bold text-bark">Streak</div>
             <div className="text-bark-muted text-sm">0 days</div>
           </div>
           <div className="card text-center">
-            <div className="text-2xl mb-1">📖</div>
+            <div className="text-2xl mb-1">{"\u{1F4D6}"}</div>
             <div className="font-heading font-bold text-bark">Words</div>
             <div className="text-bark-muted text-sm">0 read</div>
           </div>
