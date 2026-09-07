@@ -61,9 +61,7 @@ export default function SignUp() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="parent@example.com"
-                className="w-full px-4 py-3 bg-cream border border-border rounded-2xl
-                           focus:ring-2 focus:ring-coral/40 focus:border-coral focus:outline-none
-                           text-bark placeholder:text-bark-muted/50 transition-all"
+                className="w-full px-4 py-3 bg-cream border border-border rounded-2xl focus:ring-2 focus:ring-coral/40 focus:border-coral focus:outline-none text-bark placeholder:text-bark-muted/50 transition-all"
                 required
               />
             </div>
@@ -77,9 +75,7 @@ export default function SignUp() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="At least 6 characters"
-                className="w-full px-4 py-3 bg-cream border border-border rounded-2xl
-                           focus:ring-2 focus:ring-coral/40 focus:border-coral focus:outline-none
-                           text-bark placeholder:text-bark-muted/50 transition-all"
+                className="w-full px-4 py-3 bg-cream border border-border rounded-2xl focus:ring-2 focus:ring-coral/40 focus:border-coral focus:outline-none text-bark placeholder:text-bark-muted/50 transition-all"
                 required
                 minLength={6}
               />
