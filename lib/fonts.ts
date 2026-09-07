@@ -1,7 +1,7 @@
 import localFont from "next/font/local";
 
 export const achiko = localFont({
-  src: "../app/fonts/Achiko-Regular.otf",
+  src: "../app/fonts/achiko.otf",
   variable: "--font-achiko",
   display: "swap",
 });
