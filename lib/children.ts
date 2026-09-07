@@ -90,7 +90,6 @@ export async function hasAnyChildren(parentId: string) {
   return (data?.length || 0) > 0;
 }
 
-/** Rough default reading level from age (can refine later with real assessment) */
 export function defaultReadingLevelFromAge(age: number): number {
   if (age <= 4) return 1;
   if (age === 5) return 2;
