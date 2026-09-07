@@ -1,22 +1,25 @@
-// lib/avatars.ts
-
 export interface Avatar {
   id: string;
-  name: string;
   emoji: string;
-  color: string; // Tailwind gradient classes or hex codes for the character
+  color: string;
+  skinTone: "light" | "medium" | "dark" | "deepest";
 }
 
 export const AVATARS: Avatar[] = [
-  { id: 'fox', name: 'Foxy', emoji: '🦊', color: '#F4A261' },
-  { id: 'panda', name: 'Panda', emoji: '🐼', color: '#E9C46A' },
-  { id: 'penguin', name: 'Pingu', emoji: '🐧', color: '#2A9D8F' },
-  { id: 'dino', name: 'Rex', emoji: '🦖', color: '#E76F51' },
-  { id: 'cat', name: 'Whiskers', emoji: '🐱', color: '#E9C46A' },
-  { id: 'frog', name: 'Hopper', emoji: '🐸', color: '#06D6A0' },
+  { id: "avatar-1", emoji: "👧🏾", color: "#E8734A", skinTone: "dark" },
+  { id: "avatar-2", emoji: "👦🏾", color: "#5BB5F0", skinTone: "dark" },
+  { id: "avatar-3", emoji: "👧🏽", color: "#F5B731", skinTone: "medium" },
+  { id: "avatar-4", emoji: "👦🏽", color: "#34C78B", skinTone: "medium" },
+  { id: "avatar-5", emoji: "👧🏿", color: "#8B5CF6", skinTone: "deepest" },
+  { id: "avatar-6", emoji: "👦🏿", color: "#E8734A", skinTone: "deepest" },
+  { id: "avatar-7", emoji: "👧🏻", color: "#5BB5F0", skinTone: "light" },
+  { id: "avatar-8", emoji: "👦🏻", color: "#34C78B", skinTone: "light" },
+  { id: "avatar-9", emoji: "🦸🏾‍♀️", color: "#F5B731", skinTone: "dark" },
+  { id: "avatar-10", emoji: "🦸🏽‍♂️", color: "#8B5CF6", skinTone: "medium" },
+  { id: "avatar-11", emoji: "🧑🏿‍🚀", color: "#5BB5F0", skinTone: "deepest" },
+  { id: "avatar-12", emoji: "🧑🏽‍🎨", color: "#E8734A", skinTone: "medium" },
 ];
 
-// Helper to get an avatar by its ID
 export const getAvatarById = (id: string): Avatar => {
   return AVATARS.find((a) => a.id === id) || AVATARS[0];
 };

@@ -4,7 +4,6 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // === UNIFIED STORYBOOK PALETTE ===
         cream: "#FFF8F0",
         parchment: "#FFFDF7",
         bark: "#2D2418",
@@ -23,8 +22,9 @@ module.exports = {
         border: "#F0E6D8",
       },
       fontFamily: {
-        heading: ['"Baloo 2"', "cursive"],
-        body: ['"Nunito"', "sans-serif"],
+        logo: ["var(--font-achiko)", "cursive"],
+        heading: ["var(--font-switzer)", "sans-serif"],
+        body: ["var(--font-switzer)", "sans-serif"],
       },
       borderRadius: {
         blob: "2rem",

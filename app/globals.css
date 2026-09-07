@@ -2,8 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&family=Nunito:wght@400;500;600;700;800&display=swap");
-
 @layer base {
   * {
     margin: 0;
@@ -16,20 +14,11 @@
   }
 
   body {
-    font-family: "Nunito", sans-serif;
+    font-family: var(--font-switzer), sans-serif;
     background-color: #fff8f0;
     color: #2d2418;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-  }
-
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    font-family: "Baloo 2", cursive;
   }
 }
 

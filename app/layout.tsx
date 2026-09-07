@@ -1,38 +1,23 @@
 ﻿import type { Metadata } from "next";
-import localFont from "next/font/local";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
-
-const achiko = localFont({
-  src: "./fonts/achiko.otf",
-  variable: "--font-achiko",
-  weight: "100 900",
-});
-
-const switzer = localFont({
-  src: [
-    { path: "./fonts/Switzer-Regular.otf", weight: "400", style: "normal" },
-    { path: "./fonts/Switzer-Bold.otf", weight: "700", style: "normal" },
-    { path: "./fonts/Switzer-Black.otf", weight: "900", style: "normal" },
-  ],
-  variable: "--font-switzer",
-  display: "swap",
-});
+import { achiko, switzer } from "@/lib/fonts";
 
 export const metadata: Metadata = {
-  title: "Onesimos",
-  description: "A playful learning platform for kids",
+  title: "Onesimos — Playful Reading for Kids",
+  description:
+    "A playful reading platform where kids unlock incredible stories, conquer tricky words, and build a lifelong love for reading.",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en">
-      <body className={`${achiko.variable} ${switzer.variable} antialiased`}>
+    <html lang="en" className={`${achiko.variable} ${switzer.variable}`}>
+      <body className="font-body antialiased">
         <AuthProvider>
           <ThemeProvider>
             {children}

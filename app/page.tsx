@@ -8,34 +8,34 @@ const FEATURES = [
   {
     icon: "📖",
     title: "Interactive Stories",
-    desc: "Kids read aloud while our AI listens, helps with tricky words, and celebrates every page turned.",
+    desc: "Kids read aloud while Onesimos listens, gently helps with tricky words, and celebrates every page turned.",
     color: "bg-sky-light",
   },
   {
-    icon: "🎤",
-    title: "Voice-Powered Reading",
-    desc: "Speech recognition tracks fluency in real-time. Stumbled words are gently saved for practice.",
+    icon: "🎯",
+    title: "Personalized Learning",
+    desc: "Every child gets their own stories, tailored to their level, interests, and the words they're still learning.",
     color: "bg-gold-light",
   },
   {
     icon: "🧩",
     title: "Comprehension Quests",
-    desc: "After each story, fun questions make sure your child truly understood the adventure.",
+    desc: "After each story, playful questions make sure your child truly understood the adventure.",
     color: "bg-mint-light",
   },
   {
     icon: "🏆",
     title: "Streaks & Badges",
-    desc: "Daily reading streaks, achievement badges, and a growing word bank keep motivation high.",
+    desc: "Daily reading streaks, achievement badges, and a growing word bank keep motivation soaring.",
     color: "bg-sky-light",
   },
 ];
 
 const STEPS = [
-  { num: "1", emoji: "👶", title: "Create a Profile", desc: "Set up your child's avatar, age, and reading level in under a minute." },
-  { num: "2", emoji: "📚", title: "Pick a Story", desc: "Choose from themed adventures — dinosaurs, space, fantasy, and more." },
-  { num: "3", emoji: "🎙️", title: "Read Aloud", desc: "Your child reads while Onesimos listens and gently guides them." },
-  { num: "4", emoji: "🎉", title: "Celebrate!", desc: "Earn badges, unlock new stories, and watch confidence soar." },
+  { num: "1", emoji: "👨‍👩‍👧", title: "Create a Profile", desc: "Set up your child's avatar, age, and reading level in under a minute." },
+  { num: "2", emoji: "📚", title: "Pick a Story",     desc: "Choose from themed adventures — dinosaurs, space, fantasy, and more." },
+  { num: "3", emoji: "🎙️", title: "Read Aloud",       desc: "Your child reads while Onesimos listens and gently guides them." },
+  { num: "4", emoji: "🎉", title: "Celebrate!",       desc: "Earn badges, unlock new stories, and watch confidence soar." },
 ];
 
 export default function LandingPage() {
@@ -55,15 +55,17 @@ export default function LandingPage() {
       {/* ============================================ */}
       <section className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-berry via-purple-600 to-indigo-700">
 
-        {/* Background Illustration */}
+        {/* Background Illustration - now more visible */}
         <div className="absolute inset-0 z-0">
           <Image
             src="/background.png"
             alt="Onesimos magical background"
             fill
             priority
-            className="object-cover opacity-40 mix-blend-overlay"
+            className="object-cover object-center opacity-70"
           />
+          {/* Subtle gradient overlay so text stays readable */}
+          <div className="absolute inset-0 bg-gradient-to-b from-purple-900/40 via-transparent to-indigo-900/60" />
         </div>
 
         {/* Floating Decorations */}
@@ -81,9 +83,9 @@ export default function LandingPage() {
           }`}
         >
           <div className="max-w-6xl mx-auto px-6 flex items-center justify-between">
-            <Link href="/" className="font-heading text-2xl font-extrabold tracking-tight">
+            <Link href="/" className="font-logo text-3xl font-extrabold tracking-tight">
               <span className={scrolled ? "text-coral" : "text-white"}>
-                ✨ Onesimos
+                Onesimos
               </span>
             </Link>
 
@@ -114,11 +116,11 @@ export default function LandingPage() {
             🎯 Designed for Ages 3–9
           </div>
 
-          <h1 className="font-heading text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-extrabold text-white mb-6 leading-[0.95] drop-shadow-[0_8px_30px_rgba(0,0,0,0.3)]">
+          <h1 className="font-logo text-7xl sm:text-8xl md:text-9xl lg:text-[10rem] font-black text-white mb-6 leading-[0.9] drop-shadow-[0_8px_30px_rgba(0,0,0,0.4)] tracking-tight">
             ONESIMOS
           </h1>
 
-          <p className="text-lg sm:text-xl md:text-2xl text-white/90 font-medium mb-10 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg sm:text-xl md:text-2xl text-white/95 font-medium mb-10 max-w-2xl mx-auto leading-relaxed">
             A playful reading platform where kids unlock incredible stories,
             conquer tricky words, and build a{" "}
             <span className="text-gold font-bold">lifelong love for reading</span>.
@@ -137,10 +139,10 @@ export default function LandingPage() {
           </div>
 
           {/* Trust Badges */}
-          <div className="flex flex-wrap justify-center gap-6 mt-12 text-white/80 text-sm font-bold">
+          <div className="flex flex-wrap justify-center gap-6 mt-12 text-white/90 text-sm font-bold">
             <span className="flex items-center gap-1.5">🛡️ Kid-Safe</span>
             <span className="flex items-center gap-1.5">🚫 No Ads Ever</span>
-            <span className="flex items-center gap-1.5">🔒 COPPA Compliant</span>
+            <span className="flex items-center gap-1.5">🔒 Private & Secure</span>
             <span className="flex items-center gap-1.5">💯 Free to Start</span>
           </div>
         </div>
@@ -163,7 +165,7 @@ export default function LandingPage() {
               Everything Your Child Needs to <span className="text-coral">Fall in Love</span> with Reading
             </h2>
             <p className="text-bark-muted text-lg max-w-2xl mx-auto">
-              Powered by AI voice recognition, Onesimos turns every reading session into an adventure.
+              Onesimos turns every reading session into a personal adventure — built around your child.
             </p>
           </div>
 
@@ -232,7 +234,7 @@ export default function LandingPage() {
             Ready to Start the Adventure?
           </h2>
           <p className="text-white/80 text-xl mb-10 max-w-xl mx-auto">
-            Join thousands of families making reading the best part of their day.
+            Join families making reading the best part of their day.
           </p>
           <Link href="/signup" className="btn-gold !text-xl !px-12 !py-5">
             🎉 Create Free Account
@@ -248,8 +250,8 @@ export default function LandingPage() {
       {/* ============================================ */}
       <footer className="bg-bark text-white/60 py-12 px-6">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="font-heading text-xl font-bold text-white">
-            ✨ Onesimos
+          <div className="font-logo text-2xl font-bold text-white">
+            Onesimos
           </div>
           <div className="flex gap-8 text-sm">
             <Link href="/signup" className="hover:text-white transition-colors">Sign Up</Link>
