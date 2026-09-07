@@ -8,17 +8,16 @@ import AvatarPicker from "@/components/AvatarPicker";
 import {
   createChild,
   defaultReadingLevelFromAge,
-  hasAnyChildren,
   type Curriculum,
 } from "@/lib/children";
 
 const INTERESTS = [
-  { id: "dinosaurs", label: "Dinosaurs", emoji: "🦕" },
-  { id: "space", label: "Space", emoji: "🚀" },
-  { id: "football", label: "Football", emoji: "⚽" },
-  { id: "fantasy", label: "Fantasy", emoji: "🧙" },
-  { id: "animals", label: "Animals", emoji: "🦁" },
-  { id: "adventure", label: "Adventure", emoji: "🗺️" },
+  { id: "dinosaurs", label: "Dinosaurs", emoji: "\u{1F995}" },
+  { id: "space", label: "Space", emoji: "\u{1F680}" },
+  { id: "football", label: "Football", emoji: "\u{26BD}" },
+  { id: "fantasy", label: "Fantasy", emoji: "\u{1F9D9}" },
+  { id: "animals", label: "Animals", emoji: "\u{1F981}" },
+  { id: "adventure", label: "Adventure", emoji: "\u{1F5FA}\u{FE0F}" },
 ];
 
 const CURRICULUMS: { id: Curriculum; label: string; hint: string }[] = [
@@ -62,19 +61,6 @@ export default function OnboardingPage() {
       router.replace("/login");
     }
   }, [user, loading, router]);
-
-  useEffect(() => {
-    async function checkExisting() {
-      if (!user) return;
-      const exists = await hasAnyChildren(user.id);
-      // If they already have kids and somehow land here, still allow add-another flow
-      // but default stay on onboarding for first child.
-      if (exists && step === 0) {
-        // keep welcome; parent can continue to add another child
-      }
-    }
-    checkExisting();
-  }, [user, step]);
 
   useEffect(() => {
     setReadingLevel(defaultReadingLevelFromAge(age));
@@ -136,7 +122,6 @@ export default function OnboardingPage() {
 
   return (
     <main className="min-h-screen bg-cream flex flex-col">
-      {/* Top bar */}
       <div className="w-full max-w-2xl mx-auto px-6 pt-6">
         <div className="flex items-center justify-between mb-4">
           <Link href="/" className="font-logo text-2xl text-bark">
@@ -162,10 +147,9 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* STEP 0 — Welcome */}
           {step === 0 && (
             <div className="text-center">
-              <div className="text-5xl mb-4">✨</div>
+              <div className="text-5xl mb-4">{"\u2728"}</div>
               <h1 className="font-heading text-3xl md:text-4xl font-extrabold text-bark mb-3">
                 Let&apos;s meet your reader
               </h1>
@@ -183,7 +167,6 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* STEP 1 — Name + Age */}
           {step === 1 && (
             <div>
               <h1 className="font-heading text-3xl font-extrabold text-bark mb-2">
@@ -203,9 +186,7 @@ export default function OnboardingPage() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Ada"
-                    className="w-full px-4 py-3 bg-cream border border-border rounded-2xl
-                               focus:ring-2 focus:ring-coral/40 focus:border-coral focus:outline-none
-                               text-bark placeholder:text-bark-muted/50"
+                    className="w-full px-4 py-3 bg-cream border border-border rounded-2xl focus:ring-2 focus:ring-coral/40 focus:border-coral focus:outline-none text-bark placeholder:text-bark-muted/50"
                     maxLength={40}
                   />
                 </div>
@@ -231,7 +212,6 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* STEP 2 — Avatar */}
           {step === 2 && (
             <div>
               <h1 className="font-heading text-3xl font-extrabold text-bark mb-2">
@@ -244,7 +224,6 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* STEP 3 — Curriculum */}
           {step === 3 && (
             <div>
               <h1 className="font-heading text-3xl font-extrabold text-bark mb-2">
@@ -273,7 +252,6 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* STEP 4 — Interests */}
           {step === 4 && (
             <div>
               <h1 className="font-heading text-3xl font-extrabold text-bark mb-2">
@@ -307,7 +285,6 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* STEP 5 — Level + session time */}
           {step === 5 && (
             <div>
               <h1 className="font-heading text-3xl font-extrabold text-bark mb-2">
@@ -375,7 +352,6 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* Nav buttons */}
           {step > 0 && (
             <div className="mt-10 flex items-center justify-between gap-3">
               <button
