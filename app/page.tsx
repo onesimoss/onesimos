@@ -55,7 +55,7 @@ export default function LandingPage() {
       {/* ============================================ */}
       <section className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-berry via-purple-600 to-indigo-700">
 
-        {/* Background Illustration - now more visible */}
+        {/* Background Illustration */}
         <div className="absolute inset-0 z-0">
           <Image
             src="/background.png"
@@ -64,7 +64,6 @@ export default function LandingPage() {
             priority
             className="object-cover object-center opacity-70"
           />
-          {/* Subtle gradient overlay so text stays readable */}
           <div className="absolute inset-0 bg-gradient-to-b from-purple-900/40 via-transparent to-indigo-900/60" />
         </div>
 
@@ -83,7 +82,7 @@ export default function LandingPage() {
           }`}
         >
           <div className="max-w-6xl mx-auto px-6 flex items-center justify-between">
-            <Link href="/" className="font-logo text-3xl font-extrabold tracking-tight">
+            <Link href="/" className="font-logo text-3xl md:text-4xl tracking-tight">
               <span className={scrolled ? "text-coral" : "text-white"}>
                 Onesimos
               </span>
@@ -111,16 +110,17 @@ export default function LandingPage() {
         </nav>
 
         {/* Hero Content */}
-        <div className="relative z-10 text-center px-6 max-w-4xl mx-auto mt-20 animate-fade-up">
+        <div className="relative z-10 text-center px-6 max-w-5xl mx-auto mt-20 animate-fade-up">
           <div className="inline-block mb-6 px-4 py-1.5 rounded-full glass text-white/90 text-sm font-semibold">
             🎯 Designed for Ages 3–9
           </div>
 
-          <h1 className="font-logo text-7xl sm:text-8xl md:text-9xl lg:text-[10rem] font-black text-white mb-6 leading-[0.9] drop-shadow-[0_8px_30px_rgba(0,0,0,0.4)] tracking-tight">
+          {/* ACHIKO LOGO TITLE (no font-black/font-extrabold classes to avoid breaking the font) */}
+          <h1 className="font-logo text-6xl sm:text-7xl md:text-8xl lg:text-9xl text-white mb-6 leading-[0.95] drop-shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
             ONESIMOS
           </h1>
 
-          <p className="text-lg sm:text-xl md:text-2xl text-white/95 font-medium mb-10 max-w-2xl mx-auto leading-relaxed">
+          <p className="font-heading text-lg sm:text-xl md:text-2xl text-white/95 font-medium mb-10 max-w-2xl mx-auto leading-relaxed">
             A playful reading platform where kids unlock incredible stories,
             conquer tricky words, and build a{" "}
             <span className="text-gold font-bold">lifelong love for reading</span>.
@@ -155,9 +155,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ============================================ */}
-      {/* FEATURES SECTION                              */}
-      {/* ============================================ */}
+      {/* FEATURES SECTION */}
       <section className="py-24 px-6 bg-cream">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
@@ -190,9 +188,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ============================================ */}
-      {/* HOW IT WORKS                                  */}
-      {/* ============================================ */}
+      {/* HOW IT WORKS */}
       <section id="how-it-works" className="py-24 px-6 bg-parchment">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
@@ -222,9 +218,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ============================================ */}
-      {/* CTA SECTION                                   */}
-      {/* ============================================ */}
+      {/* CTA SECTION */}
       <section className="py-24 px-6 bg-gradient-to-br from-berry to-indigo-700 relative overflow-hidden">
         <div className="absolute top-10 left-10 text-7xl opacity-20 animate-float">📖</div>
         <div className="absolute bottom-10 right-10 text-7xl opacity-20 animate-float-slow">🌟</div>
@@ -245,12 +239,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ============================================ */}
-      {/* FOOTER                                        */}
-      {/* ============================================ */}
+      {/* FOOTER */}
       <footer className="bg-bark text-white/60 py-12 px-6">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="font-logo text-2xl font-bold text-white">
+          <div className="font-logo text-3xl text-white">
             Onesimos
           </div>
           <div className="flex gap-8 text-sm">
