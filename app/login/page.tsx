@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { hasAnyChildren } from "@/lib/children";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -21,9 +23,18 @@ export default function Login() {
     const { error } = await signIn(email, password);
     if (error) {
       setError(error.message);
-    } else {
-      router.push("/dashboard");
+      setLoading(false);
+      return;
     }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const exists = await hasAnyChildren(user.id);
+      router.push(exists ? "/dashboard" : "/onboarding");
+    } else {
+      router.push("/onboarding");
+    }
+
     setLoading(false);
   };
 
@@ -34,22 +45,20 @@ export default function Login() {
 
       <div className="relative max-w-md w-full">
         <Link href="/" className="block text-center mb-8">
-          <span className="font-heading text-3xl font-extrabold text-bark">
-            ✨ Onesimos
-          </span>
+          <span className="font-logo text-3xl text-bark">Onesimos</span>
         </Link>
 
         <div className="card !p-8">
           <h1 className="font-heading text-3xl font-extrabold text-bark text-center mb-1">
-            Welcome Back!
+            Welcome Back
           </h1>
           <p className="text-bark-muted text-center mb-8">
-            Let&apos;s continue the reading adventure 📚
+            Continue the reading adventure
           </p>
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 p-3 rounded-2xl mb-6 text-sm font-medium">
-              ⚠️ {error}
+              {error}
             </div>
           )}
 
@@ -97,10 +106,7 @@ export default function Login() {
 
           <p className="text-center text-bark-muted text-sm mt-6">
             Don&apos;t have an account?{" "}
-            <Link
-              href="/signup"
-              className="text-coral font-bold hover:underline"
-            >
+            <Link href="/signup" className="text-coral font-bold hover:underline">
               Sign up free
             </Link>
           </p>

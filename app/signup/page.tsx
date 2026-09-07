@@ -22,23 +22,19 @@ export default function SignUp() {
     if (error) {
       setError(error.message);
     } else {
-      router.push("/dashboard");
+      router.push("/onboarding");
     }
     setLoading(false);
   };
 
   return (
     <main className="min-h-screen bg-cream flex items-center justify-center p-6">
-      {/* Decorative blobs */}
       <div className="absolute top-0 left-0 w-72 h-72 bg-gold/10 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-coral/10 rounded-full blur-3xl translate-x-1/3 translate-y-1/3" />
 
       <div className="relative max-w-md w-full">
-        {/* Logo */}
         <Link href="/" className="block text-center mb-8">
-          <span className="font-heading text-3xl font-extrabold text-bark">
-            ✨ Onesimos
-          </span>
+          <span className="font-logo text-3xl text-bark">Onesimos</span>
         </Link>
 
         <div className="card !p-8">
@@ -46,12 +42,12 @@ export default function SignUp() {
             Create Your Account
           </h1>
           <p className="text-bark-muted text-center mb-8">
-            Start your child&apos;s reading adventure today 🚀
+            Start your child&apos;s reading adventure today
           </p>
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 p-3 rounded-2xl mb-6 text-sm font-medium">
-              ⚠️ {error}
+              {error}
             </div>
           )}
 
@@ -100,17 +96,14 @@ export default function SignUp() {
 
           <p className="text-center text-bark-muted text-sm mt-6">
             Already have an account?{" "}
-            <Link
-              href="/login"
-              className="text-coral font-bold hover:underline"
-            >
+            <Link href="/login" className="text-coral font-bold hover:underline">
               Log in
             </Link>
           </p>
         </div>
 
         <p className="text-center text-bark-muted/60 text-xs mt-6">
-          🔒 Your data is safe. We never share personal information.
+          Your data is safe. We never share personal information.
         </p>
       </div>
     </main>
