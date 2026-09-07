@@ -19,10 +19,16 @@ export default function TestSupabase() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-[#f7f2eb] flex items-center justify-center p-6">
-      <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
-        <h1 className="text-2xl font-bold text-[#1e1916] mb-4">Supabase Connection Test</h1>
-        <p className={`text-lg ${status.includes("Error") ? "text-red-500" : "text-green-600"}`}>
+    <main className="min-h-screen bg-cream flex items-center justify-center p-6">
+      <div className="card max-w-md w-full text-center">
+        <h1 className="font-heading text-2xl font-bold text-bark mb-4">
+          Supabase Connection Test
+        </h1>
+        <p
+          className={`text-lg font-bold ${
+            status.includes("Error") ? "text-red-500" : "text-mint"
+          }`}
+        >
           {status}
         </p>
       </div>

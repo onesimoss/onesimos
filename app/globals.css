@@ -2,12 +2,65 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  margin: 0;
-  padding: 0;
-  font-family: var(--font-switzer), sans-serif;
+@import url("https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&family=Nunito:wght@400;500;600;700;800&display=swap");
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: "Nunito", sans-serif;
+    background-color: #fff8f0;
+    color: #2d2418;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: "Baloo 2", cursive;
+  }
 }
 
-.font-achiko {
-  font-family: var(--font-achiko), sans-serif;
+@layer components {
+  .btn-primary {
+    @apply bg-coral text-white font-bold px-8 py-3 rounded-full
+           shadow-kid-pop hover:shadow-hover hover:-translate-y-0.5
+           active:translate-y-0 active:shadow-none
+           transition-all duration-200;
+  }
+
+  .btn-secondary {
+    @apply bg-white text-bark font-bold px-8 py-3 rounded-full
+           border-2 border-border shadow-soft
+           hover:shadow-hover hover:-translate-y-0.5
+           transition-all duration-200;
+  }
+
+  .btn-gold {
+    @apply bg-gold text-bark font-bold px-8 py-3 rounded-full
+           shadow-kid-pop hover:shadow-hover hover:-translate-y-0.5
+           active:translate-y-0 active:shadow-none
+           transition-all duration-200;
+  }
+
+  .card {
+    @apply bg-parchment rounded-3xl shadow-soft p-6
+           border border-border/50;
+  }
+
+  .glass {
+    @apply bg-white/15 backdrop-blur-xl border border-white/25;
+  }
 }
