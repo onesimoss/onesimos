@@ -29,7 +29,7 @@ export default function AvatarPicker({ value, onChange }: AvatarPickerProps) {
               style={{
                 boxShadow: selected ? `0 0 0 3px ${avatar.color}33` : undefined,
               }}
-              aria-label={`Avatar ${avatar.id}`}
+              aria-label={`Select avatar ${avatar.id}`}
             >
               {avatar.emoji}
             </button>
