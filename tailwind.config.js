@@ -4,30 +4,63 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Kid Frontend Palette
-        "kid-sky": "#87CEEB", // Bright, calm background
-        "kid-sun": "#FFD166", // Buttons and rewards
-        "kid-coral": "#EF476F", // Accents and warnings
-        "kid-mint": "#06D6A0", // Success and positive feedback
-        "kid-navy": "#073B4C", // Kid text (soft, not stark black)
-        "kid-cream": "#FFFDF7", // Cards and panels
-
-        // Parent Backend Palette (Clean, professional, separate)
-        "parent-bg": "#F8FAFC", // Light gray background
-        "parent-card": "#FFFFFF", // White cards
-        "parent-text": "#1E293B", // Dark blue-gray text
-        "parent-accent": "#4F46E5", // Indigo for buttons/links
-      },
-      borderRadius: {
-        blob: "2rem", // Large, rounded, chunky corners
-      },
-      boxShadow: {
-        "kid-soft": "0 10px 30px -10px rgba(0,0,0,0.15)",
-        "kid-hover": "0 20px 40px -10px rgba(0,0,0,0.2)",
+        // === UNIFIED STORYBOOK PALETTE ===
+        cream: "#FFF8F0",
+        parchment: "#FFFDF7",
+        bark: "#2D2418",
+        "bark-light": "#6B5E52",
+        "bark-muted": "#9B8E82",
+        coral: "#E8734A",
+        "coral-dark": "#D4602F",
+        gold: "#F5B731",
+        "gold-light": "#FFF0C8",
+        mint: "#34C78B",
+        "mint-light": "#D4F5E6",
+        sky: "#5BB5F0",
+        "sky-light": "#DBEAFE",
+        berry: "#8B5CF6",
+        "berry-dark": "#6D28D9",
+        border: "#F0E6D8",
       },
       fontFamily: {
-        kid: ['"Comic Neue"', "cursive"], // Suggested: Import "Comic Neue" or "Baloo 2"
-        parent: ['"Inter"', "sans-serif"],
+        heading: ['"Baloo 2"', "cursive"],
+        body: ['"Nunito"', "sans-serif"],
+      },
+      borderRadius: {
+        blob: "2rem",
+      },
+      boxShadow: {
+        soft: "0 8px 30px -8px rgba(45,36,24,0.12)",
+        hover: "0 16px 40px -8px rgba(45,36,24,0.18)",
+        glow: "0 0 30px rgba(232,115,74,0.3)",
+        "kid-pop": "0 6px 0 0 rgba(0,0,0,0.1)",
+      },
+      animation: {
+        float: "float 6s ease-in-out infinite",
+        "float-slow": "float 8s ease-in-out infinite",
+        "bounce-in": "bounceIn 0.6s ease-out",
+        wiggle: "wiggle 2s ease-in-out infinite",
+        "fade-up": "fadeUp 0.8s ease-out",
+      },
+      keyframes: {
+        float: {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%": { transform: "translateY(-20px)" },
+        },
+        bounceIn: {
+          "0%": { transform: "scale(0.3)", opacity: "0" },
+          "50%": { transform: "scale(1.05)" },
+          "70%": { transform: "scale(0.9)" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        wiggle: {
+          "0%, 100%": { transform: "rotate(-3deg)" },
+          "50%": { transform: "rotate(3deg)" },
+        },
+        fadeUp: {
+          "0%": { opacity: "0", transform: "translateY(30px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
       },
     },
   },
