@@ -7,7 +7,18 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 import { getAvatarById } from "@/lib/avatars";
 import type { ChildProfile } from "@/lib/children";
-import { getStoriesForChild } from "@/lib/sampleStories";
+import { getStoriesForChild, type SampleStory } from "@/lib/sampleStories";
+import { getDailyBudgetSeconds, formatMMSS } from "@/lib/sessionBudget";
+
+function storyFitLabel(story: SampleStory, readingLevel: number): string {
+  if (readingLevel >= story.levelMin && readingLevel <= story.levelMax) {
+    return "Just right for you";
+  }
+  if (readingLevel < story.levelMin) {
+    return "A little challenge";
+  }
+  return "Easy warm-up";
+}
 
 export default function KidHomePage() {
   const { childId } = useParams<{ childId: string }>();
@@ -15,6 +26,7 @@ export default function KidHomePage() {
   const router = useRouter();
   const [child, setChild] = useState<ChildProfile | null>(null);
   const [fetching, setFetching] = useState(true);
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
@@ -37,7 +49,11 @@ export default function KidHomePage() {
         return;
       }
 
-      setChild(data as ChildProfile);
+      const profile = data as ChildProfile;
+      setChild(profile);
+      setSecondsLeft(
+        getDailyBudgetSeconds(profile.id, profile.session_minutes || 20)
+      );
       setFetching(false);
     }
     load();
@@ -60,6 +76,7 @@ export default function KidHomePage() {
   }
 
   const avatar = getAvatarById(child.avatar_id);
+  const timeIsUp = (secondsLeft ?? 1) <= 0;
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-sky-light via-cream to-gold-light">
@@ -76,49 +93,72 @@ export default function KidHomePage() {
 
         <div className="text-center mb-10">
           <div
-            className="w-28 h-28 mx-auto rounded-[2rem] flex items-center justify-center text-6xl border-4 border-white shadow-soft mb-5"
+            className="w-28 h-28 mx-auto rounded-[2rem] overflow-hidden border-4 border-white shadow-soft mb-5 bg-cream"
             style={{ backgroundColor: `${avatar.color}33` }}
           >
-            {avatar.emoji}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={avatar.imageUrl}
+              alt=""
+              className="w-full h-full object-cover"
+            />
           </div>
           <h1 className="font-heading text-4xl md:text-5xl font-extrabold text-bark mb-2">
             Hi, {child.name}!
           </h1>
           <p className="text-bark-muted text-lg">
-            Pick a story for today
+            {timeIsUp
+              ? "You did amazing today. See you tomorrow!"
+              : "Pick a story for today"}
           </p>
           <div className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-full bg-white/80 border border-border text-bark font-bold text-sm">
-            Level {child.reading_level} · {child.session_minutes} min
+            {timeIsUp
+              ? "Daily reading complete"
+              : `Today's adventure time · ${formatMMSS(secondsLeft || 0)} left`}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-          {stories.map((story) => (
-            <Link
-              key={story.id}
-              href={`/kid/${child.id}/read/${story.id}`}
-              className="card hover:shadow-hover hover:-translate-y-1 transition-all text-left !p-5"
-            >
-              <div className="text-4xl mb-3">{story.coverEmoji}</div>
-              <h2 className="font-heading text-xl font-bold text-bark mb-1">
-                {story.title}
-              </h2>
-              <p className="text-sm text-bark-muted mb-4">
-                ~{story.estimatedMinutes} min · Levels {story.levelMin}–
-                {story.levelMax}
-              </p>
-              <span className="inline-flex btn-primary !py-2 !px-4 !text-sm">
-                Read now
-              </span>
-            </Link>
-          ))}
-        </div>
+        {timeIsUp ? (
+          <div className="card text-center !p-8 mb-8">
+            <div className="text-5xl mb-3">🌟</div>
+            <h2 className="font-heading text-2xl font-bold text-bark mb-2">
+              Rest time
+            </h2>
+            <p className="text-bark-muted">
+              Your stories will be waiting tomorrow. Go play, snack, or hug someone
+              you love.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+            {stories.map((story) => (
+              <Link
+                key={story.id}
+                href={`/kid/${child.id}/read/${story.id}`}
+                className="card hover:shadow-hover hover:-translate-y-1 transition-all text-left !p-5"
+              >
+                <div className="text-4xl mb-3">{story.coverEmoji}</div>
+                <h2 className="font-heading text-xl font-bold text-bark mb-1">
+                  {story.title}
+                </h2>
+                <p className="text-sm text-bark-muted mb-1">
+                  About {story.estimatedMinutes} minutes
+                </p>
+                <p className="text-xs font-bold text-coral mb-4">
+                  {storyFitLabel(story, child.reading_level || 3)}
+                </p>
+                <span className="inline-flex btn-primary !py-2 !px-4 !text-sm">
+                  Read now
+                </span>
+              </Link>
+            ))}
+          </div>
+        )}
 
-        {stories.length === 0 && (
-          <div className="card text-center py-10">
-            <p className="text-bark-muted mb-2">No stories matched yet.</p>
-            <p className="text-sm text-bark-muted">
-              Try updating interests from onboarding, or we will add more stories soon.
+        {!timeIsUp && stories.length === 0 && (
+          <div className="card text-center py-10 mb-8">
+            <p className="text-bark-muted">
+              Stories are getting ready for you. Check back soon!
             </p>
           </div>
         )}
