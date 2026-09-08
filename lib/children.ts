@@ -75,6 +75,21 @@ export async function createChild(parentId: string, input: CreateChildInput) {
   return { data: data as ChildProfile, error: null };
 }
 
+export async function deleteChild(childId: string, parentId: string) {
+  const { error } = await supabase
+    .from("children")
+    .delete()
+    .eq("id", childId)
+    .eq("parent_id", parentId);
+
+  if (error) {
+    console.error("Error deleting child profile:", error);
+    return { error };
+  }
+
+  return { error: null };
+}
+
 export async function hasAnyChildren(parentId: string) {
   const { data, error } = await supabase
     .from("children")
