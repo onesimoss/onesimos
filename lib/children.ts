@@ -21,6 +21,9 @@ export interface ChildProfile {
   cultural_context: string;
   onboarding_completed: boolean;
   kid_pin?: string | null;
+  reminder_enabled?: boolean;
+  reminder_time_local?: string | null;
+  reminder_last_date?: string | null;
   created_at?: string;
 }
 
@@ -65,6 +68,8 @@ export async function createChild(parentId: string, input: CreateChildInput) {
       cultural_context: input.cultural_context || "general",
       onboarding_completed: true,
       kid_pin: null,
+      reminder_enabled: false,
+      reminder_time_local: "16:30",
     })
     .select()
     .single();
@@ -128,13 +133,15 @@ export async function verifyChildPin(childId: string, pin: string) {
     return { ok: false, error: error || { message: "Child not found" } };
   }
 
-  // No PIN set yet → allow entry once (parent should set PIN soon)
   if (!data.kid_pin) {
     return { ok: true, error: null, needsPinSetup: true };
   }
 
   if (data.kid_pin !== cleaned) {
-    return { ok: false, error: { message: "That PIN doesn't match. Try again." } };
+    return {
+      ok: false,
+      error: { message: "That PIN doesn't match. Try again." },
+    };
   }
 
   return { ok: true, error: null, needsPinSetup: false };
@@ -165,7 +172,6 @@ export function defaultReadingLevelFromAge(age: number): number {
   return Math.min(age - 2, 12);
 }
 
-/** Kid-mode session helpers (device-local, not parent password) */
 const KID_SESSION_KEY = "onesimos_kid_session";
 
 export function setKidSession(childId: string) {
