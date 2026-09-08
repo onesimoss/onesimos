@@ -8,6 +8,7 @@ import LogoutButton from "@/components/LogoutButton";
 import {
   getChildrenForParent,
   deleteChild,
+  setChildPin,
   type ChildProfile,
 } from "@/lib/children";
 import { getAvatarById } from "@/lib/avatars";
@@ -39,6 +40,10 @@ export default function DashboardPage() {
   const [fetching, setFetching] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [pinEditId, setPinEditId] = useState<string | null>(null);
+  const [pinValue, setPinValue] = useState("");
+  const [pinSaving, setPinSaving] = useState(false);
+  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -94,6 +99,30 @@ export default function DashboardPage() {
     }
   };
 
+  const handleSavePin = async (child: ChildProfile) => {
+    if (!user) return;
+    setPinSaving(true);
+    setError("");
+    setMessage("");
+
+    const { error: pinError } = await setChildPin(child.id, user.id, pinValue);
+    setPinSaving(false);
+
+    if (pinError) {
+      setError(pinError.message || "Could not save PIN.");
+      return;
+    }
+
+    setChildren((prev) =>
+      prev.map((c) =>
+        c.id === child.id ? { ...c, kid_pin: pinValue.replace(/\D/g, "") } : c
+      )
+    );
+    setPinEditId(null);
+    setPinValue("");
+    setMessage(`PIN saved for ${child.name}. They can use Who's reading? on the tablet.`);
+  };
+
   if (loading || fetching || !user) {
     return (
       <main className="min-h-screen bg-cream flex items-center justify-center">
@@ -105,11 +134,17 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-cream">
       <header className="border-b border-border bg-parchment/80 backdrop-blur-md sticky top-0 z-20">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-3">
           <Link href="/dashboard" className="font-logo text-2xl text-bark">
             Onesimos
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link
+              href="/who"
+              className="text-sm font-bold text-coral hover:underline"
+            >
+              Who&apos;s reading?
+            </Link>
             <span className="hidden sm:block text-sm text-bark-muted">
               {user.email}
             </span>
@@ -119,19 +154,25 @@ export default function DashboardPage() {
       </header>
 
       <div className="max-w-6xl mx-auto px-6 py-10">
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
           <div>
             <h1 className="font-heading text-3xl md:text-4xl font-extrabold text-bark">
               Parent Dashboard
             </h1>
             <p className="text-bark-muted mt-1">
-              Your family&apos;s reading hub
+              Set a 4-digit PIN per child so they can open their stories without your password.
             </p>
           </div>
           <Link href="/onboarding" className="btn-primary !py-2.5 !px-5 !text-sm">
             + Add child
           </Link>
         </div>
+
+        {message && (
+          <div className="mb-6 bg-mint-light border border-mint/30 text-bark p-3 rounded-2xl text-sm font-medium">
+            {message}
+          </div>
+        )}
 
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 text-red-600 p-3 rounded-2xl text-sm font-medium">
@@ -144,7 +185,9 @@ export default function DashboardPage() {
             const avatar = getAvatarById(child.avatar_id);
             const isConfirming = confirmId === child.id;
             const isDeleting = deletingId === child.id;
+            const isPinEdit = pinEditId === child.id;
             const practice = practiceByChild[child.id] || [];
+            const hasPin = !!(child.kid_pin && String(child.kid_pin).length === 4);
 
             return (
               <div key={child.id} className="card hover:shadow-hover transition-all">
@@ -166,6 +209,13 @@ export default function DashboardPage() {
                     </h2>
                     <p className="text-sm text-bark-muted">
                       Age {child.age} · Reading level {child.reading_level}
+                    </p>
+                    <p className="text-xs font-bold mt-1">
+                      {hasPin ? (
+                        <span className="text-mint">PIN set</span>
+                      ) : (
+                        <span className="text-coral">PIN not set yet</span>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -191,8 +241,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* Practice words — parent only, calm framing */}
-                <div className="mb-5 rounded-2xl bg-cream border border-border p-3">
+                <div className="mb-4 rounded-2xl bg-cream border border-border p-3">
                   <p className="text-xs font-bold text-bark-muted mb-2 uppercase tracking-wide">
                     Words to practice
                   </p>
@@ -206,7 +255,6 @@ export default function DashboardPage() {
                         <span
                           key={item.word}
                           className="px-2.5 py-1 rounded-full bg-gold-light text-bark text-xs font-bold border border-border"
-                          title={`Noticed ${item.count} time(s)`}
                         >
                           {item.word}
                           {item.count > 1 ? ` · ${item.count}` : ""}
@@ -215,6 +263,60 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </div>
+
+                {/* PIN setup */}
+                {isPinEdit ? (
+                  <div className="mb-4 rounded-2xl border border-border bg-parchment p-3">
+                    <p className="text-sm font-bold text-bark mb-2">
+                      4-digit PIN for {child.name}
+                    </p>
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={4}
+                      value={pinValue}
+                      onChange={(e) =>
+                        setPinValue(e.target.value.replace(/\D/g, "").slice(0, 4))
+                      }
+                      placeholder="••••"
+                      className="w-full px-4 py-3 rounded-2xl border border-border bg-cream text-center text-2xl tracking-[0.5em] font-bold focus:outline-none focus:ring-2 focus:ring-coral/40"
+                    />
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPinEditId(null);
+                          setPinValue("");
+                        }}
+                        className="btn-secondary flex-1 !py-2 !text-sm"
+                        disabled={pinSaving}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSavePin(child)}
+                        disabled={pinSaving || pinValue.length !== 4}
+                        className="btn-primary flex-1 !py-2 !text-sm disabled:opacity-50"
+                      >
+                        {pinSaving ? "Saving..." : "Save PIN"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPinEditId(child.id);
+                      setPinValue("");
+                      setConfirmId(null);
+                    }}
+                    className="w-full mb-3 text-sm font-bold text-bark-muted hover:text-coral py-2 border border-border rounded-full bg-cream"
+                  >
+                    {hasPin ? "Change kid PIN" : "Set kid PIN"}
+                  </button>
+                )}
 
                 {!isConfirming ? (
                   <div className="flex flex-col gap-2">
@@ -226,7 +328,10 @@ export default function DashboardPage() {
                     </Link>
                     <button
                       type="button"
-                      onClick={() => setConfirmId(child.id)}
+                      onClick={() => {
+                        setConfirmId(child.id);
+                        setPinEditId(null);
+                      }}
                       className="text-sm font-bold text-bark-muted hover:text-red-500 transition-colors py-2"
                     >
                       Remove profile
