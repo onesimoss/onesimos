@@ -13,6 +13,10 @@ import {
 } from "@/lib/children";
 import { getAvatarById } from "@/lib/avatars";
 import { getRecentStumbledWords } from "@/lib/stumbledWords";
+import {
+  updateChildReminder,
+  requestNotificationPermission,
+} from "@/lib/reminders";
 
 function curriculumLabel(value: string) {
   switch (value) {
@@ -43,6 +47,7 @@ export default function DashboardPage() {
   const [pinEditId, setPinEditId] = useState<string | null>(null);
   const [pinValue, setPinValue] = useState("");
   const [pinSaving, setPinSaving] = useState(false);
+  const [reminderSavingId, setReminderSavingId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -120,7 +125,79 @@ export default function DashboardPage() {
     );
     setPinEditId(null);
     setPinValue("");
-    setMessage(`PIN saved for ${child.name}. They can use Who's reading? on the tablet.`);
+    setMessage(`PIN saved for ${child.name}.`);
+  };
+
+  const handleReminderToggle = async (child: ChildProfile, enabled: boolean) => {
+    if (!user) return;
+    setReminderSavingId(child.id);
+    setError("");
+    setMessage("");
+
+    if (enabled) {
+      const permission = await requestNotificationPermission();
+      if (permission === "denied") {
+        setError(
+          "Notifications are blocked in this browser. You can still save the time; enable notifications in browser settings for gentle alerts."
+        );
+      } else if (permission === "unsupported") {
+        setMessage(
+          "This device may not support browser notifications. Reminder is saved for in-app gentle cues."
+        );
+      }
+    }
+
+    const timeLocal = child.reminder_time_local || "16:30";
+    const { error: remError } = await updateChildReminder(child.id, user.id, {
+      enabled,
+      timeLocal,
+    });
+    setReminderSavingId(null);
+
+    if (remError) {
+      setError(remError.message || "Could not update reminder.");
+      return;
+    }
+
+    setChildren((prev) =>
+      prev.map((c) =>
+        c.id === child.id ? { ...c, reminder_enabled: enabled } : c
+      )
+    );
+    setMessage(
+      enabled
+        ? `Story Time Reminder on for ${child.name} (optional — you can turn it off anytime).`
+        : `Story Time Reminder off for ${child.name}.`
+    );
+  };
+
+  const handleReminderTime = async (child: ChildProfile, timeLocal: string) => {
+    if (!user) return;
+    setReminderSavingId(child.id);
+    setError("");
+
+    const { error: remError, timeLocal: saved } = await updateChildReminder(
+      child.id,
+      user.id,
+      {
+        enabled: !!child.reminder_enabled,
+        timeLocal,
+      }
+    );
+    setReminderSavingId(null);
+
+    if (remError) {
+      setError(remError.message || "Could not save time.");
+      return;
+    }
+
+    setChildren((prev) =>
+      prev.map((c) =>
+        c.id === child.id
+          ? { ...c, reminder_time_local: saved || timeLocal }
+          : c
+      )
+    );
   };
 
   if (loading || fetching || !user) {
@@ -160,7 +237,7 @@ export default function DashboardPage() {
               Parent Dashboard
             </h1>
             <p className="text-bark-muted mt-1">
-              Set a 4-digit PIN per child so they can open their stories without your password.
+              PINs, practice words, and optional Story Time reminders — always under your control.
             </p>
           </div>
           <Link href="/onboarding" className="btn-primary !py-2.5 !px-5 !text-sm">
@@ -188,6 +265,9 @@ export default function DashboardPage() {
             const isPinEdit = pinEditId === child.id;
             const practice = practiceByChild[child.id] || [];
             const hasPin = !!(child.kid_pin && String(child.kid_pin).length === 4);
+            const reminderOn = !!child.reminder_enabled;
+            const reminderTime = child.reminder_time_local || "16:30";
+            const savingReminder = reminderSavingId === child.id;
 
             return (
               <div key={child.id} className="card hover:shadow-hover transition-all">
@@ -264,7 +344,47 @@ export default function DashboardPage() {
                   )}
                 </div>
 
-                {/* PIN setup */}
+                {/* Story Time Reminder */}
+                <div className="mb-4 rounded-2xl border border-border bg-parchment p-3">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div>
+                      <p className="text-sm font-bold text-bark">Story Time Reminder</p>
+                      <p className="text-xs text-bark-muted">
+                        Optional · once a day · off after 7:30pm
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={savingReminder}
+                      onClick={() => handleReminderToggle(child, !reminderOn)}
+                      className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${
+                        reminderOn ? "bg-mint" : "bg-border"
+                      }`}
+                      aria-label={reminderOn ? "Turn reminder off" : "Turn reminder on"}
+                    >
+                      <span
+                        className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${
+                          reminderOn ? "translate-x-5" : ""
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  <label className="block text-xs font-bold text-bark-muted mb-1">
+                    Preferred time
+                  </label>
+                  <input
+                    type="time"
+                    value={reminderTime}
+                    disabled={savingReminder}
+                    onChange={(e) => handleReminderTime(child, e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-border bg-cream text-bark font-bold text-sm focus:outline-none focus:ring-2 focus:ring-coral/40"
+                  />
+                  <p className="text-[11px] text-bark-muted mt-2 leading-relaxed">
+                    Gentle browser cue when this device is open. Not a loud alarm.
+                    Turn off anytime. No nudge if today&apos;s reading time is already used.
+                  </p>
+                </div>
+
                 {isPinEdit ? (
                   <div className="mb-4 rounded-2xl border border-border bg-parchment p-3">
                     <p className="text-sm font-bold text-bark mb-2">
