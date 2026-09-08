@@ -21,12 +21,26 @@ const INTERESTS = [
 ];
 
 const CURRICULUMS: { id: Curriculum; label: string; hint: string }[] = [
-  { id: "nigerian", label: "Nigerian", hint: "Local schools & WAEC path" },
-  { id: "british", label: "British", hint: "UK spelling & curriculum" },
-  { id: "american", label: "American", hint: "US spelling & curriculum" },
-  { id: "ghanaian", label: "Ghanaian", hint: "Ghana school path" },
-  { id: "international", label: "International", hint: "IB / mixed" },
-  { id: "other", label: "Other", hint: "We will keep it flexible" },
+  {
+    id: "british",
+    label: "British / Commonwealth",
+    hint: "UK spelling (colour, favourite), Cambridge & WAEC/NERDC path",
+  },
+  {
+    id: "american",
+    label: "American English",
+    hint: "US spelling (color, favorite) & US style curriculum",
+  },
+  {
+    id: "international",
+    label: "International / IB",
+    hint: "Dual-curriculum or International Baccalaureate schools",
+  },
+  {
+    id: "other",
+    label: "Other / Flexible",
+    hint: "General English reading tailored to their pace",
+  },
 ];
 
 const LEVEL_HINTS = [
@@ -48,7 +62,7 @@ export default function OnboardingPage() {
   const [name, setName] = useState("");
   const [age, setAge] = useState(6);
   const [avatarId, setAvatarId] = useState("avatar-1");
-  const [curriculum, setCurriculum] = useState<Curriculum>("nigerian");
+  const [curriculum, setCurriculum] = useState<Curriculum>("british");
   const [interests, setInterests] = useState<string[]>(["adventure"]);
   const [readingLevel, setReadingLevel] = useState(3);
   const [sessionMinutes, setSessionMinutes] = useState<20 | 30 | 45>(20);
@@ -227,10 +241,10 @@ export default function OnboardingPage() {
           {step === 3 && (
             <div>
               <h1 className="font-heading text-3xl font-extrabold text-bark mb-2">
-                School curriculum
+                School curriculum / style
               </h1>
               <p className="text-bark-muted mb-8">
-                This helps spelling, vocabulary, and story style match their school.
+                Helps spelling and story vocabulary match what they learn in school.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {CURRICULUMS.map((c) => (
@@ -245,7 +259,9 @@ export default function OnboardingPage() {
                     }`}
                   >
                     <div className="font-heading font-bold text-bark">{c.label}</div>
-                    <div className="text-sm text-bark-muted mt-1">{c.hint}</div>
+                    <div className="text-xs text-bark-muted mt-1 leading-relaxed">
+                      {c.hint}
+                    </div>
                   </button>
                 ))}
               </div>
