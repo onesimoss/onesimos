@@ -10,6 +10,11 @@ import type { ChildProfile } from "@/lib/children";
 import { getStoriesForChild, type SampleStory } from "@/lib/sampleStories";
 import { getDailyBudgetSeconds, formatMMSS } from "@/lib/sessionBudget";
 import ParentGate from "@/components/ParentGate";
+import {
+  shouldOfferReminder,
+  markReminderShown,
+  sendFriendlyStoryNotification,
+} from "@/lib/reminders";
 
 function storyFitLabel(story: SampleStory, readingLevel: number): string {
   if (readingLevel >= story.levelMin && readingLevel <= story.levelMax) {
@@ -29,6 +34,8 @@ export default function KidHomePage() {
   const [fetching, setFetching] = useState(true);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [gateOpen, setGateOpen] = useState(false);
+  const [showReminder, setShowReminder] = useState(false);
+  const [reminderDismissed, setReminderDismissed] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
@@ -53,10 +60,35 @@ export default function KidHomePage() {
 
       const profile = data as ChildProfile;
       setChild(profile);
-      setSecondsLeft(
-        getDailyBudgetSeconds(profile.id, profile.session_minutes || 20)
+
+      const left = getDailyBudgetSeconds(
+        profile.id,
+        profile.session_minutes || 20
       );
+      setSecondsLeft(left);
       setFetching(false);
+
+      const offer = shouldOfferReminder({
+        enabled: !!profile.reminder_enabled,
+        timeLocal: profile.reminder_time_local || "16:30",
+        lastNotifiedDate: profile.reminder_last_date,
+        childId: profile.id,
+        sessionMinutes: profile.session_minutes || 20,
+      });
+
+      if (offer) {
+        setShowReminder(true);
+        sendFriendlyStoryNotification(profile.name);
+        void markReminderShown(profile.id, user.id);
+        setChild((prev) =>
+          prev
+            ? {
+                ...prev,
+                reminder_last_date: new Date().toISOString().slice(0, 10),
+              }
+            : prev
+        );
+      }
     }
     load();
   }, [user, childId, router]);
@@ -79,6 +111,7 @@ export default function KidHomePage() {
 
   const avatar = getAvatarById(child.avatar_id);
   const timeIsUp = (secondsLeft ?? 1) <= 0;
+  const reminderVisible = showReminder && !reminderDismissed && !timeIsUp;
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-sky-light via-cream to-gold-light">
@@ -99,6 +132,42 @@ export default function KidHomePage() {
             Switch
           </Link>
         </div>
+
+        {reminderVisible && (
+          <div className="mb-6 rounded-3xl border border-gold/40 bg-gold-light/80 px-5 py-4 shadow-soft flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="text-3xl shrink-0">📖</div>
+            <div className="flex-1 text-left">
+              <p className="font-heading text-lg font-bold text-bark">
+                Story time, {child.name}?
+              </p>
+              <p className="text-sm text-bark-muted">
+                A cozy adventure is waiting whenever you&apos;re ready. No rush.
+              </p>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setReminderDismissed(true)}
+                className="btn-secondary !py-2 !px-4 !text-sm"
+              >
+                Maybe later
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setReminderDismissed(true);
+                  const first = stories[0];
+                  if (first) {
+                    router.push(`/kid/${child.id}/read/${first.id}`);
+                  }
+                }}
+                className="btn-primary !py-2 !px-4 !text-sm"
+              >
+                Let&apos;s read
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="text-center mb-10">
           <div
