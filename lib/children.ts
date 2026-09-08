@@ -20,6 +20,7 @@ export interface ChildProfile {
   session_minutes: 20 | 30 | 45;
   cultural_context: string;
   onboarding_completed: boolean;
+  kid_pin?: string | null;
   created_at?: string;
 }
 
@@ -63,6 +64,7 @@ export async function createChild(parentId: string, input: CreateChildInput) {
       session_minutes: input.session_minutes,
       cultural_context: input.cultural_context || "general",
       onboarding_completed: true,
+      kid_pin: null,
     })
     .select()
     .single();
@@ -90,6 +92,54 @@ export async function deleteChild(childId: string, parentId: string) {
   return { error: null };
 }
 
+export async function setChildPin(
+  childId: string,
+  parentId: string,
+  pin: string
+) {
+  const cleaned = pin.replace(/\D/g, "");
+  if (cleaned.length !== 4) {
+    return { error: { message: "PIN must be exactly 4 digits" } };
+  }
+
+  const { error } = await supabase
+    .from("children")
+    .update({ kid_pin: cleaned })
+    .eq("id", childId)
+    .eq("parent_id", parentId);
+
+  if (error) {
+    console.error("Error setting kid PIN:", error);
+    return { error };
+  }
+
+  return { error: null };
+}
+
+export async function verifyChildPin(childId: string, pin: string) {
+  const cleaned = pin.replace(/\D/g, "");
+  const { data, error } = await supabase
+    .from("children")
+    .select("id, kid_pin, name, avatar_id")
+    .eq("id", childId)
+    .single();
+
+  if (error || !data) {
+    return { ok: false, error: error || { message: "Child not found" } };
+  }
+
+  // No PIN set yet → allow entry once (parent should set PIN soon)
+  if (!data.kid_pin) {
+    return { ok: true, error: null, needsPinSetup: true };
+  }
+
+  if (data.kid_pin !== cleaned) {
+    return { ok: false, error: { message: "That PIN doesn't match. Try again." } };
+  }
+
+  return { ok: true, error: null, needsPinSetup: false };
+}
+
 export async function hasAnyChildren(parentId: string) {
   const { data, error } = await supabase
     .from("children")
@@ -113,4 +163,31 @@ export function defaultReadingLevelFromAge(age: number): number {
   if (age === 8) return 6;
   if (age === 9) return 7;
   return Math.min(age - 2, 12);
+}
+
+/** Kid-mode session helpers (device-local, not parent password) */
+const KID_SESSION_KEY = "onesimos_kid_session";
+
+export function setKidSession(childId: string) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(
+    KID_SESSION_KEY,
+    JSON.stringify({ childId, at: Date.now() })
+  );
+}
+
+export function getKidSession(): { childId: string; at: number } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(KID_SESSION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+export function clearKidSession() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(KID_SESSION_KEY);
 }
