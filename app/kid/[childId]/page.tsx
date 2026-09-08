@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 import { getAvatarById } from "@/lib/avatars";
 import type { ChildProfile } from "@/lib/children";
+import { getStoriesForChild } from "@/lib/sampleStories";
 
 export default function KidHomePage() {
   const { childId } = useParams<{ childId: string }>();
@@ -42,6 +43,14 @@ export default function KidHomePage() {
     load();
   }, [user, childId, router]);
 
+  const stories = useMemo(() => {
+    if (!child) return [];
+    return getStoriesForChild({
+      readingLevel: child.reading_level || 3,
+      interests: child.interests || [],
+    });
+  }, [child]);
+
   if (loading || fetching || !child) {
     return (
       <main className="min-h-screen bg-gradient-to-b from-sky-light to-cream flex items-center justify-center">
@@ -55,7 +64,7 @@ export default function KidHomePage() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-sky-light via-cream to-gold-light">
       <div className="max-w-3xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-10">
+        <div className="flex items-center justify-between mb-8">
           <Link
             href="/dashboard"
             className="text-sm font-bold text-bark-muted hover:text-bark"
@@ -76,34 +85,54 @@ export default function KidHomePage() {
             Hi, {child.name}!
           </h1>
           <p className="text-bark-muted text-lg">
-            Ready for today&apos;s story adventure?
+            Pick a story for today
           </p>
-        </div>
-
-        <div className="card text-center !p-8 mb-6">
-          <div className="text-5xl mb-4">{"\u{1F4DA}"}</div>
-          <h2 className="font-heading text-2xl font-bold text-bark mb-2">
-            Stories coming next
-          </h2>
-          <p className="text-bark-muted mb-6">
-            Phase 3 will unlock personalized reading sessions here.
-            For now, your profile is all set.
-          </p>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-mint-light text-bark font-bold text-sm">
-            {child.session_minutes} min sessions · Level {child.reading_level}
+          <div className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-full bg-white/80 border border-border text-bark font-bold text-sm">
+            Level {child.reading_level} · {child.session_minutes} min
           </div>
         </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+          {stories.map((story) => (
+            <Link
+              key={story.id}
+              href={`/kid/${child.id}/read/${story.id}`}
+              className="card hover:shadow-hover hover:-translate-y-1 transition-all text-left !p-5"
+            >
+              <div className="text-4xl mb-3">{story.coverEmoji}</div>
+              <h2 className="font-heading text-xl font-bold text-bark mb-1">
+                {story.title}
+              </h2>
+              <p className="text-sm text-bark-muted mb-4">
+                ~{story.estimatedMinutes} min · Levels {story.levelMin}–
+                {story.levelMax}
+              </p>
+              <span className="inline-flex btn-primary !py-2 !px-4 !text-sm">
+                Read now
+              </span>
+            </Link>
+          ))}
+        </div>
+
+        {stories.length === 0 && (
+          <div className="card text-center py-10">
+            <p className="text-bark-muted mb-2">No stories matched yet.</p>
+            <p className="text-sm text-bark-muted">
+              Try updating interests from onboarding, or we will add more stories soon.
+            </p>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <div className="card text-center">
-            <div className="text-2xl mb-1">{"\u2B50"}</div>
+            <div className="text-2xl mb-1">⭐</div>
             <div className="font-heading font-bold text-bark">Streak</div>
-            <div className="text-bark-muted text-sm">0 days</div>
+            <div className="text-bark-muted text-sm">Coming soon</div>
           </div>
           <div className="card text-center">
-            <div className="text-2xl mb-1">{"\u{1F4D6}"}</div>
+            <div className="text-2xl mb-1">📖</div>
             <div className="font-heading font-bold text-bark">Words</div>
-            <div className="text-bark-muted text-sm">0 read</div>
+            <div className="text-bark-muted text-sm">Coming soon</div>
           </div>
         </div>
       </div>
