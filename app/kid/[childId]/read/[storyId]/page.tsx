@@ -94,7 +94,8 @@ export default function KidReadPage() {
             Time&apos;s up for today!
           </h1>
           <p className="text-bark-muted mb-6">
-            Great reading, {child.name}. Come back tomorrow for more adventures.
+            Great reading, {child.name}. Your daily time is finished.
+            Come back tomorrow for more adventures.
           </p>
           <button type="button" onClick={finishReading} className="btn-primary w-full">
             See my stars
@@ -112,7 +113,6 @@ export default function KidReadPage() {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-sky-light via-cream to-parchment flex flex-col">
-      {/* Top bar */}
       <header className="px-4 py-3 flex items-center justify-between gap-3">
         <Link
           href={`/kid/${childId}`}
@@ -129,12 +129,12 @@ export default function KidReadPage() {
         </div>
 
         <ReadingTimer
+          childId={child.id}
           allowedMinutes={child.session_minutes || 20}
           onTimeUp={handleTimeUp}
         />
       </header>
 
-      {/* Story progress */}
       <div className="px-6 mb-2">
         <div className="h-2 bg-border rounded-full overflow-hidden max-w-3xl mx-auto">
           <div
@@ -143,11 +143,10 @@ export default function KidReadPage() {
           />
         </div>
         <p className="text-center text-xs font-bold text-bark-muted mt-2">
-          Page {pageIndex + 1} of {story.pages.length}
+          Page {pageIndex + 1} of {story.pages.length} · daily time left above
         </p>
       </div>
 
-      {/* Reading card */}
       <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
         <div className="w-full max-w-2xl card !p-6 sm:!p-10 text-center">
           <p className="text-sm font-bold text-coral mb-2">{story.title}</p>
@@ -164,7 +163,6 @@ export default function KidReadPage() {
         </div>
       </div>
 
-      {/* Controls */}
       <div className="p-4 sm:p-6 pb-8">
         <div className="max-w-2xl mx-auto flex items-center justify-between gap-3">
           <button
