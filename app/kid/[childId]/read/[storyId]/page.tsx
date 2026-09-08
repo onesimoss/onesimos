@@ -9,6 +9,7 @@ import { getAvatarById } from "@/lib/avatars";
 import type { ChildProfile } from "@/lib/children";
 import { getStoryById } from "@/lib/sampleStories";
 import ReadingTimer from "@/components/ReadingTimer";
+import ReadAloudMic from "@/components/ReadAloudMic";
 
 export default function KidReadPage() {
   const { childId, storyId } = useParams<{ childId: string; storyId: string }>();
@@ -19,6 +20,7 @@ export default function KidReadPage() {
   const [fetching, setFetching] = useState(true);
   const [pageIndex, setPageIndex] = useState(0);
   const [sessionEnded, setSessionEnded] = useState(false);
+  const [highlightWords, setHighlightWords] = useState<string[]>([]);
 
   const story = useMemo(() => getStoryById(storyId), [storyId]);
 
@@ -49,6 +51,11 @@ export default function KidReadPage() {
     load();
   }, [user, childId, router]);
 
+  // Clear soft practice chips when page changes
+  useEffect(() => {
+    setHighlightWords([]);
+  }, [pageIndex]);
+
   const handleTimeUp = useCallback(() => {
     setSessionEnded(true);
   }, []);
@@ -57,6 +64,30 @@ export default function KidReadPage() {
     router.push(
       `/kid/${childId}/summary?storyId=${storyId}&pages=${pageIndex + 1}`
     );
+  };
+
+  const renderPageText = (text: string, softWords: string[]) => {
+    if (!softWords.length) {
+      return text;
+    }
+
+    const lowerSet = new Set(softWords.map((w) => w.toLowerCase()));
+    const parts = text.split(/(\s+)/);
+
+    return parts.map((part, i) => {
+      const cleaned = part.toLowerCase().replace(/[^\w'-]/g, "");
+      if (cleaned && lowerSet.has(cleaned)) {
+        return (
+          <span
+            key={i}
+            className="rounded-lg bg-gold-light px-1 border border-gold/30"
+          >
+            {part}
+          </span>
+        );
+      }
+      return <span key={i}>{part}</span>;
+    });
   };
 
   if (loading || fetching || !child) {
@@ -122,7 +153,14 @@ export default function KidReadPage() {
         </Link>
 
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-2xl shrink-0">{avatar.emoji}</span>
+          <div className="w-9 h-9 rounded-full overflow-hidden border border-border bg-cream shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={avatar.imageUrl}
+              alt=""
+              className="w-full h-full object-cover"
+            />
+          </div>
           <span className="font-heading font-bold text-bark truncate">
             {child.name}
           </span>
@@ -143,7 +181,7 @@ export default function KidReadPage() {
           />
         </div>
         <p className="text-center text-xs font-bold text-bark-muted mt-2">
-          Page {pageIndex + 1} of {story.pages.length} · daily time left above
+          Page {pageIndex + 1} of {story.pages.length}
         </p>
       </div>
 
@@ -158,9 +196,19 @@ export default function KidReadPage() {
           )}
 
           <p className="font-heading text-2xl sm:text-3xl md:text-4xl leading-snug text-bark font-bold">
-            {page.text}
+            {renderPageText(page.text, highlightWords)}
           </p>
         </div>
+      </div>
+
+      {/* Mic — read this page out loud */}
+      <div className="px-4 pb-3">
+        <ReadAloudMic
+          childId={child.id}
+          storyId={story.id}
+          pageText={page.text}
+          onResult={({ stumbled }) => setHighlightWords(stumbled)}
+        />
       </div>
 
       <div className="p-4 sm:p-6 pb-8">
