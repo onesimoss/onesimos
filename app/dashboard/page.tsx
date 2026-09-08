@@ -17,6 +17,10 @@ import {
   updateChildReminder,
   requestNotificationPermission,
 } from "@/lib/reminders";
+import {
+  getChildSessions,
+  computeSessionStats,
+} from "@/lib/sessionInsights";
 
 function curriculumLabel(value: string) {
   switch (value) {
@@ -34,6 +38,14 @@ function curriculumLabel(value: string) {
   }
 }
 
+type ChildStats = {
+  totalSessions: number;
+  totalPages: number;
+  totalMinutes: number;
+  storiesFinished: number;
+  streak: number;
+};
+
 export default function DashboardPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -41,6 +53,9 @@ export default function DashboardPage() {
   const [practiceByChild, setPracticeByChild] = useState<
     Record<string, { word: string; count: number }[]>
   >({});
+  const [statsByChild, setStatsByChild] = useState<Record<string, ChildStats>>(
+    {}
+  );
   const [fetching, setFetching] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -65,14 +80,21 @@ export default function DashboardPage() {
       setChildren(data);
 
       const practiceMap: Record<string, { word: string; count: number }[]> = {};
+      const statsMap: Record<string, ChildStats> = {};
+
       await Promise.all(
         data.map(async (child) => {
-          const { data: words } = await getRecentStumbledWords(child.id, 8);
+          const [{ data: words }, { data: sessions }] = await Promise.all([
+            getRecentStumbledWords(child.id, 8),
+            getChildSessions(child.id, 60),
+          ]);
           practiceMap[child.id] = words;
+          statsMap[child.id] = computeSessionStats(sessions);
         })
       );
-      setPracticeByChild(practiceMap);
 
+      setPracticeByChild(practiceMap);
+      setStatsByChild(statsMap);
       setFetching(false);
 
       if (data.length === 0) {
@@ -138,11 +160,7 @@ export default function DashboardPage() {
       const permission = await requestNotificationPermission();
       if (permission === "denied") {
         setError(
-          "Notifications are blocked in this browser. You can still save the time; enable notifications in browser settings for gentle alerts."
-        );
-      } else if (permission === "unsupported") {
-        setMessage(
-          "This device may not support browser notifications. Reminder is saved for in-app gentle cues."
+          "Notifications are blocked in this browser. Reminder is still saved for in-app cues."
         );
       }
     }
@@ -166,7 +184,7 @@ export default function DashboardPage() {
     );
     setMessage(
       enabled
-        ? `Story Time Reminder on for ${child.name} (optional — you can turn it off anytime).`
+        ? `Story Time Reminder on for ${child.name}.`
         : `Story Time Reminder off for ${child.name}.`
     );
   };
@@ -237,7 +255,7 @@ export default function DashboardPage() {
               Parent Dashboard
             </h1>
             <p className="text-bark-muted mt-1">
-              PINs, practice words, and optional Story Time reminders — always under your control.
+              Progress at a glance — calm numbers for you, adventures for them.
             </p>
           </div>
           <Link href="/onboarding" className="btn-primary !py-2.5 !px-5 !text-sm">
@@ -264,6 +282,13 @@ export default function DashboardPage() {
             const isDeleting = deletingId === child.id;
             const isPinEdit = pinEditId === child.id;
             const practice = practiceByChild[child.id] || [];
+            const stats = statsByChild[child.id] || {
+              totalSessions: 0,
+              totalPages: 0,
+              totalMinutes: 0,
+              storiesFinished: 0,
+              streak: 0,
+            };
             const hasPin = !!(child.kid_pin && String(child.kid_pin).length === 4);
             const reminderOn = !!child.reminder_enabled;
             const reminderTime = child.reminder_time_local || "16:30";
@@ -296,6 +321,42 @@ export default function DashboardPage() {
                       ) : (
                         <span className="text-coral">PIN not set yet</span>
                       )}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Insights strip */}
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  <div className="rounded-xl bg-cream border border-border p-3 text-center">
+                    <p className="text-lg font-extrabold text-bark font-heading">
+                      {stats.streak}
+                    </p>
+                    <p className="text-[11px] font-bold text-bark-muted uppercase">
+                      Day streak
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-cream border border-border p-3 text-center">
+                    <p className="text-lg font-extrabold text-bark font-heading">
+                      {stats.storiesFinished}
+                    </p>
+                    <p className="text-[11px] font-bold text-bark-muted uppercase">
+                      Stories done
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-cream border border-border p-3 text-center">
+                    <p className="text-lg font-extrabold text-bark font-heading">
+                      {stats.totalPages}
+                    </p>
+                    <p className="text-[11px] font-bold text-bark-muted uppercase">
+                      Pages read
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-cream border border-border p-3 text-center">
+                    <p className="text-lg font-extrabold text-bark font-heading">
+                      {stats.totalSessions}
+                    </p>
+                    <p className="text-[11px] font-bold text-bark-muted uppercase">
+                      Sessions
                     </p>
                   </div>
                 </div>
@@ -344,7 +405,6 @@ export default function DashboardPage() {
                   )}
                 </div>
 
-                {/* Story Time Reminder */}
                 <div className="mb-4 rounded-2xl border border-border bg-parchment p-3">
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <div>
@@ -379,10 +439,6 @@ export default function DashboardPage() {
                     onChange={(e) => handleReminderTime(child, e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-border bg-cream text-bark font-bold text-sm focus:outline-none focus:ring-2 focus:ring-coral/40"
                   />
-                  <p className="text-[11px] text-bark-muted mt-2 leading-relaxed">
-                    Gentle browser cue when this device is open. Not a loud alarm.
-                    Turn off anytime. No nudge if today&apos;s reading time is already used.
-                  </p>
                 </div>
 
                 {isPinEdit ? (
@@ -461,7 +517,7 @@ export default function DashboardPage() {
                   <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
                     <p className="text-sm text-bark mb-3">
                       Remove <span className="font-bold">{child.name}</span>
-                      &apos;s profile? You can add them again later.
+                      &apos;s profile?
                     </p>
                     <div className="flex gap-2">
                       <button
@@ -476,7 +532,7 @@ export default function DashboardPage() {
                         type="button"
                         onClick={() => handleDelete(child)}
                         disabled={isDeleting}
-                        className="flex-1 !py-2 !text-sm font-bold rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50"
+                        className="flex-1 !py-2 !text-sm font-bold rounded-full bg-red-500 text-white hover:bg-red-600 disabled:opacity-50"
                       >
                         {isDeleting ? "Removing..." : "Yes, remove"}
                       </button>
