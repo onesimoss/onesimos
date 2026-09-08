@@ -11,6 +11,7 @@ import {
   type ChildProfile,
 } from "@/lib/children";
 import { getAvatarById } from "@/lib/avatars";
+import { getRecentStumbledWords } from "@/lib/stumbledWords";
 
 function curriculumLabel(value: string) {
   switch (value) {
@@ -21,7 +22,6 @@ function curriculumLabel(value: string) {
     case "international":
       return "International / IB";
     case "nigerian":
-      return "British / Commonwealth";
     case "ghanaian":
       return "British / Commonwealth";
     default:
@@ -33,6 +33,9 @@ export default function DashboardPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [children, setChildren] = useState<ChildProfile[]>([]);
+  const [practiceByChild, setPracticeByChild] = useState<
+    Record<string, { word: string; count: number }[]>
+  >({});
   const [fetching, setFetching] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -50,6 +53,16 @@ export default function DashboardPage() {
       setFetching(true);
       const { data } = await getChildrenForParent(user.id);
       setChildren(data);
+
+      const practiceMap: Record<string, { word: string; count: number }[]> = {};
+      await Promise.all(
+        data.map(async (child) => {
+          const { data: words } = await getRecentStumbledWords(child.id, 8);
+          practiceMap[child.id] = words;
+        })
+      );
+      setPracticeByChild(practiceMap);
+
       setFetching(false);
 
       if (data.length === 0) {
@@ -131,12 +144,10 @@ export default function DashboardPage() {
             const avatar = getAvatarById(child.avatar_id);
             const isConfirming = confirmId === child.id;
             const isDeleting = deletingId === child.id;
+            const practice = practiceByChild[child.id] || [];
 
             return (
-              <div
-                key={child.id}
-                className="card hover:shadow-hover transition-all relative"
-              >
+              <div key={child.id} className="card hover:shadow-hover transition-all">
                 <div className="flex items-center gap-4 mb-5">
                   <div
                     className="w-16 h-16 rounded-2xl overflow-hidden border border-border bg-cream shrink-0"
@@ -159,7 +170,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2 text-sm mb-6">
+                <div className="space-y-2 text-sm mb-4">
                   <div className="flex justify-between gap-3">
                     <span className="text-bark-muted shrink-0">Curriculum</span>
                     <span className="font-bold text-bark text-right">
@@ -178,6 +189,31 @@ export default function DashboardPage() {
                       {(child.interests || []).join(", ") || "—"}
                     </span>
                   </div>
+                </div>
+
+                {/* Practice words — parent only, calm framing */}
+                <div className="mb-5 rounded-2xl bg-cream border border-border p-3">
+                  <p className="text-xs font-bold text-bark-muted mb-2 uppercase tracking-wide">
+                    Words to practice
+                  </p>
+                  {practice.length === 0 ? (
+                    <p className="text-sm text-bark-muted">
+                      No practice list yet. It fills in when they read aloud.
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {practice.map((item) => (
+                        <span
+                          key={item.word}
+                          className="px-2.5 py-1 rounded-full bg-gold-light text-bark text-xs font-bold border border-border"
+                          title={`Noticed ${item.count} time(s)`}
+                        >
+                          {item.word}
+                          {item.count > 1 ? ` · ${item.count}` : ""}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {!isConfirming ? (
@@ -200,8 +236,7 @@ export default function DashboardPage() {
                   <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
                     <p className="text-sm text-bark mb-3">
                       Remove <span className="font-bold">{child.name}</span>
-                      &apos;s profile? Reading history for this profile will be
-                      cleared. You can always add them again later.
+                      &apos;s profile? You can add them again later.
                     </p>
                     <div className="flex gap-2">
                       <button
@@ -227,15 +262,6 @@ export default function DashboardPage() {
             );
           })}
         </div>
-
-        {children.length === 0 && (
-          <div className="card text-center py-16">
-            <p className="text-bark-muted mb-4">No child profiles yet.</p>
-            <Link href="/onboarding" className="btn-primary inline-flex">
-              Create first profile
-            </Link>
-          </div>
-        )}
       </div>
     </main>
   );
