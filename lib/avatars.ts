@@ -1,8 +1,6 @@
 export interface Avatar {
   id: string;
-  /** Image URL (illustrated style — not spooky emoji faces) */
   imageUrl: string;
-  /** Tiny fallback for places that still need a character cue */
   emoji: string;
   color: string;
   gender: "girl" | "boy";
@@ -10,20 +8,24 @@ export interface Avatar {
 }
 
 /**
- * Friendly illustrated avatars (DiceBear Adventurer).
- * Equal girls/boys and balanced skin tones.
- * Seeds are fixed so each avatar stays stable forever.
+ * Conventional, parent-friendly avatars.
+ * - Equal girls / boys (6 each)
+ * - Balanced skin tones
+ * - Dark hair only, short / neat styles (no wild colours)
+ * DiceBear Avataaars with locked params (not Apple Memoji — those are proprietary)
  */
+const base =
+  "https://api.dicebear.com/7.x/avataaars/svg?size=200&backgroundColor=f5f0e8&facialHairProbability=0&accessoriesProbability=0&eyebrows=default,defaultNatural&mouth=smile,default";
+
 export const AVATARS: Avatar[] = [
-  // Girls (6)
+  // ——— Girls (6): neat dark hair ———
   {
     id: "avatar-1",
     gender: "girl",
     skinTone: "dark",
     color: "#E8734A",
     emoji: "\u{1F467}\u{1F3FE}",
-    imageUrl:
-      "https://api.dicebear.com/7.x/adventurer/svg?seed=OnesimosGirlDark1&skinColor=ae5d29&hair=long01,long03&eyes=variant01",
+    imageUrl: `${base}&seed=g1&top=bob&hairColor=2c1b18&skinColor=ae5d29&clothing=shirtCrewNeck&clothesColor=5199e4`,
   },
   {
     id: "avatar-2",
@@ -31,8 +33,7 @@ export const AVATARS: Avatar[] = [
     skinTone: "medium",
     color: "#F5B731",
     emoji: "\u{1F467}\u{1F3FD}",
-    imageUrl:
-      "https://api.dicebear.com/7.x/adventurer/svg?seed=OnesimosGirlMed1&skinColor=d08b5b&hair=long04,long06&eyes=variant02",
+    imageUrl: `${base}&seed=g2&top=bob&hairColor=4a312c&skinColor=d08b5b&clothing=shirtCrewNeck&clothesColor=ffb300`,
   },
   {
     id: "avatar-3",
@@ -40,8 +41,7 @@ export const AVATARS: Avatar[] = [
     skinTone: "deepest",
     color: "#8B5CF6",
     emoji: "\u{1F467}\u{1F3FF}",
-    imageUrl:
-      "https://api.dicebear.com/7.x/adventurer/svg?seed=OnesimosGirlDeep1&skinColor=614335&hair=long08,long09&eyes=variant03",
+    imageUrl: `${base}&seed=g3&top=straight01&hairColor=0e0e0e&skinColor=614335&clothing=shirtCrewNeck&clothesColor=9b59b6`,
   },
   {
     id: "avatar-4",
@@ -49,8 +49,7 @@ export const AVATARS: Avatar[] = [
     skinTone: "light",
     color: "#5BB5F0",
     emoji: "\u{1F467}\u{1F3FB}",
-    imageUrl:
-      "https://api.dicebear.com/7.x/adventurer/svg?seed=OnesimosGirlLight1&skinColor=f2d3b1&hair=long12,long14&eyes=variant05",
+    imageUrl: `${base}&seed=g4&top=bob&hairColor=2c1b18&skinColor=edb98a&clothing=shirtCrewNeck&clothesColor=25557c`,
   },
   {
     id: "avatar-5",
@@ -58,8 +57,7 @@ export const AVATARS: Avatar[] = [
     skinTone: "dark",
     color: "#34C78B",
     emoji: "\u{1F467}\u{1F3FE}",
-    imageUrl:
-      "https://api.dicebear.com/7.x/adventurer/svg?seed=OnesimosGirlDark2&skinColor=ae5d29&hair=long15,long16&eyes=variant06",
+    imageUrl: `${base}&seed=g5&top=straight02&hairColor=2c1b18&skinColor=ae5d29&clothing=shirtCrewNeck&clothesColor=28a745`,
   },
   {
     id: "avatar-6",
@@ -67,19 +65,17 @@ export const AVATARS: Avatar[] = [
     skinTone: "medium",
     color: "#E8734A",
     emoji: "\u{1F467}\u{1F3FD}",
-    imageUrl:
-      "https://api.dicebear.com/7.x/adventurer/svg?seed=OnesimosGirlMed2&skinColor=d08b5b&hair=long17,long18&eyes=variant07",
+    imageUrl: `${base}&seed=g6&top=bob&hairColor=0e0e0e&skinColor=c68642&clothing=shirtCrewNeck&clothesColor=e67e22`,
   },
 
-  // Boys (6)
+  // ——— Boys (6): low cut / short dark hair ———
   {
     id: "avatar-7",
     gender: "boy",
     skinTone: "dark",
     color: "#5BB5F0",
     emoji: "\u{1F466}\u{1F3FE}",
-    imageUrl:
-      "https://api.dicebear.com/7.x/adventurer/svg?seed=OnesimosBoyDark1&skinColor=ae5d29&hair=short01,short03&eyes=variant01",
+    imageUrl: `${base}&seed=b1&top=shortFlat&hairColor=0e0e0e&skinColor=ae5d29&clothing=shirtCrewNeck&clothesColor=3498db`,
   },
   {
     id: "avatar-8",
@@ -87,8 +83,7 @@ export const AVATARS: Avatar[] = [
     skinTone: "medium",
     color: "#34C78B",
     emoji: "\u{1F466}\u{1F3FD}",
-    imageUrl:
-      "https://api.dicebear.com/7.x/adventurer/svg?seed=OnesimosBoyMed1&skinColor=d08b5b&hair=short04,short06&eyes=variant02",
+    imageUrl: `${base}&seed=b2&top=shortRound&hairColor=2c1b18&skinColor=d08b5b&clothing=shirtCrewNeck&clothesColor=27ae60`,
   },
   {
     id: "avatar-9",
@@ -96,8 +91,7 @@ export const AVATARS: Avatar[] = [
     skinTone: "deepest",
     color: "#E8734A",
     emoji: "\u{1F466}\u{1F3FF}",
-    imageUrl:
-      "https://api.dicebear.com/7.x/adventurer/svg?seed=OnesimosBoyDeep1&skinColor=614335&hair=short08,short09&eyes=variant03",
+    imageUrl: `${base}&seed=b3&top=shortFlat&hairColor=0e0e0e&skinColor=614335&clothing=shirtCrewNeck&clothesColor=e74c3c`,
   },
   {
     id: "avatar-10",
@@ -105,8 +99,7 @@ export const AVATARS: Avatar[] = [
     skinTone: "light",
     color: "#8B5CF6",
     emoji: "\u{1F466}\u{1F3FB}",
-    imageUrl:
-      "https://api.dicebear.com/7.x/adventurer/svg?seed=OnesimosBoyLight1&skinColor=f2d3b1&hair=short12,short14&eyes=variant05",
+    imageUrl: `${base}&seed=b4&top=shortWaved&hairColor=2c1b18&skinColor=edb98a&clothing=shirtCrewNeck&clothesColor=8e44ad`,
   },
   {
     id: "avatar-11",
@@ -114,8 +107,7 @@ export const AVATARS: Avatar[] = [
     skinTone: "dark",
     color: "#F5B731",
     emoji: "\u{1F466}\u{1F3FE}",
-    imageUrl:
-      "https://api.dicebear.com/7.x/adventurer/svg?seed=OnesimosBoyDark2&skinColor=ae5d29&hair=short15,short16&eyes=variant06",
+    imageUrl: `${base}&seed=b5&top=shortRound&hairColor=0e0e0e&skinColor=ae5d29&clothing=shirtCrewNeck&clothesColor=f1c40f`,
   },
   {
     id: "avatar-12",
@@ -123,8 +115,7 @@ export const AVATARS: Avatar[] = [
     skinTone: "medium",
     color: "#5BB5F0",
     emoji: "\u{1F466}\u{1F3FD}",
-    imageUrl:
-      "https://api.dicebear.com/7.x/adventurer/svg?seed=OnesimosBoyMed2&skinColor=d08b5b&hair=short17,short18&eyes=variant07",
+    imageUrl: `${base}&seed=b6&top=shortFlat&hairColor=2c1b18&skinColor=c68642&clothing=shirtCrewNeck&clothesColor=1abc9c`,
   },
 ];
 
