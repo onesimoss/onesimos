@@ -9,6 +9,7 @@ import { getAvatarById } from "@/lib/avatars";
 import type { ChildProfile } from "@/lib/children";
 import { getStoriesForChild, type SampleStory } from "@/lib/sampleStories";
 import { getDailyBudgetSeconds, formatMMSS } from "@/lib/sessionBudget";
+import ParentGate from "@/components/ParentGate";
 
 function storyFitLabel(story: SampleStory, readingLevel: number): string {
   if (readingLevel >= story.levelMin && readingLevel <= story.levelMax) {
@@ -27,6 +28,7 @@ export default function KidHomePage() {
   const [child, setChild] = useState<ChildProfile | null>(null);
   const [fetching, setFetching] = useState(true);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const [gateOpen, setGateOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
@@ -82,13 +84,20 @@ export default function KidHomePage() {
     <main className="min-h-screen bg-gradient-to-b from-sky-light via-cream to-gold-light">
       <div className="max-w-3xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
-          <Link
-            href="/dashboard"
+          <button
+            type="button"
+            onClick={() => setGateOpen(true)}
             className="text-sm font-bold text-bark-muted hover:text-bark"
           >
-            ← Parent dashboard
-          </Link>
+            Parents
+          </button>
           <span className="font-logo text-2xl text-bark">Onesimos</span>
+          <Link
+            href="/who"
+            className="text-sm font-bold text-bark-muted hover:text-bark"
+          >
+            Switch
+          </Link>
         </div>
 
         <div className="text-center mb-10">
@@ -176,6 +185,12 @@ export default function KidHomePage() {
           </div>
         </div>
       </div>
+
+      <ParentGate
+        open={gateOpen}
+        onClose={() => setGateOpen(false)}
+        onSuccess={() => router.push("/dashboard")}
+      />
     </main>
   );
 }
