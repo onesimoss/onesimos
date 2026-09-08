@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { getAvatarById } from "@/lib/avatars";
 import type { ChildProfile } from "@/lib/children";
 import { getStoryById } from "@/lib/sampleStories";
+import { saveReadingSession } from "@/lib/sessionInsights";
 
 function SummaryContent() {
   const { childId } = useParams<{ childId: string }>();
@@ -20,6 +21,7 @@ function SummaryContent() {
 
   const [child, setChild] = useState<ChildProfile | null>(null);
   const [fetching, setFetching] = useState(true);
+  const [saved, setSaved] = useState(false);
 
   const story = useMemo(() => getStoryById(storyId), [storyId]);
 
@@ -44,11 +46,27 @@ function SummaryContent() {
         return;
       }
 
-      setChild(data as ChildProfile);
+      const profile = data as ChildProfile;
+      setChild(profile);
       setFetching(false);
+
+      const totalPages = story?.pages.length || pagesRead || 1;
+      const completed = pagesRead >= totalPages;
+
+      // Save once per landing on summary (parent insights)
+      if (!saved) {
+        await saveReadingSession({
+          childId: profile.id,
+          storyId: storyId || undefined,
+          pagesRead: pagesRead || 0,
+          durationSeconds: 0,
+          completedStory: completed,
+        });
+        setSaved(true);
+      }
     }
     load();
-  }, [user, childId, router]);
+  }, [user, childId, router, story, pagesRead, storyId, saved]);
 
   if (loading || fetching || !child) {
     return (
@@ -66,7 +84,14 @@ function SummaryContent() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-gold-light via-cream to-mint-light flex items-center justify-center p-6">
       <div className="w-full max-w-md card text-center !p-8">
-        <div className="text-6xl mb-3">{avatar.emoji}</div>
+        <div className="w-20 h-20 mx-auto rounded-2xl overflow-hidden border-2 border-white shadow-soft mb-3 bg-cream">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={avatar.imageUrl}
+            alt=""
+            className="w-full h-full object-cover"
+          />
+        </div>
         <h1 className="font-heading text-3xl md:text-4xl font-extrabold text-bark mb-2">
           Amazing, {child.name}!
         </h1>
