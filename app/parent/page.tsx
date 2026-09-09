@@ -1,3 +1,20 @@
+/**
+ * @file app/parent/page.tsx
+ * @description Parent Dashboard — child profile overview cards, reading insights,
+ * practice vocabulary list, story-time reminder settings, kid PIN lock management,
+ * Parent 4-digit unlock PIN configuration, and test-data reset tools.
+ *
+ * @dependencies
+ * - @/context/AuthContext (parent authentication & logout)
+ * - @/lib/children (child profiles API, PINs, deletion)
+ * - @/lib/avatars (avatar image & color resolution)
+ * - @/lib/stumbledWords (recent stumbled vocabulary for practice)
+ * - @/lib/reminders (story time notification preferences)
+ * - @/lib/sessionInsights (reading streaks, page counts, session stats)
+ * - @/lib/parentGate (4-digit Parent PIN setup and status)
+ * - @/lib/sessionBudget (reset test story quota helper)
+ */
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -22,8 +39,11 @@ import {
   computeSessionStats,
 } from "@/lib/sessionInsights";
 import { getParentPinStatus, setParentPin } from "@/lib/parentGate";
+import { resetChildStoryQuota } from "@/lib/sessionBudget";
 
-function curriculumLabel(value: string) {
+// ─── Section 1: Helper Types & Label Formatters ───
+
+function curriculumLabel(value: string): string {
   switch (value) {
     case "british":
       return "British / Commonwealth";
@@ -47,10 +67,13 @@ type ChildStats = {
   streak: number;
 };
 
+// ─── Section 2: Component Implementation ───
+
 export default function ParentDashboard() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
+  // Child Data States
   const [children, setChildren] = useState<ChildProfile[]>([]);
   const [practiceByChild, setPracticeByChild] = useState<
     Record<string, { word: string; count: number }[]>
@@ -60,15 +83,16 @@ export default function ParentDashboard() {
   );
   const [fetching, setFetching] = useState(true);
 
-  // Child management states
+  // Child Profile Action States
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [pinEditId, setPinEditId] = useState<string | null>(null);
   const [pinValue, setPinValue] = useState("");
   const [pinSaving, setPinSaving] = useState(false);
   const [reminderSavingId, setReminderSavingId] = useState<string | null>(null);
+  const [resettingId, setResettingId] = useState<string | null>(null);
 
-  // Parent PIN states
+  // Parent PIN Security States
   const [hasParentPin, setHasParentPin] = useState<boolean | null>(null);
   const [showParentPinModal, setShowParentPinModal] = useState(false);
   const [newParentPin, setNewParentPin] = useState("");
@@ -76,26 +100,28 @@ export default function ParentDashboard() {
   const [parentPinSaving, setParentPinSaving] = useState(false);
   const [parentPinError, setParentPinError] = useState("");
 
-  // Feedback states
+  // Feedback Banner States
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
+  // Authentication Protection
   useEffect(() => {
     if (!loading && !user) {
       router.replace("/parent/login");
     }
   }, [user, loading, router]);
 
+  // Load All Parent Data (Children, Stats, Practice Words, Parent PIN Status)
   useEffect(() => {
-    async function load() {
+    async function loadDashboardData() {
       if (!user) return;
       setFetching(true);
 
-      // Check Parent PIN status
+      // Check Parent PIN configuration status
       const { hasPin } = await getParentPinStatus(user.id);
       setHasParentPin(hasPin);
 
-      // Fetch children
+      // Fetch list of child profiles for parent
       const { data } = await getChildrenForParent(user.id);
       setChildren(data);
 
@@ -121,10 +147,15 @@ export default function ParentDashboard() {
         router.replace("/onboarding");
       }
     }
-    void load();
+
+    void loadDashboardData();
   }, [user, router]);
 
-  // Handle Parent PIN Save
+  // ─── Section 3: Event Handlers ───
+
+  /**
+   * Save or update secret 4-digit Parent PIN.
+   */
   const handleSaveParentPin = async (e: React.FormEvent) => {
     e.preventDefault();
     setParentPinError("");
@@ -154,11 +185,13 @@ export default function ParentDashboard() {
     setShowParentPinModal(false);
     setNewParentPin("");
     setConfirmParentPin("");
-    setMessage("Parent unlock PIN updated successfully!");
+    setMessage("Parent unlock PIN saved successfully!");
   };
 
-  // Handle Delete Child Profile
-  const handleDelete = async (child: ChildProfile) => {
+  /**
+   * Remove a child profile permanently.
+   */
+  const handleDeleteChild = async (child: ChildProfile) => {
     if (!user) return;
     setDeletingId(child.id);
     setError("");
@@ -180,7 +213,9 @@ export default function ParentDashboard() {
     }
   };
 
-  // Handle Kid PIN Save
+  /**
+   * Save 4-digit PIN for a child profile.
+   */
   const handleSaveKidPin = async (child: ChildProfile) => {
     if (!user) return;
     setPinSaving(true);
@@ -205,7 +240,9 @@ export default function ParentDashboard() {
     setMessage(`Kid PIN saved for ${child.name}.`);
   };
 
-  // Handle Story Time Reminder Toggle
+  /**
+   * Toggle Story Time Reminder preference.
+   */
   const handleReminderToggle = async (child: ChildProfile, enabled: boolean) => {
     if (!user) return;
     setReminderSavingId(child.id);
@@ -245,7 +282,9 @@ export default function ParentDashboard() {
     );
   };
 
-  // Handle Reminder Preferred Time Change
+  /**
+   * Update Story Time Reminder preferred time.
+   */
   const handleReminderTime = async (child: ChildProfile, timeLocal: string) => {
     if (!user) return;
     setReminderSavingId(child.id);
@@ -275,6 +314,41 @@ export default function ParentDashboard() {
     );
   };
 
+  /**
+   * Reset test reading session history and unblock monthly quotas for testing.
+   */
+  const handleResetTestData = async (child: ChildProfile) => {
+    setResettingId(child.id);
+    setError("");
+    setMessage("");
+
+    const { error: resetError } = await resetChildStoryQuota(child.id);
+    setResettingId(null);
+
+    if (resetError) {
+      setError(`Failed to reset test data for ${child.name}.`);
+      return;
+    }
+
+    // Refresh local stats representation
+    setStatsByChild((prev) => ({
+      ...prev,
+      [child.id]: {
+        totalSessions: 0,
+        totalPages: 0,
+        totalMinutes: 0,
+        storiesFinished: 0,
+        streak: 0,
+      },
+    }));
+    setPracticeByChild((prev) => ({
+      ...prev,
+      [child.id]: [],
+    }));
+
+    setMessage(`Test story quota & reading data reset for ${child.name}.`);
+  };
+
   if (loading || fetching || !user) {
     return (
       <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center">
@@ -285,7 +359,8 @@ export default function ParentDashboard() {
 
   return (
     <main className="min-h-screen bg-[#FDFBF7] font-sans pb-16">
-      {/* Header */}
+      
+      {/* ─── Section 4: Top Navigation Bar ─── */}
       <header className="border-b border-gray-200 bg-white/80 backdrop-blur-md sticky top-0 z-20">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-3">
           <Link href="/parent" className="font-extrabold text-2xl text-gray-900 tracking-tight">
@@ -330,7 +405,7 @@ export default function ParentDashboard() {
           </div>
         )}
 
-        {/* Dashboard Title & Actions */}
+        {/* Dashboard Title & Quick Actions */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl md:text-4xl font-black text-gray-900">
@@ -360,24 +435,25 @@ export default function ParentDashboard() {
 
         {/* Feedback Banners */}
         {message && (
-          <div className="mb-6 bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-2xl text-xs font-bold">
+          <div className="mb-6 bg-emerald-50 border border-emerald-200 text-emerald-800 p-3.5 rounded-2xl text-xs font-bold">
             {message}
           </div>
         )}
 
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-600 p-3 rounded-2xl text-xs font-bold">
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-600 p-3.5 rounded-2xl text-xs font-bold">
             {error}
           </div>
         )}
 
-        {/* Children Cards Grid */}
+        {/* ─── Section 5: Child Cards Grid ─── */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {children.map((child) => {
             const avatar = getAvatarById(child.avatar_id);
             const isConfirming = confirmId === child.id;
             const isDeleting = deletingId === child.id;
             const isPinEdit = pinEditId === child.id;
+            const isResetting = resettingId === child.id;
             const practice = practiceByChild[child.id] || [];
             const stats = statsByChild[child.id] || {
               totalSessions: 0,
@@ -397,7 +473,7 @@ export default function ParentDashboard() {
                 className="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
               >
                 <div>
-                  {/* Child Top Summary */}
+                  {/* Child Profile Summary */}
                   <div className="flex items-center gap-4 mb-5">
                     <div
                       className="w-16 h-16 rounded-2xl overflow-hidden border border-gray-200 bg-cream shrink-0 flex items-center justify-center"
@@ -463,7 +539,7 @@ export default function ParentDashboard() {
                     </div>
                   </div>
 
-                  {/* Settings & Info */}
+                  {/* Curriculum & Preferences Info */}
                   <div className="space-y-2 text-xs mb-4 pt-2 border-t border-gray-100">
                     <div className="flex justify-between gap-3">
                       <span className="text-gray-400 font-medium">Curriculum</span>
@@ -485,7 +561,7 @@ export default function ParentDashboard() {
                     </div>
                   </div>
 
-                  {/* Words to Practice */}
+                  {/* Practice Vocabulary List */}
                   <div className="mb-4 rounded-2xl bg-[#FBF9F5] border border-gray-100 p-3">
                     <p className="text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-wider">
                       Words to practice
@@ -546,7 +622,7 @@ export default function ParentDashboard() {
                     />
                   </div>
 
-                  {/* Kid PIN Edit */}
+                  {/* Kid PIN Configuration */}
                   {isPinEdit ? (
                     <div className="mb-4 rounded-2xl border border-gray-200 bg-gray-50 p-3">
                       <p className="text-xs font-bold text-gray-800 mb-2">
@@ -601,7 +677,7 @@ export default function ParentDashboard() {
                   )}
                 </div>
 
-                {/* Bottom Profile Actions */}
+                {/* Bottom Profile Actions & Tester Tooling */}
                 <div>
                   {!isConfirming ? (
                     <div className="flex flex-col gap-2 pt-2">
@@ -611,16 +687,26 @@ export default function ParentDashboard() {
                       >
                         Open Kid View
                       </Link>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setConfirmId(child.id);
-                          setPinEditId(null);
-                        }}
-                        className="text-xs font-bold text-gray-400 hover:text-red-500 transition-colors py-1 text-center"
-                      >
-                        Remove profile
-                      </button>
+                      <div className="flex justify-between items-center px-1 pt-1">
+                        <button
+                          type="button"
+                          disabled={isResetting}
+                          onClick={() => void handleResetTestData(child)}
+                          className="text-[11px] font-bold text-gray-400 hover:text-amber-700 transition-colors py-1 disabled:opacity-50"
+                        >
+                          {isResetting ? "Resetting..." : "🔄 Reset Test Quota"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setConfirmId(child.id);
+                            setPinEditId(null);
+                          }}
+                          className="text-[11px] font-bold text-gray-400 hover:text-red-500 transition-colors py-1"
+                        >
+                          Remove profile
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <div className="rounded-2xl border border-red-200 bg-red-50 p-3 mt-2">
@@ -638,7 +724,7 @@ export default function ParentDashboard() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDelete(child)}
+                          onClick={() => handleDeleteChild(child)}
                           disabled={isDeleting}
                           className="flex-1 py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 disabled:opacity-50"
                         >
@@ -654,7 +740,7 @@ export default function ParentDashboard() {
         </div>
       </div>
 
-      {/* Parent PIN Modal */}
+      {/* ─── Section 6: Parent 4-Digit Security PIN Modal ─── */}
       {showParentPinModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl border border-gray-100">
