@@ -400,13 +400,13 @@ export default function ParentDashboard() {
                   {/* Child Top Summary */}
                   <div className="flex items-center gap-4 mb-5">
                     <div
-                      className="w-16 h-16 rounded-2xl overflow-hidden border border-gray-200 shrink-0 flex items-center justify-center"
-                      style={{ backgroundColor: `${avatar.bgColor}` }}
+                      className="w-16 h-16 rounded-2xl overflow-hidden border border-gray-200 bg-cream shrink-0 flex items-center justify-center"
+                      style={{ backgroundColor: `${avatar.color}22` }}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={avatar.src}
-                        alt={avatar.alt}
+                        src={avatar.imageUrl}
+                        alt=""
                         className="w-full h-full object-cover"
                       />
                     </div>
