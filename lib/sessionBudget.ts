@@ -2,10 +2,11 @@
  * @file lib/sessionBudget.ts
  * @description Session Budget & Free Plan Limit Gating Engine for Onesimos.
  * Manages daily timed reading sessions (20, 30, 45 mins) and enforces the 
- * Free Tier limit of 3 stories per calendar month per child profile.
+ * Free Tier limit of 3 stories per calendar month per child profile, with 
+ * Admin bypass for testing and reset utility functions.
  *
  * @dependencies
- * - @/lib/supabaseClient (Supabase client for session logging checks)
+ * - @/lib/supabaseClient (Supabase client for session logging checks & resets)
  */
 
 import { supabase } from "./supabaseClient";
@@ -16,6 +17,11 @@ export type SessionMinutes = 20 | 30 | 45;
 
 /** Maximum free stories allowed per child profile per calendar month */
 export const FREE_MONTHLY_STORY_LIMIT = 3;
+
+/** Admin email accounts that bypass free story quotas for testing and demoing */
+export const ADMIN_EMAILS: readonly string[] = [
+  "onesimos@examplemirror.com",
+];
 
 export interface MonthlyUsageStatus {
   allowed: boolean;
@@ -94,16 +100,20 @@ export function formatMMSS(totalSeconds: number): string {
   return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
 }
 
-// ─── Section 3: Free Plan Monthly Story Limit Gating ───
+// ─── Section 3: Free Plan Monthly Story Limit Gating & Admin Bypass ───
 
 /**
  * Checks if a child has reached their 3 free stories/month quota for the current calendar month.
- * Queries `reading_sessions` matching on `ended_at` timestamp.
+ * Automatically bypasses quota if parent email belongs to ADMIN_EMAILS.
  *
  * @param childId - Target child profile UUID
+ * @param parentEmail - Optional parent email to evaluate admin status
  * @returns MonthlyUsageStatus containing usage count, limit, and permission flag
  */
-export async function checkMonthlyStoryLimit(childId: string): Promise<MonthlyUsageStatus> {
+export async function checkMonthlyStoryLimit(
+  childId: string,
+  parentEmail?: string | null
+): Promise<MonthlyUsageStatus> {
   if (!childId) {
     return {
       allowed: true,
@@ -111,6 +121,17 @@ export async function checkMonthlyStoryLimit(childId: string): Promise<MonthlyUs
       limit: FREE_MONTHLY_STORY_LIMIT,
       isPaidPlan: false,
       error: "Missing child ID",
+    };
+  }
+
+  // Check Admin email bypass
+  if (parentEmail && ADMIN_EMAILS.includes(parentEmail.toLowerCase().trim())) {
+    return {
+      allowed: true,
+      used: 0,
+      limit: FREE_MONTHLY_STORY_LIMIT,
+      isPaidPlan: true, // Treated as Admin / Unlimited
+      error: null,
     };
   }
 
@@ -145,7 +166,7 @@ export async function checkMonthlyStoryLimit(childId: string): Promise<MonthlyUs
       allowed,
       used,
       limit: FREE_MONTHLY_STORY_LIMIT,
-      isPaidPlan: false, // Default Free Tier until Paystack/Stripe integration
+      isPaidPlan: false,
       error: null,
     };
   } catch (err) {
@@ -157,5 +178,44 @@ export async function checkMonthlyStoryLimit(childId: string): Promise<MonthlyUs
       isPaidPlan: false,
       error: "Failed to evaluate usage quota",
     };
+  }
+}
+
+// ─── Section 4: Testing & Demo Reset Helpers ───
+
+/**
+ * Resets a child's reading session history and local daily budget keys for testing.
+ *
+ * @param childId - Target child profile UUID
+ * @returns Object with error status
+ */
+export async function resetChildStoryQuota(childId: string): Promise<{ error: string | null }> {
+  if (!childId) return { error: "Missing child ID" };
+
+  try {
+    // 1. Clear local storage daily budget keys for this child
+    if (typeof window !== "undefined") {
+      Object.keys(window.localStorage).forEach((key) => {
+        if (key.startsWith(`onesimos_budget_${childId}`)) {
+          window.localStorage.removeItem(key);
+        }
+      });
+    }
+
+    // 2. Delete test reading sessions from Supabase
+    const { error } = await supabase
+      .from("reading_sessions")
+      .delete()
+      .eq("child_id", childId);
+
+    if (error) {
+      console.error("Error purging test reading sessions:", error);
+      return { error: error.message };
+    }
+
+    return { error: null };
+  } catch (err) {
+    console.error("Unexpected error resetting child story quota:", err);
+    return { error: "Failed to reset test quota" };
   }
 }
