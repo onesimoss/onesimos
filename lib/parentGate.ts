@@ -38,9 +38,10 @@ export async function setParentPin(userId: string, pin: string) {
 
   await ensureParentProfile(userId);
 
+  // Update parent_pin directly
   const { error } = await supabase
     .from("profiles")
-    .update({ parent_pin: cleaned, updated_at: new Date().toISOString() })
+    .update({ parent_pin: cleaned })
     .eq("id", userId);
 
   if (error) {
@@ -63,16 +64,14 @@ export async function verifyParentPin(userId: string, pin: string) {
     return { ok: false, error: error || { message: "Verification error. Please try again." } };
   }
 
-  // If no PIN has been set yet, NEVER allow arbitrary entry!
   if (!data.parent_pin) {
     return {
       ok: false,
       needsSetup: true,
-      error: { message: "No Parent PIN has been configured yet. Log in to parent portal to set one." },
+      error: { message: "No Parent PIN has been configured yet. Set one in settings." },
     };
   }
 
-  // Strict check: must match the exact 4-digit pin in the database
   if (String(data.parent_pin).trim() !== cleaned) {
     return {
       ok: false,
