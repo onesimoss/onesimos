@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { clearKidSession } from "@/lib/children";
+import { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { verifyParentPin } from "@/lib/parentGate";
 
 interface ParentGateProps {
   open: boolean;
@@ -10,28 +11,39 @@ interface ParentGateProps {
 }
 
 export default function ParentGate({ open, onClose, onSuccess }: ParentGateProps) {
-  const problem = useMemo(() => {
-    const a = Math.floor(Math.random() * 4) + 2; // 2–5
-    const b = Math.floor(Math.random() * 4) + 2;
-    return { a, b, answer: a + b };
-  }, [open]);
-
-  const [value, setValue] = useState("");
+  const { user } = useAuth();
+  const [pin, setPin] = useState("");
+  const [checking, setChecking] = useState(false);
   const [error, setError] = useState("");
 
   if (!open) return null;
 
-  const submit = () => {
-    const n = Number(value);
-    if (n === problem.answer) {
-      clearKidSession();
-      setValue("");
-      setError("");
-      onSuccess();
+  const handleSubmit = async () => {
+    if (!user) {
+      setError("Session expired. Please log in again.");
       return;
     }
-    setError("Not quite — try again, grown-up!");
-    setValue("");
+
+    if (pin.length !== 4) {
+      setError("Please enter a 4-digit code.");
+      return;
+    }
+
+    setChecking(true);
+    setError("");
+
+    const result = await verifyParentPin(user.id, pin);
+    setChecking(false);
+
+    if (!result.ok) {
+      setError(result.error?.message || "That code didn't match.");
+      setPin("");
+      return;
+    }
+
+    setPin("");
+    setError("");
+    onSuccess();
   };
 
   return (
@@ -39,51 +51,55 @@ export default function ParentGate({ open, onClose, onSuccess }: ParentGateProps
       <div className="card max-w-sm w-full !p-6 text-center">
         <div className="text-4xl mb-3">🔒</div>
         <h2 className="font-heading text-2xl font-extrabold text-bark mb-2">
-          Parents only
+          Parents Only
         </h2>
-        <p className="text-bark-muted text-sm mb-4">
-          Quick check so little hands stay in story land.
-        </p>
-
-        <p className="font-heading text-3xl font-bold text-bark mb-4">
-          {problem.a} + {problem.b} = ?
+        <p className="text-bark-muted text-sm mb-6">
+          Enter your secret 4-digit parent code to open the dashboard.
         </p>
 
         <input
-          type="text"
+          type="password"
           inputMode="numeric"
-          value={value}
-          onChange={(e) => setValue(e.target.value.replace(/\D/g, "").slice(0, 3))}
+          pattern="[0-9]*"
+          maxLength={4}
+          value={pin}
+          onChange={(e) =>
+            setPin(e.target.value.replace(/\D/g, "").slice(0, 4))
+          }
           onKeyDown={(e) => {
-            if (e.key === "Enter") submit();
+            if (e.key === "Enter" && pin.length === 4) {
+              void handleSubmit();
+            }
           }}
-          className="w-full px-4 py-3 rounded-2xl border border-border bg-cream text-center text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-coral/40 mb-3"
-          placeholder="?"
+          placeholder="••••"
+          className="w-full px-4 py-3 rounded-2xl border border-border bg-cream text-center text-3xl tracking-[0.5em] font-bold focus:outline-none focus:ring-2 focus:ring-coral/40 mb-4"
           autoFocus
         />
 
         {error && (
-          <p className="text-coral text-sm font-bold mb-3">{error}</p>
+          <p className="text-coral text-sm font-bold mb-4">{error}</p>
         )}
 
         <div className="flex gap-2">
           <button
             type="button"
             onClick={() => {
-              setValue("");
+              setPin("");
               setError("");
               onClose();
             }}
+            disabled={checking}
             className="btn-secondary flex-1 !py-2.5 !text-sm"
           >
-            Back to stories
+            Back
           </button>
           <button
             type="button"
-            onClick={submit}
-            className="btn-primary flex-1 !py-2.5 !text-sm"
+            onClick={handleSubmit}
+            disabled={checking || pin.length !== 4}
+            className="btn-primary flex-1 !py-2.5 !text-sm disabled:opacity-50"
           >
-            Unlock
+            {checking ? "Checking..." : "Unlock"}
           </button>
         </div>
       </div>
