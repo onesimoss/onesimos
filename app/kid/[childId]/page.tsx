@@ -1,13 +1,16 @@
 /**
  * @file app/kid/[childId]/page.tsx
- * @description Kid Home — story picker, daily time budget, free-plan monthly
- * story limit (3/month), story-time reminder, and Parent Gate entry.
+ * @description Kid Home View — story picker, daily reading session timer,
+ * free plan monthly story quota gate, Word Pocket (stumbled words practice),
+ * and Parent Gate access.
  *
  * @dependencies
- * - @/context/AuthContext
- * - @/lib/sessionBudget (daily timer + monthly free quota)
- * - @/lib/sampleStories, @/lib/avatars, @/lib/reminders
- * - @/components/ParentGate
+ * - @/context/AuthContext (parent authentication)
+ * - @/lib/sessionBudget (daily budget + monthly quota checks)
+ * - @/lib/stumbledWords (recent stumbled words + speech synthesis)
+ * - @/lib/sampleStories (story catalog for kid's level)
+ * - @/lib/avatars (avatar image & color resolution)
+ * - @/components/ParentGate (4-digit Parent PIN lock)
  */
 
 "use client";
@@ -27,6 +30,12 @@ import {
   FREE_MONTHLY_STORY_LIMIT,
   type MonthlyUsageStatus,
 } from "@/lib/sessionBudget";
+import {
+  getRecentStumbledWords,
+  speakWord,
+  extractClassifiedTokens,
+  type StumbledItem,
+} from "@/lib/stumbledWords";
 import ParentGate from "@/components/ParentGate";
 import {
   shouldOfferReminder,
@@ -34,7 +43,14 @@ import {
   sendFriendlyStoryNotification,
 } from "@/lib/reminders";
 
-// ─── Section 1: Helpers ───
+// ─── Section 1: Helper Types & Functions ───
+
+interface ClassifiedWordItem {
+  word: string;
+  display: string;
+  type: "word" | "name";
+  count: number;
+}
 
 function storyFitLabel(story: SampleStory, readingLevel: number): string {
   if (readingLevel >= story.levelMin && readingLevel <= story.levelMax) {
@@ -46,31 +62,38 @@ function storyFitLabel(story: SampleStory, readingLevel: number): string {
   return "Easy warm-up";
 }
 
-// ─── Section 2: Page ───
+// ─── Section 2: Page Component ───
 
 export default function KidHomePage() {
   const { childId } = useParams<{ childId: string }>();
   const { user, loading } = useAuth();
   const router = useRouter();
 
+  // Core Data States
   const [child, setChild] = useState<ChildProfile | null>(null);
   const [fetching, setFetching] = useState(true);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const [recentWords, setRecentWords] = useState<ClassifiedWordItem[]>([]);
+
+  // UI & Navigation States
   const [gateOpen, setGateOpen] = useState(false);
   const [showReminder, setShowReminder] = useState(false);
   const [reminderDismissed, setReminderDismissed] = useState(false);
+  const [activeSpeakingWord, setActiveSpeakingWord] = useState<string | null>(null);
 
   // Free-plan monthly quota
   const [monthlyUsage, setMonthlyUsage] = useState<MonthlyUsageStatus | null>(null);
   const [limitModalOpen, setLimitModalOpen] = useState(false);
   const [startingStoryId, setStartingStoryId] = useState<string | null>(null);
 
+  // Auth Protection
   useEffect(() => {
     if (!loading && !user) router.replace("/parent/login");
   }, [user, loading, router]);
 
+  // Load Child Profile & Session Data
   useEffect(() => {
-    async function load() {
+    async function loadKidHomeData() {
       if (!user || !childId) return;
       setFetching(true);
 
@@ -89,17 +112,33 @@ export default function KidHomePage() {
       const profile = data as ChildProfile;
       setChild(profile);
 
+      // Load daily timer budget
       const left = getDailyBudgetSeconds(
         profile.id,
         profile.session_minutes || 20
       );
       setSecondsLeft(left);
 
+      // Check monthly story quota
       const usage = await checkMonthlyStoryLimit(profile.id);
       setMonthlyUsage(usage);
 
+      // Fetch recent stumbled words for Word Pocket
+      const { data: rawStumbled } = await getRecentStumbledWords(profile.id, 8);
+      const classified: ClassifiedWordItem[] = (rawStumbled || []).map(({ word, count }) => {
+        const isCap = /^[A-Z]/.test(word);
+        return {
+          word: word.toLowerCase(),
+          display: isCap ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : word,
+          type: isCap ? "name" : "word",
+          count,
+        };
+      });
+      setRecentWords(classified);
+
       setFetching(false);
 
+      // Story-time notification check
       const offer = shouldOfferReminder({
         enabled: !!profile.reminder_enabled,
         timeLocal: profile.reminder_time_local || "16:30",
@@ -123,9 +162,10 @@ export default function KidHomePage() {
       }
     }
 
-    void load();
+    void loadKidHomeData();
   }, [user, childId, router]);
 
+  // Catalog filtered by reading level and interests
   const stories = useMemo(() => {
     if (!child) return [];
     return getStoriesForChild({
@@ -134,9 +174,7 @@ export default function KidHomePage() {
     });
   }, [child]);
 
-  /**
-   * Start a story only if daily time remains and free monthly quota allows it.
-   */
+  // Handle Story Selection & Quota Check
   const handleStartStory = useCallback(
     async (storyId: string) => {
       if (!child) return;
@@ -162,10 +200,17 @@ export default function KidHomePage() {
     [child, secondsLeft, router]
   );
 
+  // Audio Pronunciation for Vocabulary Words
+  const handleSpeakWord = (text: string) => {
+    setActiveSpeakingWord(text);
+    speakWord(text);
+    setTimeout(() => setActiveSpeakingWord(null), 1200);
+  };
+
   if (loading || fetching || !child) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-sky-light to-cream flex items-center justify-center">
-        <p className="font-heading text-bark-muted text-xl">Getting ready...</p>
+      <main className="min-h-screen bg-gradient-to-b from-sky-light to-cream flex items-center justify-center font-sans">
+        <p className="font-heading text-bark-muted text-xl animate-pulse">Getting ready...</p>
       </main>
     );
   }
@@ -179,35 +224,36 @@ export default function KidHomePage() {
       : null;
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-sky-light via-cream to-gold-light">
+    <main className="min-h-screen bg-gradient-to-b from-sky-light via-cream to-gold-light font-sans pb-12">
       <div className="max-w-3xl mx-auto px-6 py-8">
-        {/* Top bar */}
+        
+        {/* Top Navigation Bar */}
         <div className="flex items-center justify-between mb-8">
           <button
             type="button"
             onClick={() => setGateOpen(true)}
-            className="text-sm font-bold text-bark-muted hover:text-bark"
+            className="text-xs font-bold text-gray-500 hover:text-gray-900 bg-white/60 px-3 py-1.5 rounded-full border border-gray-200 transition-colors"
           >
-            Parents
+            🔒 Parent Portal
           </button>
           <span className="font-logo text-2xl text-bark">Onesimos</span>
           <Link
             href="/who"
-            className="text-sm font-bold text-bark-muted hover:text-bark"
+            className="text-xs font-bold text-gray-500 hover:text-gray-900 bg-white/60 px-3 py-1.5 rounded-full border border-gray-200 transition-colors"
           >
-            Switch
+            Switch Reader
           </Link>
         </div>
 
-        {/* Story-time reminder */}
+        {/* Story-time Reminder Banner */}
         {reminderVisible && (
-          <div className="mb-6 rounded-3xl border border-gold/40 bg-gold-light/80 px-5 py-4 shadow-soft flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50/90 px-5 py-4 shadow-sm flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="text-3xl shrink-0">📖</div>
             <div className="flex-1 text-left">
-              <p className="font-heading text-lg font-bold text-bark">
+              <p className="font-heading text-lg font-bold text-gray-900">
                 Story time, {child.name}?
               </p>
-              <p className="text-sm text-bark-muted">
+              <p className="text-xs text-gray-600">
                 A cozy adventure is waiting whenever you&apos;re ready. No rush.
               </p>
             </div>
@@ -215,7 +261,7 @@ export default function KidHomePage() {
               <button
                 type="button"
                 onClick={() => setReminderDismissed(true)}
-                className="btn-secondary !py-2 !px-4 !text-sm"
+                className="px-3.5 py-2 rounded-2xl border border-gray-200 bg-white text-xs font-bold text-gray-600 hover:bg-gray-50"
               >
                 Maybe later
               </button>
@@ -226,7 +272,7 @@ export default function KidHomePage() {
                   const first = stories[0];
                   if (first) void handleStartStory(first.id);
                 }}
-                className="btn-primary !py-2 !px-4 !text-sm"
+                className="px-4 py-2 rounded-2xl bg-coral text-white text-xs font-black hover:bg-coral/90 shadow-sm"
               >
                 Let&apos;s read
               </button>
@@ -234,10 +280,10 @@ export default function KidHomePage() {
           </div>
         )}
 
-        {/* Hero */}
+        {/* Child Hero Header */}
         <div className="text-center mb-10">
           <div
-            className="w-28 h-28 mx-auto rounded-[2rem] overflow-hidden border-4 border-white shadow-soft mb-5 bg-cream"
+            className="w-24 h-28 mx-auto rounded-3xl overflow-hidden border-4 border-white shadow-md mb-4 flex items-center justify-center"
             style={{ backgroundColor: `${avatar.color}33` }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -247,37 +293,37 @@ export default function KidHomePage() {
               className="w-full h-full object-cover"
             />
           </div>
-          <h1 className="font-heading text-4xl md:text-5xl font-extrabold text-bark mb-2">
+          <h1 className="font-heading text-4xl md:text-5xl font-black text-gray-900 mb-2">
             Hi, {child.name}!
           </h1>
-          <p className="text-bark-muted text-lg">
+          <p className="text-gray-500 text-base font-medium">
             {timeIsUp
               ? "You did amazing today. See you tomorrow!"
               : "Pick a story for today"}
           </p>
+
           <div className="inline-flex flex-wrap items-center justify-center gap-2 mt-4">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 border border-border text-bark font-bold text-sm">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 border border-gray-200 text-gray-800 font-bold text-xs shadow-sm">
               {timeIsUp
-                ? "Daily reading complete"
-                : `Today's adventure time · ${formatMMSS(secondsLeft || 0)} left`}
+                ? "Daily reading complete 🌟"
+                : `Today's time · ${formatMMSS(secondsLeft || 0)} left`}
             </div>
             {freeStoriesLeft !== null && (
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 border border-border text-bark-muted font-bold text-xs">
-                Free stories this month · {freeStoriesLeft} of{" "}
-                {FREE_MONTHLY_STORY_LIMIT} left
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 border border-gray-200 text-gray-600 font-bold text-xs shadow-sm">
+                Free stories · {freeStoriesLeft} of {FREE_MONTHLY_STORY_LIMIT} left
               </div>
             )}
           </div>
         </div>
 
-        {/* Stories or rest state */}
+        {/* Story Grid or Rest Card */}
         {timeIsUp ? (
-          <div className="card text-center !p-8 mb-8">
+          <div className="bg-white rounded-3xl p-8 text-center border border-gray-200 shadow-sm mb-8">
             <div className="text-5xl mb-3">🌟</div>
-            <h2 className="font-heading text-2xl font-bold text-bark mb-2">
+            <h2 className="font-heading text-2xl font-bold text-gray-900 mb-2">
               Rest time
             </h2>
-            <p className="text-bark-muted">
+            <p className="text-gray-500 text-sm">
               Your stories will be waiting tomorrow. Go play, snack, or hug
               someone you love.
             </p>
@@ -292,71 +338,121 @@ export default function KidHomePage() {
                   type="button"
                   disabled={!!startingStoryId}
                   onClick={() => void handleStartStory(story.id)}
-                  className="card hover:shadow-hover hover:-translate-y-1 transition-all text-left !p-5 disabled:opacity-60 disabled:hover:translate-y-0"
+                  className="bg-white rounded-3xl p-5 border border-gray-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all text-left flex flex-col justify-between active:scale-[0.99] disabled:opacity-60"
                 >
-                  <div className="text-4xl mb-3">{story.coverEmoji}</div>
-                  <h2 className="font-heading text-xl font-bold text-bark mb-1">
-                    {story.title}
-                  </h2>
-                  <p className="text-sm text-bark-muted mb-1">
-                    About {story.estimatedMinutes} minutes
-                  </p>
-                  <p className="text-xs font-bold text-coral mb-4">
-                    {storyFitLabel(story, child.reading_level || 3)}
-                  </p>
-                  <span className="inline-flex btn-primary !py-2 !px-4 !text-sm">
-                    {isStarting ? "Opening..." : "Read now"}
-                  </span>
+                  <div>
+                    <div className="text-4xl mb-3">{story.coverEmoji}</div>
+                    <h2 className="font-heading text-xl font-black text-gray-900 mb-1">
+                      {story.title}
+                    </h2>
+                    <p className="text-xs text-gray-500 mb-1 font-medium">
+                      About {story.estimatedMinutes} minutes
+                    </p>
+                    <p className="text-xs font-bold text-coral mb-4">
+                      {storyFitLabel(story, child.reading_level || 3)}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="inline-block py-2 px-4 rounded-xl bg-coral text-white text-xs font-black shadow-sm">
+                      {isStarting ? "Opening..." : "Read now →"}
+                    </span>
+                  </div>
                 </button>
               );
             })}
           </div>
         )}
 
+        {/* Empty Catalog State */}
         {!timeIsUp && stories.length === 0 && (
-          <div className="card text-center py-10 mb-8">
-            <p className="text-bark-muted">
+          <div className="bg-white rounded-3xl p-8 text-center border border-gray-200 shadow-sm mb-8">
+            <p className="text-gray-500 text-sm font-medium">
               Stories are getting ready for you. Check back soon!
             </p>
           </div>
         )}
 
-        {/* Secondary tiles */}
-        <div className="grid grid-cols-2 gap-4">
-          <Link
-            href={`/kid/${child.id}`}
-            className="card text-center hover:shadow-hover transition-all"
-          >
-            <div className="text-2xl mb-1">📚</div>
-            <p className="text-sm font-bold text-bark">My stories</p>
-          </Link>
+        {/* ─── Section 3: My Words Pocket ─── */}
+        <div className="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="font-heading text-lg font-black text-gray-900 flex items-center gap-2">
+                <span>🎒</span> My Word Pocket
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5 font-medium">
+                Words to practice from your recent reading sessions.
+              </p>
+            </div>
+            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200/60">
+              Tap word to hear 🔊
+            </span>
+          </div>
+
+          {recentWords.length === 0 ? (
+            <p className="text-xs text-gray-400 font-medium py-3 text-center bg-gray-50/50 rounded-2xl">
+              Your word pocket is empty! Read a story aloud to discover words to practice.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2 pt-1">
+              {recentWords.map((item) => {
+                const isWord = item.type === "word";
+                return (
+                  <button
+                    key={item.word}
+                    type="button"
+                    onClick={() => isWord && handleSpeakWord(item.display)}
+                    className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 border ${
+                      isWord
+                        ? activeSpeakingWord === item.display
+                          ? "bg-amber-400 text-black border-amber-500 shadow-sm"
+                          : "bg-amber-50/80 text-amber-950 border-amber-200/80 hover:bg-amber-100"
+                        : "bg-purple-50/80 text-purple-950 border-purple-200/80 cursor-default"
+                    }`}
+                  >
+                    <span>{item.display}</span>
+                    {isWord ? (
+                      <span className="text-[10px] opacity-60">🔊</span>
+                    ) : (
+                      <span className="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-md uppercase font-black">
+                        Name
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Bottom Actions */}
+        <div className="flex justify-center">
           <button
             type="button"
             onClick={() => setGateOpen(true)}
-            className="card text-center hover:shadow-hover transition-all"
+            className="px-6 py-3 rounded-2xl bg-white/80 border border-gray-200 text-xs font-bold text-gray-600 hover:bg-white shadow-sm transition-colors flex items-center gap-2"
           >
-            <div className="text-2xl mb-1">👨‍👩‍👧</div>
-            <p className="text-sm font-bold text-bark">Parents</p>
+            <span>🔒</span> Parent Portal & Settings
           </button>
         </div>
+
       </div>
 
-      {/* Free-plan monthly limit modal (calm, parent-facing) */}
+      {/* Free Plan Monthly Limit Modal */}
       {limitModalOpen && (
-        <div className="fixed inset-0 z-50 bg-bark/40 backdrop-blur-sm flex items-center justify-center p-6">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center border border-border shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center border border-gray-100 shadow-2xl">
             <div className="text-4xl mb-3">📖</div>
-            <h2 className="font-heading text-2xl font-extrabold text-bark mb-2">
-              Free stories used up
+            <h2 className="text-xl font-black text-gray-900 mb-2">
+              Free Stories Completed
             </h2>
-            <p className="text-bark-muted text-sm mb-2">
+            <p className="text-gray-500 text-xs mb-3">
               {child.name} has finished all{" "}
-              <span className="font-bold text-bark">
+              <span className="font-bold text-gray-900">
                 {FREE_MONTHLY_STORY_LIMIT} free stories
               </span>{" "}
               for this month.
             </p>
-            <p className="text-bark-muted text-xs mb-6">
+            <p className="text-gray-400 text-[11px] mb-6">
               Parents can unlock unlimited stories, or wait until next month when
               the free allowance refreshes.
             </p>
@@ -367,22 +463,23 @@ export default function KidHomePage() {
                   setLimitModalOpen(false);
                   setGateOpen(true);
                 }}
-                className="btn-primary !py-3 !text-sm w-full"
+                className="py-3 px-4 rounded-2xl bg-coral text-white text-xs font-black hover:bg-coral/90 transition-colors shadow-sm"
               >
-                Parent unlock
+                Parent Unlock
               </button>
               <button
                 type="button"
                 onClick={() => setLimitModalOpen(false)}
-                className="btn-secondary !py-3 !text-sm w-full"
+                className="py-2.5 px-4 rounded-2xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50 transition-colors"
               >
-                Back to home
+                Back to Home
               </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* Parent Security Gate */}
       <ParentGate
         open={gateOpen}
         onClose={() => setGateOpen(false)}
