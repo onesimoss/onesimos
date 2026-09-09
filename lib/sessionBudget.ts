@@ -98,6 +98,7 @@ export function formatMMSS(totalSeconds: number): string {
 
 /**
  * Checks if a child has reached their 3 free stories/month quota for the current calendar month.
+ * Queries `reading_sessions` matching on `ended_at` timestamp.
  *
  * @param childId - Target child profile UUID
  * @returns MonthlyUsageStatus containing usage count, limit, and permission flag
@@ -114,16 +115,16 @@ export async function checkMonthlyStoryLimit(childId: string): Promise<MonthlyUs
   }
 
   try {
-    // 1. Determine start of current calendar month in ISO UTC
+    // Determine start of current calendar month in ISO UTC
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0).toISOString();
 
-    // 2. Query reading_sessions for sessions recorded this month
+    // Query reading_sessions using ended_at column
     const { count, error } = await supabase
       .from("reading_sessions")
       .select("id", { count: "exact", head: true })
       .eq("child_id", childId)
-      .gte("created_at", startOfMonth);
+      .gte("ended_at", startOfMonth);
 
     if (error) {
       console.error("Error querying monthly story sessions:", error);
