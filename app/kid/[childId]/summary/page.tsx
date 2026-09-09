@@ -1,8 +1,8 @@
 /**
  * @file app/kid/[childId]/summary/page.tsx
  * @description Kid Story Completion & Reading Summary Screen.
- * Displays stars earned, session statistics, practice vocabulary (gold chips),
- * and character/place names met (soft purple chips) with free tap-to-hear audio.
+ * Displays stars earned, session statistics, practice vocabulary (warm gold chips with tap-to-hear),
+ * and character/place names met (quiet soft purple badges without voice butchering).
  *
  * @dependencies
  * - @/context/AuthContext (parent authentication)
@@ -152,7 +152,7 @@ function SummaryContent() {
     void loadSummaryData();
   }, [user, childId, router, story, pagesRead, storyId, saved]);
 
-  // Handle Tap-to-Hear Pronunciation
+  // Handle Tap-to-Hear Pronunciation (Vocabulary Words only)
   const handleTapToHear = (text: string) => {
     setActiveSpeakingWord(text);
     speakWord(text);
@@ -185,7 +185,7 @@ function SummaryContent() {
         {/* Child Avatar & Headline */}
         <div
           className="w-20 h-20 mx-auto rounded-3xl overflow-hidden border-2 border-white shadow-md mb-4 flex items-center justify-center"
-          style={{ backgroundColor: `${avatar.color}22` }}
+          style={{ backgroundColor: `${avatar.color}33` }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -225,10 +225,10 @@ function SummaryContent() {
           <span>📖</span> {pagesRead} of {totalPages} pages read
         </div>
 
-        {/* ─── Section 3: Stumbled Items Display (Tap-to-Hear) ─── */}
+        {/* ─── Section 3: Stumbled Items Display ─── */}
         <div className="space-y-5 text-left mb-8">
           
-          {/* Practice Words (Warm Gold) */}
+          {/* Practice Words (Warm Gold - Tap to Hear) */}
           {practiceWords.length > 0 && (
             <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/50">
               <div className="flex items-center justify-between mb-2.5">
@@ -245,7 +245,7 @@ function SummaryContent() {
                     key={item.word}
                     type="button"
                     onClick={() => handleTapToHear(item.display)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 border ${
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 border ${
                       activeSpeakingWord === item.display
                         ? "bg-amber-400 text-black border-amber-500 shadow-sm"
                         : "bg-white text-amber-950 border-amber-200 hover:bg-amber-100"
@@ -259,35 +259,28 @@ function SummaryContent() {
             </div>
           )}
 
-          {/* Character & Place Names Met (Soft Purple) */}
+          {/* Character & Place Names Met (Soft Purple - Quiet Badges) */}
           {characterNames.length > 0 && (
             <div className="p-4 rounded-2xl bg-purple-50/60 border border-purple-200/50">
               <div className="flex items-center justify-between mb-2.5">
                 <span className="text-xs font-black text-purple-900 uppercase tracking-wider flex items-center gap-1.5">
-                  <span>🟣</span> Character & Place Names
+                  <span>🟣</span> Character & Place Names Met
                 </span>
-                <span className="text-[10px] font-bold text-purple-700">
-                  Tap to hear 🔊
+                <span className="text-[10px] font-bold text-purple-600">
+                  People & Places
                 </span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {characterNames.map((item) => (
-                  <button
+                  <div
                     key={item.word}
-                    type="button"
-                    onClick={() => handleTapToHear(item.display)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 border ${
-                      activeSpeakingWord === item.display
-                        ? "bg-purple-400 text-white border-purple-500 shadow-sm"
-                        : "bg-white text-purple-950 border-purple-200 hover:bg-purple-100"
-                    }`}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white text-purple-950 border border-purple-200/80 flex items-center gap-1.5 shadow-2xs"
                   >
                     <span>{item.display}</span>
-                    <span className="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-md uppercase font-black">
+                    <span className="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-md uppercase font-black tracking-wide">
                       Name
                     </span>
-                    <span className="text-[10px] opacity-60">🔊</span>
-                  </button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -316,7 +309,7 @@ function SummaryContent() {
   );
 }
 
-// ─── Section 3: Suspense Wrapper Export ───
+// ─── Section 4: Suspense Wrapper Export ───
 
 export default function SummaryPage() {
   return (
