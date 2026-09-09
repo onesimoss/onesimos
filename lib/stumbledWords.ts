@@ -1,110 +1,158 @@
 import { supabase } from "./supabaseClient";
 
+export type WordClassification = "word" | "name";
+
+export interface StumbledItem {
+  word: string;        // Cleaned lowercase token (e.g. "amaka", "whisper")
+  display: string;     // Display format with proper casing (e.g. "Amaka", "whisper")
+  type: WordClassification;
+}
+
 const SKIP_WORDS = new Set([
   "a", "an", "the",
   "i", "im", "ive",
-  "to", "of", "in", "on", "at", "by", "up",
-  "is", "am", "are", "was", "were", "be",
-  "and", "or", "but", "so", "if",
+  "to", "of", "in", "on", "at", "by", "up", "down", "into", "out",
+  "is", "am", "are", "was", "were", "be", "been", "being",
+  "and", "or", "but", "so", "if", "because",
   "he", "she", "it", "we", "you", "they",
-  "my", "your", "his", "her", "our", "their",
-  "for", "with", "as", "do", "did", "does",
-  "yes", "no", "ok", "hi", "hey", "oh",
+  "him", "her", "his", "hers", "its", "our", "ours", "their", "theirs", "me", "us", "them",
+  "my", "your",
+  "for", "with", "as", "do", "did", "does", "done",
+  "yes", "no", "not", "ok", "hi", "hey", "oh", "ah",
 ]);
 
-function stripPunct(w: string) {
-  return w.toLowerCase().replace(/[^\w'-]/g, "");
+// Common words that frequently start sentences (to prevent misclassifying them as names)
+const COMMON_SENTENCE_STARTERS = new Set([
+  "once", "then", "there", "they", "this", "that", "these", "those",
+  "when", "while", "where", "what", "who", "why", "how",
+  "suddenly", "soon", "after", "before", "next", "finally",
+  "every", "some", "all", "many", "one", "two", "today", "yesterday",
+  "long", "look", "listen", "come", "here", "just",
+]);
+
+function stripPunctuation(w: string): string {
+  return w.replace(/^[^\w]+|[^\w]+$/g, "");
 }
 
 /**
- * Extract "content words" from the page text.
- * Skips:
- *  - first word of a sentence (Capitalized regardless)
- *  - proper nouns (Capitalized mid-sentence): names, places
- *  - function words (a, the, to, and…)
- *  - very short words (< 3 letters)
+ * Extract tokens from page text with classification (name vs vocabulary word).
  */
-export function extractContentWords(pageText: string): string[] {
-  // Split into sentences roughly by . ? ! newline
+export function extractClassifiedTokens(pageText: string): StumbledItem[] {
   const sentences = pageText.split(/(?<=[.?!])\s+|\n+/g);
-
-  const out: string[] = [];
+  const items: StumbledItem[] = [];
 
   for (const sentence of sentences) {
-    const tokens = sentence.trim().split(/\s+/);
-    tokens.forEach((raw, i) => {
+    const rawTokens = sentence.trim().split(/\s+/);
+
+    rawTokens.forEach((raw, index) => {
       if (!raw) return;
 
-      const cleaned = raw.replace(/[^\w'-]/g, "");
-      if (!cleaned) return;
-
-      // Skip first word of the sentence (usually capitalized)
-      const isFirstOfSentence = i === 0;
-
-      // Detect proper noun: starts with uppercase (and not the sentence-start caps)
-      const startsUpper = /^[A-Z]/.test(cleaned);
-      const isProperNoun = startsUpper && !isFirstOfSentence;
+      const cleaned = stripPunctuation(raw);
+      if (!cleaned || cleaned.length < 2) return;
 
       const lower = cleaned.toLowerCase();
-
-      if (isProperNoun) return;                  // names / places
-      if (isFirstOfSentence && startsUpper) {
-        // Only include if it's clearly a common word (small heuristic:
-        // if lowercased form is a short common word, skip; otherwise include
-        // downstream matching will still handle it).
-        // We'll include it, since kids should still be able to say "Luna" -> but
-        // we skip capitalized rare tokens later in match step too.
-      }
-      if (lower.length < 3) return;              // a, to, it
       if (SKIP_WORDS.has(lower)) return;
 
-      out.push(lower);
+      const isFirstOfSentence = index === 0;
+      const startsWithCapital = /^[A-Z]/.test(cleaned);
+
+      // Classification heuristic:
+      // 1. Mid-sentence capital -> definitely a Character / Place Name (e.g., "Tayo", "Amaka", "Lagos")
+      // 2. Start-of-sentence capital not in common words list -> potential Name
+      let type: WordClassification = "word";
+      let display = lower;
+
+      if (startsWithCapital) {
+        if (!isFirstOfSentence) {
+          type = "name";
+          display = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+        } else if (!COMMON_SENTENCE_STARTERS.has(lower) && cleaned.length >= 3) {
+          // If the word isn't a typical sentence starter, keep original casing
+          display = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+        }
+      }
+
+      items.push({
+        word: lower,
+        display,
+        type,
+      });
     });
   }
 
-  return out;
+  return items;
 }
 
 /**
- * Compare page text vs transcript.
- * Returns unique words the child likely missed — never returns names/proper nouns.
+ * Compare expected story text with speech transcript.
+ * Returns classified items (distinguishing names to learn from practice vocabulary).
  */
-export function findStumbledWords(pageText: string, transcript: string): string[] {
-  const expected = extractContentWords(pageText);
-  const heard = new Set(
+export function findStumbledItems(pageText: string, transcript: string): StumbledItem[] {
+  const expectedItems = extractClassifiedTokens(pageText);
+
+  // Normalize transcript into clean lookup tokens
+  const heardTokens = new Set(
     transcript
       .toLowerCase()
       .replace(/[^\w\s'-]/g, " ")
       .split(/\s+/)
-      .map(stripPunct)
+      .map(stripPunctuation)
       .filter(Boolean)
   );
 
-  const missed: string[] = [];
+  const missed: StumbledItem[] = [];
   const seen = new Set<string>();
 
-  for (const word of expected) {
-    if (seen.has(word)) continue;
-    if (!heard.has(word)) {
-      missed.push(word);
-      seen.add(word);
+  for (const item of expectedItems) {
+    if (seen.has(item.word)) continue;
+
+    // Check if Deepgram heard this word
+    if (!heardTokens.has(item.word)) {
+      missed.push(item);
+      seen.add(item.word);
     }
   }
 
   return missed;
 }
 
+/**
+ * Backward-compatible helper returning string array of missed words.
+ */
+export function findStumbledWords(pageText: string, transcript: string): string[] {
+  return findStumbledItems(pageText, transcript).map((item) => item.word);
+}
+
+/**
+ * Browser-native free Speech Synthesis (Tap to Hear).
+ */
+export function speakWord(text: string, lang = "en-US") {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+    console.warn("Speech synthesis not supported in this browser.");
+    return;
+  }
+
+  window.speechSynthesis.cancel(); // Stop any currently playing audio
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = lang;
+  utterance.rate = 0.85; // Slightly slower for clear kid listening
+  utterance.pitch = 1.05;
+
+  window.speechSynthesis.speak(utterance);
+}
+
+/**
+ * Save stumbled word to Supabase log.
+ */
 export async function saveStumbledWord(params: {
   childId: string;
   word: string;
   storyId?: string;
   sessionId?: string;
 }) {
-  const cleaned = stripPunct(params.word);
-  if (!cleaned || cleaned.length < 3) {
-    return { error: null };
-  }
-  if (SKIP_WORDS.has(cleaned)) {
+  const cleaned = stripPunctuation(params.word).toLowerCase();
+  if (!cleaned || cleaned.length < 3 || SKIP_WORDS.has(cleaned)) {
     return { error: null };
   }
 
@@ -122,6 +170,9 @@ export async function saveStumbledWord(params: {
   return { error: null };
 }
 
+/**
+ * Fetch top stumbled words for a child.
+ */
 export async function getRecentStumbledWords(childId: string, limit = 20) {
   const { data, error } = await supabase
     .from("stumbled_words_log")
