@@ -33,7 +33,7 @@ export async function ensureParentProfile(userId: string) {
 export async function setParentPin(userId: string, pin: string) {
   const cleaned = pin.replace(/\D/g, "");
   if (cleaned.length !== 4) {
-    return { error: { message: "Parent code must be exactly 4 digits" } };
+    return { error: { message: "Parent code must be exactly 4 digits." } };
   }
 
   await ensureParentProfile(userId);
@@ -53,22 +53,31 @@ export async function setParentPin(userId: string, pin: string) {
 
 export async function verifyParentPin(userId: string, pin: string) {
   const cleaned = pin.replace(/\D/g, "");
+  if (cleaned.length !== 4) {
+    return { ok: false, error: { message: "Please enter a 4-digit code." } };
+  }
+
   const { data, error } = await ensureParentProfile(userId);
 
   if (error || !data) {
-    return { ok: false, error: error || { message: "Could not verify" } };
+    return { ok: false, error: error || { message: "Verification error. Please try again." } };
   }
 
-  // No parent code set yet → allow entry, but dashboard should prompt setup
+  // If no PIN has been set yet, NEVER allow arbitrary entry!
   if (!data.parent_pin) {
-    return { ok: true, needsSetup: true, error: null };
+    return {
+      ok: false,
+      needsSetup: true,
+      error: { message: "No Parent PIN has been configured yet. Log in to parent portal to set one." },
+    };
   }
 
-  if (data.parent_pin !== cleaned) {
+  // Strict check: must match the exact 4-digit pin in the database
+  if (String(data.parent_pin).trim() !== cleaned) {
     return {
       ok: false,
       needsSetup: false,
-      error: { message: "That code doesn't match. Try again." },
+      error: { message: "Incorrect parent code. Try again." },
     };
   }
 
@@ -81,7 +90,7 @@ export async function getParentPinStatus(userId: string) {
     return { hasPin: false, error };
   }
   return {
-    hasPin: !!(data.parent_pin && String(data.parent_pin).length === 4),
+    hasPin: !!(data.parent_pin && String(data.parent_pin).trim().length === 4),
     error: null,
   };
 }
