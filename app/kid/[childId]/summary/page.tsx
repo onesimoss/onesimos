@@ -8,6 +8,7 @@
  * - @/context/AuthContext (parent authentication)
  * - @/lib/stumbledWords (speech synthesis, token classification, recent word fetch)
  * - @/lib/sessionInsights (reading session logging for parent dashboard)
+ * - @/lib/avatars (avatar color and imageUrl resolution)
  */
 
 "use client";
@@ -184,12 +185,12 @@ function SummaryContent() {
         {/* Child Avatar & Headline */}
         <div
           className="w-20 h-20 mx-auto rounded-3xl overflow-hidden border-2 border-white shadow-md mb-4 flex items-center justify-center"
-          style={{ backgroundColor: avatar.bgColor || "#FEF3C7" }}
+          style={{ backgroundColor: `${avatar.color}22` }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={avatar.src}
-            alt={avatar.alt}
+            src={avatar.imageUrl}
+            alt=""
             className="w-full h-full object-cover"
           />
         </div>
@@ -315,7 +316,7 @@ function SummaryContent() {
   );
 }
 
-// ─── Section 4: Suspense Wrapper Export ───
+// ─── Section 3: Suspense Wrapper Export ───
 
 export default function SummaryPage() {
   return (
