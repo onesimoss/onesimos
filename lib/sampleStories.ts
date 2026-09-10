@@ -552,6 +552,4 @@ export function getStoriesForChild(options: {
     .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score)
     .map((item) => item.story);
-}git add lib/sampleStories.ts
-git commit -m "feat(step-g): add structured comprehension questions (literal, inferential, vocabulary) to story catalog"
-git push origin main
+}
