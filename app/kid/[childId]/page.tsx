@@ -1,8 +1,8 @@
 /**
  * @file app/kid/[childId]/page.tsx
- * @description Kid Home View — story picker, daily reading session timer,
- * free plan monthly story quota gate, Word Pocket (stumbled words practice),
- * and Parent Gate access.
+ * @description Kid Home View — story catalog with completed story badges & stars,
+ * daily reading session timer, free plan monthly quota gate, Word Pocket
+ * (stumbled words practice), and Parent Gate access.
  *
  * @dependencies
  * - @/context/AuthContext (parent authentication)
@@ -10,6 +10,7 @@
  * - @/lib/stumbledWords (recent stumbled words + speech synthesis)
  * - @/lib/sampleStories (story catalog for kid's level)
  * - @/lib/avatars (avatar image & color resolution)
+ * - @/lib/sessionInsights (fetching completed reading session history)
  * - @/components/ParentGate (4-digit Parent PIN lock)
  */
 
@@ -33,9 +34,9 @@ import {
 import {
   getRecentStumbledWords,
   speakWord,
-  extractClassifiedTokens,
   type StumbledItem,
 } from "@/lib/stumbledWords";
+import { getChildSessions, type ReadingSessionRow } from "@/lib/sessionInsights";
 import ParentGate from "@/components/ParentGate";
 import {
   shouldOfferReminder,
@@ -74,6 +75,7 @@ export default function KidHomePage() {
   const [fetching, setFetching] = useState(true);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [recentWords, setRecentWords] = useState<ClassifiedWordItem[]>([]);
+  const [completedStoryIds, setCompletedStoryIds] = useState<Set<string>>(new Set());
 
   // UI & Navigation States
   const [gateOpen, setGateOpen] = useState(false);
@@ -120,8 +122,18 @@ export default function KidHomePage() {
       setSecondsLeft(left);
 
       // Check monthly story quota
-      const usage = await checkMonthlyStoryLimit(profile.id);
+      const usage = await checkMonthlyStoryLimit(profile.id, user.email);
       setMonthlyUsage(usage);
+
+      // Fetch completed story history to mark completed badges
+      const { data: sessionData } = await getChildSessions(profile.id, 100);
+      const finishedSet = new Set<string>();
+      (sessionData || []).forEach((s) => {
+        if (s.completed_story && s.story_id) {
+          finishedSet.add(s.story_id);
+        }
+      });
+      setCompletedStoryIds(finishedSet);
 
       // Fetch recent stumbled words for Word Pocket
       const { data: rawStumbled } = await getRecentStumbledWords(profile.id, 8);
@@ -185,7 +197,7 @@ export default function KidHomePage() {
 
       setStartingStoryId(storyId);
 
-      const usage = await checkMonthlyStoryLimit(child.id);
+      const usage = await checkMonthlyStoryLimit(child.id, user?.email);
       setMonthlyUsage(usage);
 
       if (!usage.isPaidPlan && !usage.allowed) {
@@ -197,7 +209,7 @@ export default function KidHomePage() {
       setStartingStoryId(null);
       router.push(`/kid/${child.id}/read/${storyId}`);
     },
-    [child, secondsLeft, router]
+    [child, secondsLeft, user?.email, router]
   );
 
   // Audio Pronunciation for Vocabulary Words
@@ -209,8 +221,8 @@ export default function KidHomePage() {
 
   if (loading || fetching || !child) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-sky-light to-cream flex items-center justify-center font-sans">
-        <p className="font-heading text-bark-muted text-xl animate-pulse">Getting ready...</p>
+      <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center font-sans">
+        <p className="font-extrabold text-gray-500 text-lg animate-pulse">Getting ready...</p>
       </main>
     );
   }
@@ -224,7 +236,7 @@ export default function KidHomePage() {
       : null;
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-sky-light via-cream to-gold-light font-sans pb-12">
+    <main className="min-h-screen bg-gradient-to-b from-sky-50/50 via-[#FDFBF7] to-amber-50/30 font-sans pb-12">
       <div className="max-w-3xl mx-auto px-6 py-8">
         
         {/* Top Navigation Bar */}
@@ -232,14 +244,14 @@ export default function KidHomePage() {
           <button
             type="button"
             onClick={() => setGateOpen(true)}
-            className="text-xs font-bold text-gray-500 hover:text-gray-900 bg-white/60 px-3 py-1.5 rounded-full border border-gray-200 transition-colors"
+            className="text-xs font-bold text-gray-500 hover:text-gray-900 bg-white/80 px-3.5 py-1.5 rounded-full border border-gray-200 transition-colors shadow-2xs"
           >
             🔒 Parent Portal
           </button>
           <span className="font-logo text-2xl text-bark">Onesimos</span>
           <Link
             href="/who"
-            className="text-xs font-bold text-gray-500 hover:text-gray-900 bg-white/60 px-3 py-1.5 rounded-full border border-gray-200 transition-colors"
+            className="text-xs font-bold text-gray-500 hover:text-gray-900 bg-white/80 px-3.5 py-1.5 rounded-full border border-gray-200 transition-colors shadow-2xs"
           >
             Switch Reader
           </Link>
@@ -332,16 +344,26 @@ export default function KidHomePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
             {stories.map((story) => {
               const isStarting = startingStoryId === story.id;
+              const isCompleted = completedStoryIds.has(story.id);
+
               return (
                 <button
                   key={story.id}
                   type="button"
                   disabled={!!startingStoryId}
                   onClick={() => void handleStartStory(story.id)}
-                  className="bg-white rounded-3xl p-5 border border-gray-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all text-left flex flex-col justify-between active:scale-[0.99] disabled:opacity-60"
+                  className="bg-white rounded-3xl p-5 border border-gray-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all text-left flex flex-col justify-between active:scale-[0.99] disabled:opacity-60 relative overflow-hidden"
                 >
                   <div>
-                    <div className="text-4xl mb-3">{story.coverEmoji}</div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-4xl">{story.coverEmoji}</span>
+                      {isCompleted && (
+                        <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                          <span>Completed</span>
+                          <span>✅</span>
+                        </span>
+                      )}
+                    </div>
                     <h2 className="font-heading text-xl font-black text-gray-900 mb-1">
                       {story.title}
                     </h2>
@@ -352,10 +374,15 @@ export default function KidHomePage() {
                       {storyFitLabel(story, child.reading_level || 3)}
                     </p>
                   </div>
-                  <div>
-                    <span className="inline-block py-2 px-4 rounded-xl bg-coral text-white text-xs font-black shadow-sm">
-                      {isStarting ? "Opening..." : "Read now →"}
+                  <div className="flex items-center justify-between pt-1">
+                    <span className={`inline-block py-2 px-4 rounded-xl text-xs font-black shadow-2xs ${
+                      isCompleted ? "bg-gray-100 text-gray-800" : "bg-coral text-white"
+                    }`}>
+                      {isStarting ? "Opening..." : isCompleted ? "Read again ↺" : "Read now →"}
                     </span>
+                    {isCompleted && (
+                      <span className="text-xs">⭐⭐⭐</span>
+                    )}
                   </div>
                 </button>
               );
