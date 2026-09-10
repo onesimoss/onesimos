@@ -2,7 +2,8 @@
  * @file app/parent/child/[childId]/page.tsx
  * @description Dedicated Academic Progress Report Page for a single child profile.
  * Provides plain-language "Before & After" growth narratives, fluency (WPM),
- * accuracy, comprehension scores, vocabulary focus, and session history.
+ * accuracy, comprehension scores, vocabulary focus, session history, and the 
+ * Living Story Book personal chapter generator engine.
  *
  * @dependencies
  * - @/context/AuthContext (parent authentication)
@@ -11,6 +12,8 @@
  * - @/lib/stumbledWords (vocabulary practice list)
  * - @/lib/sessionInsights (sessions history & report card stats engine)
  * - @/lib/sessionBudget (reset test quota helper)
+ * - @/lib/livingStory (Living Story Book chapter generator & history)
+ * - @/lib/sampleStories (SampleStory types)
  */
 
 "use client";
@@ -24,6 +27,7 @@ import { getAvatarById } from "@/lib/avatars";
 import type { ChildProfile } from "@/lib/children";
 import { setChildPin, deleteChild } from "@/lib/children";
 import { getRecentStumbledWords } from "@/lib/stumbledWords";
+import type { SampleStory } from "@/lib/sampleStories";
 import {
   getChildSessions,
   computeReportCardStats,
@@ -35,6 +39,10 @@ import {
   requestNotificationPermission,
 } from "@/lib/reminders";
 import { resetChildStoryQuota } from "@/lib/sessionBudget";
+import {
+  generateLivingChapterForChild,
+  getGeneratedStoriesForChild,
+} from "@/lib/livingStory";
 
 // ─── Section 1: Helper Formatters & Narrative Engine ───
 
@@ -71,10 +79,11 @@ function generateProgressNarrative(
     };
   }
 
-  const oldestSession = sessions[sessions.length - 1];
   const totalStories = stats.storiesFinished;
 
-  const beforeText = `When ${child.name} started, baseline reading focused on Level ${child.reading_level || 2} decoding skills across initial story sessions.`;
+  const beforeText = `When ${child.name} started, baseline reading focused on Level ${
+    child.reading_level || 2
+  } decoding skills across initial story sessions.`;
 
   const currentText = `${child.name} has completed ${totalStories} story ${
     totalStories === 1 ? "session" : "sessions"
@@ -108,6 +117,7 @@ export default function ChildReportPage() {
   const [child, setChild] = useState<ChildProfile | null>(null);
   const [sessions, setSessions] = useState<ReadingSessionRow[]>([]);
   const [practiceWords, setPracticeWords] = useState<{ word: string; count: number }[]>([]);
+  const [generatedStories, setGeneratedStories] = useState<SampleStory[]>([]);
   const [stats, setStats] = useState<DetailedReportCardStats | null>(null);
   const [fetching, setFetching] = useState(true);
 
@@ -117,6 +127,7 @@ export default function ChildReportPage() {
   const [pinSaving, setPinSaving] = useState(false);
   const [reminderSaving, setReminderSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [generatingChapter, setGeneratingChapter] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
@@ -150,13 +161,15 @@ export default function ChildReportPage() {
       const profile = data as ChildProfile;
       setChild(profile);
 
-      const [{ data: words }, { data: sessionData }] = await Promise.all([
+      const [{ data: words }, { data: sessionData }, personalChapters] = await Promise.all([
         getRecentStumbledWords(profile.id, 12),
         getChildSessions(profile.id, 50),
+        getGeneratedStoriesForChild(profile.id),
       ]);
 
       setPracticeWords(words);
       setSessions(sessionData);
+      setGeneratedStories(personalChapters);
       setStats(computeReportCardStats(profile, sessionData, words.length));
 
       setFetching(false);
@@ -215,6 +228,27 @@ export default function ChildReportPage() {
 
     setChild((prev) => (prev ? { ...prev, reminder_enabled: enabled } : prev));
     setMessage(enabled ? "Story Time Reminder turned on." : "Story Time Reminder turned off.");
+  };
+
+  /**
+   * Generates a new Living Story chapter weaving the child's real stumbled words.
+   */
+  const handleGeneratePersonalChapter = async () => {
+    if (!child) return;
+    setGeneratingChapter(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const newStory = await generateLivingChapterForChild(child);
+      setGeneratedStories((prev) => [newStory, ...prev]);
+      setMessage(`✨ New personal chapter "${newStory.title}" created for ${child.name}!`);
+    } catch (err) {
+      console.error("Failed to generate living chapter:", err);
+      setError("Could not generate personal chapter. Please try again.");
+    } finally {
+      setGeneratingChapter(false);
+    }
   };
 
   const handleResetTestQuota = async () => {
@@ -412,6 +446,78 @@ export default function ChildReportPage() {
               Day Reading Streak
             </p>
           </div>
+        </div>
+
+        {/* ─── Living Story Book Generator (The Product Moat) ─── */}
+        <div className="bg-gradient-to-br from-amber-50/80 via-white to-purple-50/50 rounded-3xl p-6 sm:p-8 border border-amber-200/70 shadow-sm mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-[10px] font-black uppercase tracking-wider mb-2">
+                <span>✨</span> Product Moat
+              </div>
+              <h3 className="text-xl font-black text-gray-900">
+                The Living Story Book
+              </h3>
+              <p className="text-xs text-gray-500 mt-1 font-medium">
+                Generates personal story chapters woven from {child.name}&apos;s real stumbled words and vocabulary goals.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              disabled={generatingChapter}
+              onClick={() => void handleGeneratePersonalChapter()}
+              className="px-5 py-3 rounded-2xl bg-coral text-white text-xs font-black hover:bg-coral/90 shadow-md transition-all active:scale-95 disabled:opacity-50 shrink-0"
+            >
+              {generatingChapter ? "Weaving Chapter..." : "✨ Generate Personal Chapter"}
+            </button>
+          </div>
+
+          {/* Personal Chapters List */}
+          {generatedStories.length === 0 ? (
+            <div className="p-6 rounded-2xl bg-white/80 border border-dashed border-amber-200 text-center">
+              <p className="text-xs font-bold text-amber-900 mb-1">
+                No personal chapters generated yet!
+              </p>
+              <p className="text-[11px] text-gray-500">
+                Click the button above to weave {child.name}&apos;s stumbling words into their first custom story chapter.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {generatedStories.map((story, idx) => (
+                <div
+                  key={story.id || idx}
+                  className="bg-white rounded-2xl p-4 border border-gray-200 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-3xl">{story.coverEmoji}</span>
+                      <div>
+                        <h4 className="text-sm font-black text-gray-900 line-clamp-1">
+                          {story.title}
+                        </h4>
+                        <span className="text-[10px] font-bold text-gray-400">
+                          {story.pages.length} Pages · Level {story.levelMin}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md">
+                      Personal Chapter
+                    </span>
+                    <Link
+                      href={`/kid/${child.id}/read/${story.id}`}
+                      className="text-xs font-black text-coral hover:underline"
+                    >
+                      Read Chapter →
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ─── Practice Vocabulary Section ─── */}
