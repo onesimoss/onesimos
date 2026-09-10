@@ -1,3 +1,18 @@
+/**
+ * @file app/kid/[childId]/read/[storyId]/page.tsx
+ * @description Kid Active Reading Screen — paginated story reader, real-time
+ * speech recognition mic, word stumble logging, session timer, and celebration
+ * transition to the summary screen upon story completion.
+ *
+ * @dependencies
+ * - @/context/AuthContext (parent authentication)
+ * - @/lib/sampleStories (story catalog and page text)
+ * - @/lib/avatars (avatar color & image resolution)
+ * - @/lib/stumbledWords (stumble word logging)
+ * - @/components/ReadingTimer (timed session budget countdown)
+ * - @/components/ReadAloudMic (Deepgram speech transcription hook)
+ */
+
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -8,14 +23,47 @@ import { supabase } from "@/lib/supabaseClient";
 import { getAvatarById } from "@/lib/avatars";
 import type { ChildProfile } from "@/lib/children";
 import { getStoryById } from "@/lib/sampleStories";
+import { saveStumbledWord } from "@/lib/stumbledWords";
 import ReadingTimer from "@/components/ReadingTimer";
 import ReadAloudMic from "@/components/ReadAloudMic";
+
+// ─── Section 1: Helper Text Highlights ───
+
+/**
+ * Renders story page text with soft warm gold highlights on stumbling words.
+ */
+function renderPageText(text: string, softWords: string[]): React.ReactNode {
+  if (!softWords.length) {
+    return text;
+  }
+
+  const lowerSet = new Set(softWords.map((w) => w.toLowerCase()));
+  const tokens = text.split(/(\s+)/);
+
+  return tokens.map((part, index) => {
+    const cleaned = part.toLowerCase().replace(/[^\w'-]/g, "");
+    if (cleaned && lowerSet.has(cleaned)) {
+      return (
+        <span
+          key={index}
+          className="rounded-lg bg-amber-100 px-1 py-0.5 border border-amber-300/60 font-bold text-amber-950"
+        >
+          {part}
+        </span>
+      );
+    }
+    return <span key={index}>{part}</span>;
+  });
+}
+
+// ─── Section 2: Reader Component ───
 
 export default function KidReadPage() {
   const { childId, storyId } = useParams<{ childId: string; storyId: string }>();
   const { user, loading } = useAuth();
   const router = useRouter();
 
+  // Story & Child Data States
   const [child, setChild] = useState<ChildProfile | null>(null);
   const [fetching, setFetching] = useState(true);
   const [pageIndex, setPageIndex] = useState(0);
@@ -24,12 +72,14 @@ export default function KidReadPage() {
 
   const story = useMemo(() => getStoryById(storyId), [storyId]);
 
+  // Auth Protection
   useEffect(() => {
-    if (!loading && !user) router.replace("/login");
+    if (!loading && !user) router.replace("/parent/login");
   }, [user, loading, router]);
 
+  // Load Child Profile
   useEffect(() => {
-    async function load() {
+    async function loadReaderData() {
       if (!user || !childId) return;
       setFetching(true);
 
@@ -41,70 +91,72 @@ export default function KidReadPage() {
         .single();
 
       if (error || !data) {
-        router.replace("/dashboard");
+        router.replace("/who");
         return;
       }
 
       setChild(data as ChildProfile);
       setFetching(false);
     }
-    load();
+
+    void loadReaderData();
   }, [user, childId, router]);
 
-  // Clear soft practice chips when page changes
+  // Reset soft highlights when moving between story pages
   useEffect(() => {
     setHighlightWords([]);
   }, [pageIndex]);
 
+  // Session Budget Expiration Callback
   const handleTimeUp = useCallback(() => {
     setSessionEnded(true);
   }, []);
 
-  const finishReading = () => {
+  // Story Completion Redirect to Summary
+  const finishReading = useCallback(() => {
     router.push(
       `/kid/${childId}/summary?storyId=${storyId}&pages=${pageIndex + 1}`
     );
-  };
+  }, [childId, storyId, pageIndex, router]);
 
-  const renderPageText = (text: string, softWords: string[]) => {
-    if (!softWords.length) {
-      return text;
-    }
+  // Log missed words from Deepgram microphone hook
+  const handleStumbledWordsDetected = useCallback(
+    (words: string[]) => {
+      if (!childId || !words.length) return;
+      setHighlightWords((prev) => Array.from(new Set([...prev, ...words])));
 
-    const lowerSet = new Set(softWords.map((w) => w.toLowerCase()));
-    const parts = text.split(/(\s+)/);
-
-    return parts.map((part, i) => {
-      const cleaned = part.toLowerCase().replace(/[^\w'-]/g, "");
-      if (cleaned && lowerSet.has(cleaned)) {
-        return (
-          <span
-            key={i}
-            className="rounded-lg bg-gold-light px-1 border border-gold/30"
-          >
-            {part}
-          </span>
-        );
-      }
-      return <span key={i}>{part}</span>;
-    });
-  };
+      // Save each stumbled word to DB in background
+      words.forEach((word) => {
+        void saveStumbledWord({
+          childId,
+          storyId,
+          word,
+        });
+      });
+    },
+    [childId, storyId]
+  );
 
   if (loading || fetching || !child) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-sky-light to-cream flex items-center justify-center">
-        <p className="font-heading text-bark-muted text-xl">Opening your story...</p>
+      <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center font-sans">
+        <p className="font-extrabold text-gray-500 text-lg animate-pulse">
+          Opening your story...
+        </p>
       </main>
     );
   }
 
   if (!story) {
     return (
-      <main className="min-h-screen bg-cream flex items-center justify-center p-6">
-        <div className="card text-center max-w-md">
-          <p className="text-bark-muted mb-4">Story not found.</p>
-          <Link href={`/kid/${childId}`} className="btn-primary inline-flex">
-            Back to stories
+      <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center p-6 font-sans">
+        <div className="bg-white rounded-3xl p-8 border border-gray-200 shadow-md text-center max-w-md">
+          <p className="text-gray-600 font-bold mb-4">Story not found.</p>
+          <Link
+            href={`/kid/${childId}`}
+            className="px-6 py-3 rounded-2xl bg-coral text-white font-bold text-xs hover:bg-coral/90 transition-colors inline-block"
+          >
+            Back to Stories
           </Link>
         </div>
       </main>
@@ -112,30 +164,36 @@ export default function KidReadPage() {
   }
 
   const avatar = getAvatarById(child.avatar_id);
-  const page = story.pages[pageIndex];
-  const isLastPage = pageIndex >= story.pages.length - 1;
-  const progress = ((pageIndex + 1) / story.pages.length) * 100;
+  const currentPage = story.pages[pageIndex];
+  const totalPages = story.pages.length;
+  const isLastPage = pageIndex >= totalPages - 1;
+  const progressPercent = ((pageIndex + 1) / totalPages) * 100;
 
+  // Session Budget Ended Screen
   if (sessionEnded) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-gold-light to-cream flex items-center justify-center p-6">
-        <div className="card max-w-md text-center !p-8">
-          <div className="text-6xl mb-4">⏰</div>
-          <h1 className="font-heading text-3xl font-extrabold text-bark mb-2">
-            Time&apos;s up for today!
+      <main className="min-h-screen bg-gradient-to-b from-amber-50 to-[#FDFBF7] flex items-center justify-center p-6 font-sans">
+        <div className="bg-white rounded-3xl max-w-md w-full p-8 text-center border border-gray-100 shadow-2xl">
+          <div className="text-6xl mb-4">⏱️</div>
+          <h1 className="text-2xl font-black text-gray-900 mb-2">
+            Time&apos;s Up for Today!
           </h1>
-          <p className="text-bark-muted mb-6">
-            Great reading, {child.name}. Your daily time is finished.
-            Come back tomorrow for more adventures.
+          <p className="text-gray-500 text-sm font-medium mb-6">
+            Great reading, {child.name}. Your daily reading session is complete.
+            Come back tomorrow for new adventures!
           </p>
-          <button type="button" onClick={finishReading} className="btn-primary w-full">
-            See my stars
+          <button
+            type="button"
+            onClick={finishReading}
+            className="w-full py-3.5 px-6 rounded-2xl bg-coral text-white text-xs font-black hover:bg-coral/90 transition-colors shadow-sm mb-3"
+          >
+            See My Stars ⭐
           </button>
           <Link
             href={`/kid/${childId}`}
-            className="block mt-4 text-sm font-bold text-bark-muted hover:text-bark"
+            className="block text-xs font-bold text-gray-400 hover:text-gray-600"
           >
-            Back home
+            Back Home
           </Link>
         </div>
       </main>
@@ -143,103 +201,106 @@ export default function KidReadPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-sky-light via-cream to-parchment flex flex-col">
-      <header className="px-4 py-3 flex items-center justify-between gap-3">
+    <main className="min-h-screen bg-gradient-to-b from-sky-50/50 via-[#FDFBF7] to-amber-50/30 flex flex-col font-sans">
+      
+      {/* ─── Section 3: Header & Progress Bar ─── */}
+      <header className="px-6 py-4 flex items-center justify-between gap-4 border-b border-gray-100 bg-white/70 backdrop-blur-sm sticky top-0 z-20">
         <Link
           href={`/kid/${childId}`}
-          className="text-sm font-bold text-bark-muted hover:text-bark shrink-0"
+          className="text-xs font-bold text-gray-500 hover:text-gray-900 flex items-center gap-1"
         >
-          ← Exit
+          <span>←</span> Back
         </Link>
 
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="w-9 h-9 rounded-full overflow-hidden border border-border bg-cream shrink-0">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={avatar.imageUrl}
-              alt=""
-              className="w-full h-full object-cover"
+        {/* Story Title & Visual Progress */}
+        <div className="flex-1 max-w-xs text-center">
+          <p className="text-xs font-black text-gray-800 truncate mb-1">
+            {story.title}
+          </p>
+          <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden border border-gray-200/50">
+            <div
+              className="bg-coral h-full rounded-full transition-all duration-300"
+              style={{ width: `${progressPercent}%` }}
             />
           </div>
-          <span className="font-heading font-bold text-bark truncate">
-            {child.name}
-          </span>
         </div>
 
-        <ReadingTimer
-          childId={child.id}
-          allowedMinutes={child.session_minutes || 20}
-          onTimeUp={handleTimeUp}
-        />
-      </header>
-
-      <div className="px-6 mb-2">
-        <div className="h-2 bg-border rounded-full overflow-hidden max-w-3xl mx-auto">
-          <div
-            className="h-full bg-coral rounded-full transition-all duration-300"
-            style={{ width: `${progress}%` }}
+        {/* Daily Reading Timer */}
+        <div className="shrink-0">
+          <ReadingTimer
+            childId={child.id}
+            allowedMinutes={child.session_minutes || 20}
+            onTimeUp={handleTimeUp}
           />
         </div>
-        <p className="text-center text-xs font-bold text-bark-muted mt-2">
-          Page {pageIndex + 1} of {story.pages.length}
-        </p>
-      </div>
+      </header>
 
-      <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
-        <div className="w-full max-w-2xl card !p-6 sm:!p-10 text-center">
-          <p className="text-sm font-bold text-coral mb-2">{story.title}</p>
+      {/* ─── Section 4: Main Reading Card Area ─── */}
+      <div className="flex-1 max-w-3xl w-full mx-auto p-4 sm:p-6 flex flex-col justify-between">
+        <div className="bg-white rounded-3xl p-6 sm:p-10 border border-gray-100 shadow-xl my-auto text-center flex flex-col items-center">
+          
+          {/* Story Image / Page Illustration */}
+          <div className="w-full max-w-sm h-48 sm:h-64 rounded-2xl bg-amber-50/60 border border-amber-100/60 overflow-hidden mb-6 flex items-center justify-center text-7xl shadow-inner">
+            {currentPage.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={currentPage.imageUrl}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span>{story.coverEmoji || "📖"}</span>
+            )}
+          </div>
 
-          {page.imageEmoji && (
-            <div className="text-7xl sm:text-8xl mb-6 select-none">
-              {page.imageEmoji}
-            </div>
-          )}
+          {/* Page Reading Text */}
+          <div className="text-xl sm:text-2xl font-bold text-gray-900 leading-relaxed tracking-wide max-w-xl mb-6">
+            {renderPageText(currentPage.text, highlightWords)}
+          </div>
 
-          <p className="font-heading text-2xl sm:text-3xl md:text-4xl leading-snug text-bark font-bold">
-            {renderPageText(page.text, highlightWords)}
-          </p>
+          {/* Read Aloud Microphone Component */}
+          <div className="pt-2">
+            <ReadAloudMic
+              expectedText={currentPage.text}
+              onStumbledWords={handleStumbledWordsDetected}
+            />
+          </div>
         </div>
-      </div>
 
-      {/* Mic — read this page out loud */}
-      <div className="px-4 pb-3">
-        <ReadAloudMic
-          childId={child.id}
-          storyId={story.id}
-          pageText={page.text}
-          onResult={({ stumbled }) => setHighlightWords(stumbled)}
-        />
-      </div>
-
-      <div className="p-4 sm:p-6 pb-8">
-        <div className="max-w-2xl mx-auto flex items-center justify-between gap-3">
+        {/* ─── Section 5: Bottom Navigation & Final Page CTA ─── */}
+        <footer className="pt-4 pb-2 flex items-center justify-between gap-4">
           <button
             type="button"
-            onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
             disabled={pageIndex === 0}
-            className="btn-secondary !px-5 !py-3 !text-sm disabled:opacity-40"
+            onClick={() => setPageIndex((prev) => Math.max(0, prev - 1))}
+            className="px-5 py-3 rounded-2xl border border-gray-200 bg-white text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-30 disabled:hover:bg-white"
           >
-            ← Back
+            ← Previous
           </button>
+
+          <span className="text-xs font-bold text-gray-400">
+            Page {pageIndex + 1} of {totalPages}
+          </span>
 
           {!isLastPage ? (
             <button
               type="button"
-              onClick={() => setPageIndex((p) => p + 1)}
-              className="btn-primary !px-8 !py-3 !text-base"
+              onClick={() => setPageIndex((prev) => Math.min(totalPages - 1, prev + 1))}
+              className="px-6 py-3 rounded-2xl bg-gray-900 text-white text-xs font-black hover:bg-black transition-colors shadow-sm"
             >
-              Next →
+              Next Page →
             </button>
           ) : (
             <button
               type="button"
               onClick={finishReading}
-              className="btn-gold !px-8 !py-3 !text-base"
+              className="px-6 py-3.5 rounded-2xl bg-coral text-white text-xs font-black hover:bg-coral/90 transition-all shadow-md flex items-center gap-1.5 active:scale-95"
             >
-              Finish story ⭐
+              <span>Finish Story</span>
+              <span>⭐</span>
             </button>
           )}
-        </div>
+        </footer>
       </div>
     </main>
   );
