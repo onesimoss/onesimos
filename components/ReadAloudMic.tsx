@@ -2,16 +2,22 @@
  * @file components/ReadAloudMic.tsx
  * @description Real-time microphone audio capture component for read-aloud sessions.
  * Features 200ms timesliced audio chunking, multi-format MIME type resolution
- * (WebM, MP4, AAC, WAV), minimum audio volume checks, and Deepgram API integration.
+ * (WebM, MP4, AAC, WAV), lowered volume threshold for Fire OS tablets & quiet mics,
+ * keyword boosting pass-through, and fuzzy stumble detection.
  *
  * @dependencies
- * - @/lib/stumbledWords (stumble detection algorithm & Supabase logging)
+ * - @/lib/stumbledWords (fuzzy stumble detection & Supabase logging)
  */
 
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { findStumbledWords, saveStumbledWord } from "@/lib/stumbledWords";
+import {
+  findStumbledItems,
+  saveStumbledWord,
+  stripPunctuation,
+  type StumbledItem,
+} from "@/lib/stumbledWords";
 
 type MicStatus = "idle" | "recording" | "thinking" | "done" | "error";
 
@@ -22,6 +28,7 @@ interface ReadAloudMicProps {
   onResult?: (result: {
     transcript: string;
     stumbled: string[];
+    stumbledItems: StumbledItem[];
   }) => void;
 }
 
@@ -30,10 +37,10 @@ export default function ReadAloudMic({
   storyId,
   pageText,
   onResult,
-}: ReadAloudMicProps) {
+}: ReadAloudMicProps): JSX.Element {
   const [status, setStatus] = useState<MicStatus>("idle");
   const [message, setMessage] = useState("");
-  const [stumbled, setStumbled] = useState<string[]>([]);
+  const [stumbledItems, setStumbledItems] = useState<StumbledItem[]>([]);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -45,7 +52,7 @@ export default function ReadAloudMic({
     };
   }, []);
 
-  const stopStream = () => {
+  const stopStream = (): void => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
@@ -76,20 +83,42 @@ export default function ReadAloudMic({
     return "";
   };
 
-  const startRecording = async () => {
+  /**
+   * Extracts distinct page words to pass to Deepgram for vocabulary keyword boosting.
+   */
+  const getPageKeywords = (): string => {
+    if (!pageText) return "";
+    const words = pageText
+      .split(/\s+/)
+      .map(stripPunctuation)
+      .filter((w) => w.length >= 2);
+    const unique = Array.from(new Set(words.map((w) => w.toLowerCase())));
+    return unique.slice(0, 30).join(",");
+  };
+
+  const startRecording = async (): Promise<void> => {
     setMessage("");
-    setStumbled([]);
+    setStumbledItems([]);
     chunksRef.current = [];
 
     try {
-      if (typeof window === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      if (
+        typeof window === "undefined" ||
+        !navigator.mediaDevices?.getUserMedia
+      ) {
         setStatus("error");
-        setMessage("This device can't use the microphone in this browser.");
+        setMessage("This device cannot use the microphone in this browser.");
         return;
       }
 
       // Request microphone access
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
       streamRef.current = stream;
 
       const mimeType = getSupportedMimeType();
@@ -113,17 +142,21 @@ export default function ReadAloudMic({
         const audioBlob = new Blob(chunksRef.current, { type: finalMime });
         stopStream();
 
-        // Check if audio file has sufficient volume/data
-        if (audioBlob.size < 800) {
+        // Fire OS & Quiet Mic Fix: Lower minimum threshold from 800 bytes to 200 bytes
+        if (audioBlob.size < 200) {
           setStatus("done");
-          setMessage("I didn't catch words that time. Try reading a little louder!");
-          onResult?.({ transcript: "", stumbled: [] });
+          setMessage(
+            "I didn't catch words that time. Try reading a little louder!"
+          );
+          onResult?.({ transcript: "", stumbled: [], stumbledItems: [] });
           return;
         }
 
         try {
           const form = new FormData();
-          form.append("audio", audioBlob, `reading_audio.${finalMime.includes("mp4") ? "mp4" : "webm"}`);
+          const extension = finalMime.includes("mp4") ? "mp4" : "webm";
+          form.append("audio", audioBlob, `reading_audio.${extension}`);
+          form.append("keywords", getPageKeywords());
 
           const res = await fetch("/api/transcribe", {
             method: "POST",
@@ -134,7 +167,9 @@ export default function ReadAloudMic({
 
           if (!res.ok) {
             setStatus("error");
-            setMessage(data.error || "Could not hear clearly — try again!");
+            setMessage(
+              data.error || "Could not hear clearly — try again!"
+            );
             return;
           }
 
@@ -142,49 +177,64 @@ export default function ReadAloudMic({
 
           if (!transcript) {
             setStatus("done");
-            setMessage("I didn't catch words that time. Try reading a little louder!");
-            onResult?.({ transcript: "", stumbled: [] });
+            setMessage(
+              "I didn't catch words that time. Try reading a little louder!"
+            );
+            onResult?.({ transcript: "", stumbled: [], stumbledItems: [] });
             return;
           }
 
-          const missed = findStumbledWords(pageText, transcript);
-          setStumbled(missed);
+          // Run fuzzy match stumble detection
+          const missed = findStumbledItems(pageText, transcript);
+          setStumbledItems(missed);
 
-          // Save stumbled words to practice list
-          for (const word of missed.slice(0, 8)) {
+          // Save stumbled items to practice list (fire-and-forget)
+          for (const item of missed.slice(0, 8)) {
             void saveStumbledWord({
               childId,
-              word,
+              word: item.word,
               storyId,
             });
           }
 
+          const missedWordsOnly = missed.map((item) => item.word);
+
           setStatus("done");
           if (missed.length === 0) {
-            setMessage("Wonderful reading! You can turn the page when you're ready.");
+            setMessage(
+              "Wonderful reading! You can turn the page when you're ready."
+            );
           } else {
-            setMessage("Great try! We'll practice a few words again later — no rush.");
+            setMessage(
+              "Great try! We saved a few tricky words to your Word Pocket to practise later."
+            );
           }
 
-          onResult?.({ transcript, stumbled: missed });
+          onResult?.({
+            transcript,
+            stumbled: missedWordsOnly,
+            stumbledItems: missed,
+          });
         } catch {
           setStatus("error");
           setMessage("Something went wrong. Let's try once more.");
         }
       };
 
-      // ⚠️ FIX: Pass 200ms timeslice so audio chunks are pushed continuously!
+      // 200ms timeslice chunking for continuous recording
       recorder.start(200);
       setStatus("recording");
       setMessage("Listening... Read this page out loud!");
     } catch {
       setStatus("error");
-      setMessage("Microphone is off. Please allow mic permissions and try again.");
+      setMessage(
+        "Microphone is off. Please allow mic permissions in your browser and try again."
+      );
       stopStream();
     }
   };
 
-  const stopRecording = () => {
+  const stopRecording = (): void => {
     const recorder = mediaRecorderRef.current;
     if (recorder && recorder.state === "recording") {
       recorder.stop();
@@ -198,23 +248,25 @@ export default function ReadAloudMic({
   const isBusy = status === "thinking";
 
   return (
-    <div className="w-full max-w-2xl mx-auto font-sans">
+    <div className="w-full max-w-2xl mx-auto font-switzer">
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
         {!isRecording ? (
           <button
             type="button"
             onClick={startRecording}
             disabled={isBusy}
-            className="px-6 py-3.5 rounded-2xl bg-coral text-white font-extrabold text-xs hover:bg-coral/90 transition-all shadow-md flex items-center gap-2 active:scale-95 disabled:opacity-50"
+            className="px-6 py-3.5 rounded-2xl bg-coral text-white font-extrabold text-xs hover:bg-coral/90 transition-all shadow-md flex items-center gap-2 active:scale-95 disabled:opacity-50 font-switzer"
           >
             <span className="text-base">🎙️</span>
-            {status === "done" || status === "error" ? "Read Page Again" : "Read Page Out Loud"}
+            {status === "done" || status === "error"
+              ? "Read Page Again"
+              : "Read Page Out Loud"}
           </button>
         ) : (
           <button
             type="button"
             onClick={stopRecording}
-            className="px-6 py-3.5 rounded-2xl bg-coral text-white font-extrabold text-xs shadow-md flex items-center gap-2 animate-pulse active:scale-95"
+            className="px-6 py-3.5 rounded-2xl bg-coral text-white font-extrabold text-xs shadow-md flex items-center gap-2 animate-pulse active:scale-95 font-switzer"
           >
             <span className="text-base">⏹️</span>
             I&apos;m Done Reading
@@ -224,7 +276,7 @@ export default function ReadAloudMic({
 
       {message && (
         <p
-          className={`mt-3 text-center text-xs font-bold ${
+          className={`mt-3 text-center text-xs font-bold font-switzer ${
             status === "error" ? "text-red-500" : "text-gray-600"
           }`}
         >
@@ -232,14 +284,23 @@ export default function ReadAloudMic({
         </p>
       )}
 
-      {stumbled.length > 0 && status === "done" && (
+      {stumbledItems.length > 0 && status === "done" && (
         <div className="mt-4 flex flex-wrap justify-center gap-2">
-          {stumbled.slice(0, 6).map((word) => (
+          {stumbledItems.slice(0, 6).map((item) => (
             <span
-              key={word}
-              className="px-3 py-1 rounded-xl bg-amber-100/80 text-gray-900 text-xs font-bold border border-amber-200/80"
+              key={item.word}
+              className={`px-3 py-1 rounded-xl text-xs font-bold border flex items-center gap-1 ${
+                item.type === "name"
+                  ? "bg-slate-100 text-slate-800 border-slate-300"
+                  : "bg-amber-100/80 text-amber-900 border-amber-200/80"
+              }`}
             >
-              {word}
+              <span>{item.display}</span>
+              {item.type === "name" && (
+                <span className="text-[9px] bg-slate-200 text-slate-600 px-1 rounded-full">
+                  Name
+                </span>
+              )}
             </span>
           ))}
         </div>
