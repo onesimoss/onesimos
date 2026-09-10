@@ -2,7 +2,8 @@
  * @file app/kid/[childId]/page.tsx
  * @description Kid Home View — story catalog with completed story badges & stars,
  * daily reading session timer, free plan monthly quota gate, Word Pocket
- * (stumbled words practice), and Parent Gate access.
+ * (stumbled words practice with tap-to-hear audio), Solo Spelling Game launcher,
+ * and Parent Gate access.
  *
  * @dependencies
  * - @/context/AuthContext (parent authentication)
@@ -15,6 +16,8 @@
  */
 
 "use client";
+
+// ─── IMPORTS ────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -34,9 +37,8 @@ import {
 import {
   getRecentStumbledWords,
   speakWord,
-  type StumbledItem,
 } from "@/lib/stumbledWords";
-import { getChildSessions, type ReadingSessionRow } from "@/lib/sessionInsights";
+import { getChildSessions } from "@/lib/sessionInsights";
 import ParentGate from "@/components/ParentGate";
 import {
   shouldOfferReminder,
@@ -44,7 +46,7 @@ import {
   sendFriendlyStoryNotification,
 } from "@/lib/reminders";
 
-// ─── Section 1: Helper Types & Functions ───
+// ─── TYPES & HELPERS ────────────────────────────────────────────────────────
 
 interface ClassifiedWordItem {
   word: string;
@@ -63,10 +65,11 @@ function storyFitLabel(story: SampleStory, readingLevel: number): string {
   return "Easy warm-up";
 }
 
-// ─── Section 2: Page Component ───
+// ─── MAIN COMPONENT ─────────────────────────────────────────────────────────
 
-export default function KidHomePage() {
-  const { childId } = useParams<{ childId: string }>();
+export default function KidHomePage(): JSX.Element {
+  const params = useParams<{ childId: string }>();
+  const childId = params.childId;
   const { user, loading } = useAuth();
   const router = useRouter();
 
@@ -95,7 +98,7 @@ export default function KidHomePage() {
 
   // Load Child Profile & Session Data
   useEffect(() => {
-    async function loadKidHomeData() {
+    async function loadKidHomeData(): Promise<void> {
       if (!user || !childId) return;
       setFetching(true);
 
@@ -213,7 +216,7 @@ export default function KidHomePage() {
   );
 
   // Audio Pronunciation for Vocabulary Words
-  const handleSpeakWord = (text: string) => {
+  const handleSpeakWord = (text: string): void => {
     setActiveSpeakingWord(text);
     speakWord(text);
     setTimeout(() => setActiveSpeakingWord(null), 1200);
@@ -236,7 +239,7 @@ export default function KidHomePage() {
       : null;
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-sky-50/50 via-[#FDFBF7] to-amber-50/30 font-sans pb-12">
+    <main className="min-h-screen bg-gradient-to-b from-sky-50/50 via-[#FDFBF7] to-amber-50/30 font-sans pb-16">
       <div className="max-w-3xl mx-auto px-6 py-8">
         
         {/* Top Navigation Bar */}
@@ -293,7 +296,7 @@ export default function KidHomePage() {
         )}
 
         {/* Child Hero Header */}
-        <div className="text-center mb-10">
+        <div className="text-center mb-8">
           <div
             className="w-24 h-28 mx-auto rounded-3xl overflow-hidden border-4 border-white shadow-md mb-4 flex items-center justify-center"
             style={{ backgroundColor: `${avatar.color}33` }}
@@ -311,7 +314,7 @@ export default function KidHomePage() {
           <p className="text-gray-500 text-base font-medium">
             {timeIsUp
               ? "You did amazing today. See you tomorrow!"
-              : "Pick a story for today"}
+              : "Pick a story or practise your spelling!"}
           </p>
 
           <div className="inline-flex flex-wrap items-center justify-center gap-2 mt-4">
@@ -326,6 +329,29 @@ export default function KidHomePage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Spelling Practice Quick Launcher Banner */}
+        <div className="mb-8 bg-gradient-to-r from-amber-500 to-orange-500 rounded-3xl p-6 text-white shadow-md flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4 text-left">
+            <div className="w-14 h-14 bg-white/20 backdrop-blur-xs rounded-2xl flex items-center justify-center text-3xl shrink-0">
+              ✏️
+            </div>
+            <div>
+              <h2 className="font-heading text-xl font-black text-white">
+                Spelling Practice
+              </h2>
+              <p className="text-amber-100 text-xs font-medium">
+                Spell words from your stories and earn stars!
+              </p>
+            </div>
+          </div>
+          <Link
+            href={`/kid/${child.id}/spell`}
+            className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-white text-amber-700 font-black text-sm shadow-sm hover:bg-amber-50 active:scale-95 transition-all text-center shrink-0"
+          >
+            Play Spelling 🚀
+          </Link>
         </div>
 
         {/* Story Grid or Rest Card */}
@@ -375,14 +401,20 @@ export default function KidHomePage() {
                     </p>
                   </div>
                   <div className="flex items-center justify-between pt-1">
-                    <span className={`inline-block py-2 px-4 rounded-xl text-xs font-black shadow-2xs ${
-                      isCompleted ? "bg-gray-100 text-gray-800" : "bg-coral text-white"
-                    }`}>
-                      {isStarting ? "Opening..." : isCompleted ? "Read again ↺" : "Read now →"}
+                    <span
+                      className={`inline-block py-2 px-4 rounded-xl text-xs font-black shadow-2xs ${
+                        isCompleted
+                          ? "bg-gray-100 text-gray-800"
+                          : "bg-coral text-white"
+                      }`}
+                    >
+                      {isStarting
+                        ? "Opening..."
+                        : isCompleted
+                        ? "Read again ↺"
+                        : "Read now →"}
                     </span>
-                    {isCompleted && (
-                      <span className="text-xs">⭐⭐⭐</span>
-                    )}
+                    {isCompleted && <span className="text-xs">⭐ Star reader</span>}
                   </div>
                 </button>
               );
@@ -390,57 +422,46 @@ export default function KidHomePage() {
           </div>
         )}
 
-        {/* Empty Catalog State */}
-        {!timeIsUp && stories.length === 0 && (
-          <div className="bg-white rounded-3xl p-8 text-center border border-gray-200 shadow-sm mb-8">
-            <p className="text-gray-500 text-sm font-medium">
-              Stories are getting ready for you. Check back soon!
-            </p>
-          </div>
-        )}
-
-        {/* ─── Section 3: My Words Pocket ─── */}
-        <div className="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm mb-8">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h3 className="font-heading text-lg font-black text-gray-900 flex items-center gap-2">
-                <span>🎒</span> My Word Pocket
-              </h3>
-              <p className="text-xs text-gray-500 mt-0.5 font-medium">
-                Words to practice from your recent reading sessions.
-              </p>
+        {/* Word Pocket (Stumbled Words with Tap-to-Hear) */}
+        {recentWords.length > 0 && (
+          <section className="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="font-heading text-lg font-black text-gray-900">
+                  🎒 Word Pocket
+                </h2>
+                <p className="text-xs text-gray-500 font-medium">
+                  Tap any word to hear how it sounds
+                </p>
+              </div>
+              <Link
+                href={`/kid/${child.id}/spell`}
+                className="text-xs font-bold text-amber-600 hover:text-amber-700 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200"
+              >
+                Spell these →
+              </Link>
             </div>
-            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200/60">
-              Tap word to hear 🔊
-            </span>
-          </div>
 
-          {recentWords.length === 0 ? (
-            <p className="text-xs text-gray-400 font-medium py-3 text-center bg-gray-50/50 rounded-2xl">
-              Your word pocket is empty! Read a story aloud to discover words to practice.
-            </p>
-          ) : (
-            <div className="flex flex-wrap gap-2 pt-1">
+            <div className="flex flex-wrap gap-2">
               {recentWords.map((item) => {
-                const isWord = item.type === "word";
+                const isSpeaking = activeSpeakingWord === item.word;
                 return (
                   <button
                     key={item.word}
                     type="button"
-                    onClick={() => isWord && handleSpeakWord(item.display)}
-                    className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 border ${
-                      isWord
-                        ? activeSpeakingWord === item.display
-                          ? "bg-amber-400 text-black border-amber-500 shadow-sm"
-                          : "bg-amber-50/80 text-amber-950 border-amber-200/80 hover:bg-amber-100"
-                        : "bg-purple-50/80 text-purple-950 border-purple-200/80 cursor-default"
+                    onClick={() => handleSpeakWord(item.word)}
+                    className={`px-3.5 py-2 rounded-2xl border text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      isSpeaking
+                        ? "bg-amber-100 border-amber-400 text-amber-900 scale-95"
+                        : item.type === "name"
+                        ? "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+                        : "bg-amber-50/60 border-amber-200/80 text-amber-900 hover:bg-amber-100/80"
                     }`}
                   >
                     <span>{item.display}</span>
-                    {isWord ? (
-                      <span className="text-[10px] opacity-60">🔊</span>
-                    ) : (
-                      <span className="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-md uppercase font-black">
+                    <span className="text-[10px] text-gray-400">🔊</span>
+                    {item.type === "name" && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600 font-medium">
                         Name
                       </span>
                     )}
@@ -448,40 +469,31 @@ export default function KidHomePage() {
                 );
               })}
             </div>
-          )}
-        </div>
-
-        {/* Bottom Actions */}
-        <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={() => setGateOpen(true)}
-            className="px-6 py-3 rounded-2xl bg-white/80 border border-gray-200 text-xs font-bold text-gray-600 hover:bg-white shadow-sm transition-colors flex items-center gap-2"
-          >
-            <span>🔒</span> Parent Portal & Settings
-          </button>
-        </div>
-
+          </section>
+        )}
       </div>
+
+      {/* Parent PIN Lock Gate Modal */}
+      <ParentGate
+        isOpen={gateOpen}
+        onClose={() => setGateOpen(false)}
+        onSuccess={() => {
+          setGateOpen(false);
+          router.push("/parent");
+        }}
+      />
 
       {/* Free Plan Monthly Limit Modal */}
       {limitModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center border border-gray-100 shadow-2xl">
-            <div className="text-4xl mb-3">📖</div>
-            <h2 className="text-xl font-black text-gray-900 mb-2">
-              Free Stories Completed
-            </h2>
-            <p className="text-gray-500 text-xs mb-3">
-              {child.name} has finished all{" "}
-              <span className="font-bold text-gray-900">
-                {FREE_MONTHLY_STORY_LIMIT} free stories
-              </span>{" "}
-              for this month.
-            </p>
-            <p className="text-gray-400 text-[11px] mb-6">
-              Parents can unlock unlimited stories, or wait until next month when
-              the free allowance refreshes.
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl border border-gray-100">
+            <div className="text-4xl mb-3">🌟</div>
+            <h3 className="font-heading text-xl font-black text-gray-900 mb-2">
+              Story Goal Reached!
+            </h3>
+            <p className="text-xs text-gray-600 mb-6 leading-relaxed">
+              You&apos;ve completed all <strong>{FREE_MONTHLY_STORY_LIMIT} free stories</strong> for this month. 
+              Ask a parent to unlock unlimited adventures!
             </p>
             <div className="flex flex-col gap-2">
               <button
@@ -490,31 +502,21 @@ export default function KidHomePage() {
                   setLimitModalOpen(false);
                   setGateOpen(true);
                 }}
-                className="py-3 px-4 rounded-2xl bg-coral text-white text-xs font-black hover:bg-coral/90 transition-colors shadow-sm"
+                className="w-full py-3 rounded-2xl bg-coral text-white font-black text-xs shadow-sm hover:bg-coral/90"
               >
-                Parent Unlock
+                Ask Parent to Unlock ✨
               </button>
               <button
                 type="button"
                 onClick={() => setLimitModalOpen(false)}
-                className="py-2.5 px-4 rounded-2xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50 transition-colors"
+                className="w-full py-2.5 rounded-2xl border border-gray-200 text-gray-600 font-bold text-xs hover:bg-gray-50"
               >
-                Back to Home
+                Maybe Later
               </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* Parent Security Gate */}
-      <ParentGate
-        open={gateOpen}
-        onClose={() => setGateOpen(false)}
-        onSuccess={() => {
-          setGateOpen(false);
-          router.push("/parent");
-        }}
-      />
     </main>
   );
 }
