@@ -8,7 +8,7 @@
  * - @/context/AuthContext (parent authentication)
  * - @/lib/sampleStories (story catalog and page text)
  * - @/lib/avatars (avatar color & image resolution)
- * - @/lib/stumbledWords (stumble word logging)
+ * - @/lib/stumbledWords (stumbled word logging)
  * - @/components/ReadingTimer (timed session budget countdown)
  * - @/components/ReadAloudMic (Deepgram speech transcription hook)
  */
@@ -169,6 +169,10 @@ export default function KidReadPage() {
   const isLastPage = pageIndex >= totalPages - 1;
   const progressPercent = ((pageIndex + 1) / totalPages) * 100;
 
+  // Safe optional extraction for optional page illustration property
+  const pageImage = (currentPage as { imageUrl?: string; image?: string }).imageUrl ||
+                    (currentPage as { imageUrl?: string; image?: string }).image;
+
   // Session Budget Ended Screen
   if (sessionEnded) {
     return (
@@ -241,10 +245,10 @@ export default function KidReadPage() {
           
           {/* Story Image / Page Illustration */}
           <div className="w-full max-w-sm h-48 sm:h-64 rounded-2xl bg-amber-50/60 border border-amber-100/60 overflow-hidden mb-6 flex items-center justify-center text-7xl shadow-inner">
-            {currentPage.imageUrl ? (
+            {pageImage ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={currentPage.imageUrl}
+                src={pageImage}
                 alt=""
                 className="w-full h-full object-cover"
               />
