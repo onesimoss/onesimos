@@ -475,7 +475,7 @@ export default function KidHomePage(): JSX.Element {
 
       {/* Parent PIN Lock Gate Modal */}
       <ParentGate
-        isOpen={gateOpen}
+        open={gateOpen}
         onClose={() => setGateOpen(false)}
         onSuccess={() => {
           setGateOpen(false);
