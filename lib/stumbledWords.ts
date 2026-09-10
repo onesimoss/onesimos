@@ -1,10 +1,22 @@
+/**
+ * @file lib/stumbledWords.ts
+ * @description Speech classification, stumbled word extraction, tap-to-hear 
+ * audio synthesis with fallback support for Amazon Fire OS / Silk browsers, 
+ * and Supabase stumbled words logging.
+ *
+ * @dependencies
+ * - @/lib/supabaseClient (Database queries & logging)
+ */
+
 import { supabase } from "./supabaseClient";
+
+// ─── Section 1: Types & Configuration ───
 
 export type WordClassification = "word" | "name";
 
 export interface StumbledItem {
-  word: string;        // Cleaned lowercase token (e.g. "amaka", "whisper")
-  display: string;     // Display format with proper casing (e.g. "Amaka", "whisper")
+  word: string;        // Cleaned lowercase token (e.g. "whisper")
+  display: string;     // Formatted display token (e.g. "whisper" or "Amaka")
   type: WordClassification;
 }
 
@@ -21,7 +33,7 @@ const SKIP_WORDS = new Set([
   "yes", "no", "not", "ok", "hi", "hey", "oh", "ah",
 ]);
 
-// Common words that frequently start sentences (to prevent misclassifying them as names)
+// Words that frequently start sentences (not proper nouns/names)
 const COMMON_SENTENCE_STARTERS = new Set([
   "once", "then", "there", "they", "this", "that", "these", "those",
   "when", "while", "where", "what", "who", "why", "how",
@@ -30,12 +42,20 @@ const COMMON_SENTENCE_STARTERS = new Set([
   "long", "look", "listen", "come", "here", "just",
 ]);
 
+/**
+ * Strips leading/trailing non-alphanumeric punctuation.
+ */
 function stripPunctuation(w: string): string {
   return w.replace(/^[^\w]+|[^\w]+$/g, "");
 }
 
+// ─── Section 2: Token Extraction & Classification ───
+
 /**
- * Extract tokens from page text with classification (name vs vocabulary word).
+ * Extracts tokens from story page text, classifying proper nouns (names) vs vocabulary.
+ *
+ * @param pageText - Full page or story text
+ * @returns Array of classified StumbledItem objects
  */
 export function extractClassifiedTokens(pageText: string): StumbledItem[] {
   const sentences = pageText.split(/(?<=[.?!])\s+|\n+/g);
@@ -56,9 +76,6 @@ export function extractClassifiedTokens(pageText: string): StumbledItem[] {
       const isFirstOfSentence = index === 0;
       const startsWithCapital = /^[A-Z]/.test(cleaned);
 
-      // Classification heuristic:
-      // 1. Mid-sentence capital -> definitely a Character / Place Name (e.g., "Tayo", "Amaka", "Lagos")
-      // 2. Start-of-sentence capital not in common words list -> potential Name
       let type: WordClassification = "word";
       let display = lower;
 
@@ -67,7 +84,6 @@ export function extractClassifiedTokens(pageText: string): StumbledItem[] {
           type = "name";
           display = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
         } else if (!COMMON_SENTENCE_STARTERS.has(lower) && cleaned.length >= 3) {
-          // If the word isn't a typical sentence starter, keep original casing
           display = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
         }
       }
@@ -84,13 +100,15 @@ export function extractClassifiedTokens(pageText: string): StumbledItem[] {
 }
 
 /**
- * Compare expected story text with speech transcript.
- * Returns classified items (distinguishing names to learn from practice vocabulary).
+ * Compares expected story text with speech transcript from Deepgram.
+ *
+ * @param pageText - Story text on current page
+ * @param transcript - Speech-to-text transcript returned from microphone
+ * @returns Array of missed items classified by word vs name
  */
 export function findStumbledItems(pageText: string, transcript: string): StumbledItem[] {
   const expectedItems = extractClassifiedTokens(pageText);
 
-  // Normalize transcript into clean lookup tokens
   const heardTokens = new Set(
     transcript
       .toLowerCase()
@@ -106,7 +124,6 @@ export function findStumbledItems(pageText: string, transcript: string): Stumble
   for (const item of expectedItems) {
     if (seen.has(item.word)) continue;
 
-    // Check if Deepgram heard this word
     if (!heardTokens.has(item.word)) {
       missed.push(item);
       seen.add(item.word);
@@ -117,40 +134,65 @@ export function findStumbledItems(pageText: string, transcript: string): Stumble
 }
 
 /**
- * Backward-compatible helper returning string array of missed words.
+ * Legacy helper returning raw string array of missed words.
  */
 export function findStumbledWords(pageText: string, transcript: string): string[] {
   return findStumbledItems(pageText, transcript).map((item) => item.word);
 }
 
+// ─── Section 3: Tap-to-Hear Audio Synthesis & Device Fallbacks ───
+
 /**
- * Browser-native free Speech Synthesis (Tap to Hear).
+ * Checks if the user's browser/tablet supports Speech Synthesis API.
  */
-export function speakWord(text: string, lang = "en-US") {
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-    console.warn("Speech synthesis not supported in this browser.");
-    return;
-  }
-
-  window.speechSynthesis.cancel(); // Stop any currently playing audio
-
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = lang;
-  utterance.rate = 0.85; // Slightly slower for clear kid listening
-  utterance.pitch = 1.05;
-
-  window.speechSynthesis.speak(utterance);
+export function isSpeechSynthesisSupported(): boolean {
+  return typeof window !== "undefined" && "speechSynthesis" in window;
 }
 
 /**
- * Save stumbled word to Supabase log.
+ * Triggers browser-native text-to-speech for vocabulary words.
+ * Includes explicit fallbacks for Amazon Fire OS (Silk Browser) & WebViews.
+ *
+ * @param text - Word or phrase to speak
+ * @param lang - Target BCP-47 language tag (default: "en-US")
+ */
+export function speakWord(text: string, lang = "en-US"): void {
+  if (!isSpeechSynthesisSupported()) {
+    console.warn("Speech synthesis unavailable on this device/browser (e.g. Silk / Fire OS).");
+    return;
+  }
+
+  try {
+    // Cancel any currently playing speech to avoid audio queuing delay
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang;
+    utterance.rate = 0.85; // Slightly slower pacing for young readers
+    utterance.pitch = 1.05;
+
+    // Handle error events on low-end WebViews safely
+    utterance.onerror = (event) => {
+      console.warn("Speech utterance encountered error:", event.error);
+    };
+
+    window.speechSynthesis.speak(utterance);
+  } catch (err) {
+    console.warn("Failed to execute speakWord on this device:", err);
+  }
+}
+
+// ─── Section 4: Supabase Logging & History Fetching ───
+
+/**
+ * Persists a stumbled word to Supabase log.
  */
 export async function saveStumbledWord(params: {
   childId: string;
   word: string;
   storyId?: string;
   sessionId?: string;
-}) {
+}): Promise<{ error: unknown | null }> {
   const cleaned = stripPunctuation(params.word).toLowerCase();
   if (!cleaned || cleaned.length < 3 || SKIP_WORDS.has(cleaned)) {
     return { error: null };
@@ -171,9 +213,12 @@ export async function saveStumbledWord(params: {
 }
 
 /**
- * Fetch top stumbled words for a child.
+ * Fetches recent stumbled words for a given child profile.
  */
-export async function getRecentStumbledWords(childId: string, limit = 20) {
+export async function getRecentStumbledWords(
+  childId: string,
+  limit = 20
+): Promise<{ data: { word: string; count: number }[]; error: unknown | null }> {
   const { data, error } = await supabase
     .from("stumbled_words_log")
     .select("word, occurred_at")
@@ -183,7 +228,7 @@ export async function getRecentStumbledWords(childId: string, limit = 20) {
 
   if (error) {
     console.error("Error fetching stumbled words:", error);
-    return { data: [] as { word: string; count: number }[], error };
+    return { data: [], error };
   }
 
   const counts: Record<string, number> = {};
