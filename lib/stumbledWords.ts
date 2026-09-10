@@ -1,14 +1,15 @@
 /**
  * @file lib/stumbledWords.ts
- * @description Speech classification, stumbled word extraction, tap-to-hear 
- * audio synthesis with Fire OS / Silk tablet fixes, and unified Supabase persistence 
- * for Word Pocket & Solo Spelling Game.
+ * @description Speech classification, fuzzy stumble extraction algorithm,
+ * tap-to-hear audio synthesis for Amazon Fire OS / Silk, and Supabase persistence.
  *
  * @dependencies
- * - @/lib/supabaseClient (Database queries & logging)
+ * - @/lib/supabaseClient (Database logging)
+ * - @/lib/geoNames (African and Diaspora names protection)
  */
 
 import { supabase } from "./supabaseClient";
+import { isGeoName, formatGeoNameDisplay } from "./geoNames";
 
 // ─── SECTION 1: TYPES & CONFIGURATION ───────────────────────────────────────
 
@@ -16,8 +17,9 @@ export type WordClassification = "word" | "name";
 
 export interface StumbledItem {
   word: string;        // Cleaned lowercase token (e.g. "whisper")
-  display: string;     // Formatted display token (e.g. "whisper" or "Amaka")
+  display: string;     // Formatted display token (e.g. "whisper" or "Chinedu")
   type: WordClassification;
+  count?: number;
 }
 
 const SKIP_WORDS = new Set([
@@ -33,7 +35,6 @@ const SKIP_WORDS = new Set([
   "yes", "no", "not", "ok", "hi", "hey", "oh", "ah",
 ]);
 
-// Words that frequently start sentences (not proper nouns/names)
 const COMMON_SENTENCE_STARTERS = new Set([
   "once", "then", "there", "they", "this", "that", "these", "those",
   "when", "while", "where", "what", "who", "why", "how",
@@ -43,16 +44,66 @@ const COMMON_SENTENCE_STARTERS = new Set([
 ]);
 
 /**
- * Strips leading/trailing non-alphanumeric punctuation.
+ * Strips leading/trailing punctuation.
  */
 export function stripPunctuation(w: string): string {
   return w.replace(/^[^\w]+|[^\w]+$/g, "");
 }
 
+/**
+ * Levenshtein distance helper for fuzzy speech matching.
+ */
+function levenshteinDistance(a: string, b: string): number {
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+
+  const matrix: number[][] = [];
+
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          Math.min(
+            matrix[i][j - 1] + 1, // insertion
+            matrix[i - 1][j] + 1  // deletion
+          )
+        );
+      }
+    }
+  }
+
+  return matrix[b.length][a.length];
+}
+
+/**
+ * Returns true if candidate is phonetically/spelling close to target (>=70% match).
+ */
+function isFuzzyMatch(target: string, candidate: string): boolean {
+  if (target === candidate) return true;
+  if (Math.abs(target.length - candidate.length) > 3) return false;
+
+  const distance = levenshteinDistance(target, candidate);
+  const maxLen = Math.max(target.length, candidate.length);
+  const similarity = 1 - distance / maxLen;
+
+  return similarity >= 0.65;
+}
+
 // ─── SECTION 2: TOKEN EXTRACTION & CLASSIFICATION ─────────────────────────
 
 /**
- * Extracts tokens from story page text, classifying proper nouns (names) vs vocabulary.
+ * Extracts tokens from story page text, classifying proper nouns/names vs vocabulary.
  */
 export function extractClassifiedTokens(pageText: string): StumbledItem[] {
   const sentences = pageText.split(/(?<=[.?!])\s+|\n+/g);
@@ -76,12 +127,13 @@ export function extractClassifiedTokens(pageText: string): StumbledItem[] {
       let type: WordClassification = "word";
       let display = lower;
 
-      if (startsWithCapital) {
-        if (!isFirstOfSentence) {
+      if (isGeoName(lower)) {
+        type = "name";
+        display = formatGeoNameDisplay(lower);
+      } else if (startsWithCapital) {
+        if (!isFirstOfSentence || (!COMMON_SENTENCE_STARTERS.has(lower) && cleaned.length >= 3)) {
           type = "name";
-          display = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-        } else if (!COMMON_SENTENCE_STARTERS.has(lower) && cleaned.length >= 3) {
-          display = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+          display = cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase();
         }
       }
 
@@ -97,19 +149,22 @@ export function extractClassifiedTokens(pageText: string): StumbledItem[] {
 }
 
 /**
- * Compares expected story text with speech transcript from Deepgram.
+ * Fuzzy speech-to-text stumble detection algorithm.
+ * Prevents minor transcription typos from falsely flagging valid reading.
  */
 export function findStumbledItems(pageText: string, transcript: string): StumbledItem[] {
   const expectedItems = extractClassifiedTokens(pageText);
 
-  const heardTokens = new Set(
-    transcript
-      .toLowerCase()
-      .replace(/[^\w\s'-]/g, " ")
-      .split(/\s+/)
-      .map(stripPunctuation)
-      .filter(Boolean)
-  );
+  if (!transcript || transcript.trim().length === 0) {
+    return expectedItems;
+  }
+
+  const heardTokens = transcript
+    .toLowerCase()
+    .replace(/[^\w\s'-]/g, " ")
+    .split(/\s+/)
+    .map(stripPunctuation)
+    .filter((t) => t.length > 0);
 
   const missed: StumbledItem[] = [];
   const seen = new Set<string>();
@@ -117,7 +172,10 @@ export function findStumbledItems(pageText: string, transcript: string): Stumble
   for (const item of expectedItems) {
     if (seen.has(item.word)) continue;
 
-    if (!heardTokens.has(item.word)) {
+    // Check if expected word exists in transcript directly or with fuzzy match
+    const found = heardTokens.some((heard) => isFuzzyMatch(item.word, heard));
+
+    if (!found) {
       missed.push(item);
       seen.add(item.word);
     }
@@ -127,25 +185,18 @@ export function findStumbledItems(pageText: string, transcript: string): Stumble
 }
 
 /**
- * Legacy helper returning raw string array of missed words.
+ * Legacy string array return helper.
  */
 export function findStumbledWords(pageText: string, transcript: string): string[] {
   return findStumbledItems(pageText, transcript).map((item) => item.word);
 }
 
-// ─── SECTION 3: FIRE OS SAFE TAP-TO-HEAR AUDIO SYNTHESIS ───────────────────
+// ─── SECTION 3: FIRE OS SAFE AUDIO SYNTHESIS ────────────────────────────────
 
-/**
- * Checks if Speech Synthesis is available in the current browser.
- */
 export function isSpeechSynthesisSupported(): boolean {
   return typeof window !== "undefined" && "speechSynthesis" in window;
 }
 
-/**
- * Speaks a word safely across all platforms including Amazon Fire OS (Silk browser).
- * Executes synchronously on touch event to comply with Fire OS audio policy.
- */
 export function speakWord(text: string, lang = "en-US"): void {
   if (typeof window === "undefined" || !text) return;
 
@@ -154,38 +205,30 @@ export function speakWord(text: string, lang = "en-US"): void {
   try {
     if (isSpeechSynthesisSupported()) {
       const synth = window.speechSynthesis;
-      synth.cancel(); // Reset audio queue
+      synth.cancel();
 
       const utterance = new SpeechSynthesisUtterance(cleanText);
       utterance.lang = lang;
-      utterance.rate = 0.85; // Natural pace for children
+      utterance.rate = 0.85;
       utterance.pitch = 1.05;
 
-      // Amazon Fire OS Silk fix: force voice load if array is empty
       const voices = synth.getVoices();
       if (voices.length > 0) {
         const preferred = voices.find((v) => v.lang.startsWith("en") && !v.name.includes("Compact")) || voices[0];
         if (preferred) utterance.voice = preferred;
       }
 
-      utterance.onerror = () => {
-        playWebAudioBeepFallback(cleanText);
-      };
-
       synth.speak(utterance);
       return;
     }
   } catch {
-    // Silent fallback
+    // Fallback
   }
 
-  playWebAudioBeepFallback(cleanText);
+  playWebAudioBeepFallback();
 }
 
-/**
- * Web Audio synthesizer fallback when native TTS fails on old WebViews.
- */
-function playWebAudioBeepFallback(text: string): void {
+function playWebAudioBeepFallback(): void {
   try {
     const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!AudioCtx) return;
@@ -194,7 +237,7 @@ function playWebAudioBeepFallback(text: string): void {
     const gain = ctx.createGain();
 
     osc.type = "sine";
-    osc.frequency.setValueAtTime(440, ctx.currentTime); // Gentle A4 tone
+    osc.frequency.setValueAtTime(440, ctx.currentTime);
     gain.gain.setValueAtTime(0.1, ctx.currentTime);
 
     osc.connect(gain);
@@ -207,12 +250,8 @@ function playWebAudioBeepFallback(text: string): void {
   }
 }
 
-// ─── SECTION 4: UNIFIED SUPABASE PERSISTENCE (WORD POCKET & SPELLING) ───────
+// ─── SECTION 4: UNIFIED SUPABASE PERSISTENCE ────────────────────────────────
 
-/**
- * Saves a stumbled word into public.stumbled_words (for Spelling Game & Word Pocket)
- * AND logs to public.stumbled_words_log (for session history).
- */
 export async function saveStumbledWord(params: {
   childId: string;
   word: string;
@@ -225,7 +264,7 @@ export async function saveStumbledWord(params: {
   }
 
   try {
-    // 1. Check if word already exists in public.stumbled_words
+    // Save to public.stumbled_words for Word Pocket & Spelling Game
     const { data: existing } = await supabase
       .from("stumbled_words")
       .select("id, times_stumbled")
@@ -234,7 +273,6 @@ export async function saveStumbledWord(params: {
       .maybeSingle();
 
     if (existing) {
-      // Word exists → Increment count and set mastered = false
       await supabase
         .from("stumbled_words")
         .update({
@@ -244,7 +282,6 @@ export async function saveStumbledWord(params: {
         })
         .eq("id", existing.id);
     } else {
-      // First time stumbling → Insert new row
       await supabase.from("stumbled_words").insert({
         child_id: params.childId,
         word: cleaned,
@@ -253,7 +290,7 @@ export async function saveStumbledWord(params: {
       });
     }
 
-    // 2. Audit log into public.stumbled_words_log
+    // Save to public.stumbled_words_log
     await supabase.from("stumbled_words_log").insert({
       child_id: params.childId,
       word: cleaned,
@@ -262,18 +299,15 @@ export async function saveStumbledWord(params: {
 
     return { error: null };
   } catch (err) {
-    console.error("Error persisting stumbled word:", err);
+    console.error("Error saving stumbled word:", err);
     return { error: err };
   }
 }
 
-/**
- * Fetches recent non-mastered stumbled words for a child from public.stumbled_words.
- */
 export async function getRecentStumbledWords(
   childId: string,
   limit = 20
-): Promise<{ data: { word: string; count: number }[]; error: unknown | null }> {
+): Promise<{ data: StumbledItem[]; error: unknown | null }> {
   try {
     const { data, error } = await supabase
       .from("stumbled_words")
@@ -287,12 +321,18 @@ export async function getRecentStumbledWords(
       return { data: [], error };
     }
 
-    const formatted = data.map((row) => ({
-      word: row.word,
-      count: row.times_stumbled || 1,
-    }));
+    const items: StumbledItem[] = data.map((row) => {
+      const lower = row.word.toLowerCase();
+      const isName = isGeoName(lower) || /^[A-Z]/.test(row.word);
+      return {
+        word: lower,
+        display: isName ? formatGeoNameDisplay(lower) : lower,
+        type: isName ? "name" : "word",
+        count: row.times_stumbled || 1,
+      };
+    });
 
-    return { data: formatted, error: null };
+    return { data: items, error: null };
   } catch (err) {
     console.error("Error fetching stumbled words:", err);
     return { data: [], error: err };
