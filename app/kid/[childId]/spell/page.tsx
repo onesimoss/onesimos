@@ -23,9 +23,9 @@
 
 // ─── IMPORTS ────────────────────────────────────────────────────────────────
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabaseClient';
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 
@@ -208,7 +208,6 @@ export default function SpellingGamePage(): JSX.Element {
   const params = useParams<{ childId: string }>();
   const router = useRouter();
   const childId = params.childId;
-  const supabase = useMemo(() => createClient(), []);
 
   // ── Core state ──
   const [phase, setPhase] = useState<GamePhase>('loading');
@@ -288,7 +287,7 @@ export default function SpellingGamePage(): JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [childId, supabase]);
+  }, [childId]);
 
   // ─── WORD SETUP ──────────────────────────────────────────────────────────
 
