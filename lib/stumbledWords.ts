@@ -1,7 +1,7 @@
 /**
  * @file lib/stumbledWords.ts
  * @description Speech classification, stumbled word extraction, tap-to-hear 
- * audio synthesis with fallback support for Amazon Fire OS / Silk browsers, 
+ * audio synthesis with HTML5 fallback for Amazon Fire OS / Silk browsers, 
  * and Supabase stumbled words logging.
  *
  * @dependencies
@@ -140,7 +140,7 @@ export function findStumbledWords(pageText: string, transcript: string): string[
   return findStumbledItems(pageText, transcript).map((item) => item.word);
 }
 
-// ─── Section 3: Tap-to-Hear Audio Synthesis & Device Fallbacks ───
+// ─── Section 3: Tap-to-Hear Audio Synthesis & Universal Fallback ───
 
 /**
  * Checks if the user's browser/tablet supports Speech Synthesis API.
@@ -150,35 +150,57 @@ export function isSpeechSynthesisSupported(): boolean {
 }
 
 /**
- * Triggers browser-native text-to-speech for vocabulary words.
- * Includes explicit fallbacks for Amazon Fire OS (Silk Browser) & WebViews.
+ * Triggers audio pronunciation for vocabulary words.
+ * Uses native Web Speech API if supported, or falls back to an HTML5 Audio stream
+ * so tap-to-hear works on Amazon Fire OS (Silk browser), tablets, and mobile devices.
  *
  * @param text - Word or phrase to speak
  * @param lang - Target BCP-47 language tag (default: "en-US")
  */
 export function speakWord(text: string, lang = "en-US"): void {
-  if (!isSpeechSynthesisSupported()) {
-    console.warn("Speech synthesis unavailable on this device/browser (e.g. Silk / Fire OS).");
-    return;
+  if (typeof window === "undefined" || !text) return;
+
+  const cleanText = text.trim();
+
+  // Primary: Native Browser SpeechSynthesis (PC Chrome, Android Chrome, Mac Safari)
+  if (isSpeechSynthesisSupported()) {
+    try {
+      window.speechSynthesis.cancel(); // Stop current playing speech
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.lang = lang;
+      utterance.rate = 0.85; // Slower pace for kids
+      utterance.pitch = 1.05;
+
+      utterance.onerror = () => {
+        // Fallback to HTML5 audio if SpeechSynthesis fails mid-utterance
+        playHtml5AudioFallback(cleanText);
+      };
+
+      window.speechSynthesis.speak(utterance);
+      return;
+    } catch {
+      // Fallback below
+    }
   }
 
+  // Fallback: HTML5 Audio Stream for Amazon Fire OS (Silk Browser) & WebViews
+  playHtml5AudioFallback(cleanText);
+}
+
+/**
+ * Universal HTML5 Audio Fallback player for Amazon Fire Tablets / Silk browsers.
+ */
+function playHtml5AudioFallback(text: string): void {
   try {
-    // Cancel any currently playing speech to avoid audio queuing delay
-    window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = lang;
-    utterance.rate = 0.85; // Slightly slower pacing for young readers
-    utterance.pitch = 1.05;
-
-    // Handle error events on low-end WebViews safely
-    utterance.onerror = (event) => {
-      console.warn("Speech utterance encountered error:", event.error);
-    };
-
-    window.speechSynthesis.speak(utterance);
+    const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(
+      text
+    )}&tl=en&client=tw-ob`;
+    const audio = new Audio(audioUrl);
+    audio.play().catch((err) => {
+      console.warn("HTML5 audio playback blocked or unavailable:", err);
+    });
   } catch (err) {
-    console.warn("Failed to execute speakWord on this device:", err);
+    console.warn("Failed to execute audio fallback on this device:", err);
   }
 }
 

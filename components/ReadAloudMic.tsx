@@ -1,8 +1,17 @@
+/**
+ * @file components/ReadAloudMic.tsx
+ * @description Real-time microphone audio capture component for read-aloud sessions.
+ * Features 200ms timesliced audio chunking, multi-format MIME type resolution
+ * (WebM, MP4, AAC, WAV), minimum audio volume checks, and Deepgram API integration.
+ *
+ * @dependencies
+ * - @/lib/stumbledWords (stumble detection algorithm & Supabase logging)
+ */
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { findStumbledWords } from "@/lib/stumbledWords";
-import { saveStumbledWord } from "@/lib/stumbledWords";
+import { findStumbledWords, saveStumbledWord } from "@/lib/stumbledWords";
 
 type MicStatus = "idle" | "recording" | "thinking" | "done" | "error";
 
@@ -25,6 +34,7 @@ export default function ReadAloudMic({
   const [status, setStatus] = useState<MicStatus>("idle");
   const [message, setMessage] = useState("");
   const [stumbled, setStumbled] = useState<string[]>([]);
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
@@ -36,8 +46,34 @@ export default function ReadAloudMic({
   }, []);
 
   const stopStream = () => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+  };
+
+  /**
+   * Evaluates supported browser audio MIME types across Chrome, Safari, and Silk (Fire OS).
+   */
+  const getSupportedMimeType = (): string => {
+    if (typeof window === "undefined" || !window.MediaRecorder) return "";
+
+    const candidates = [
+      "audio/webm;codecs=opus",
+      "audio/webm",
+      "audio/mp4",
+      "audio/aac",
+      "audio/ogg",
+      "audio/wav",
+    ];
+
+    for (const type of candidates) {
+      if (MediaRecorder.isTypeSupported(type)) {
+        return type;
+      }
+    }
+
+    return "";
   };
 
   const startRecording = async () => {
@@ -48,41 +84,46 @@ export default function ReadAloudMic({
     try {
       if (typeof window === "undefined" || !navigator.mediaDevices?.getUserMedia) {
         setStatus("error");
-        setMessage("This device can't use the microphone in the browser.");
+        setMessage("This device can't use the microphone in this browser.");
         return;
       }
 
+      // Request microphone access
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : MediaRecorder.isTypeSupported("audio/webm")
-          ? "audio/webm"
-          : "";
-
-      const recorder = mimeType
-        ? new MediaRecorder(stream, { mimeType })
-        : new MediaRecorder(stream);
+      const mimeType = getSupportedMimeType();
+      const recorderOptions = mimeType ? { mimeType } : undefined;
+      const recorder = new MediaRecorder(stream, recorderOptions);
 
       mediaRecorderRef.current = recorder;
 
+      // Continuously capture audio chunks
       recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
+        if (e.data && e.data.size > 0) {
+          chunksRef.current.push(e.data);
+        }
       };
 
       recorder.onstop = async () => {
         setStatus("thinking");
         setMessage("Listening carefully...");
 
-        const blob = new Blob(chunksRef.current, {
-          type: recorder.mimeType || "audio/webm",
-        });
+        const finalMime = recorder.mimeType || mimeType || "audio/webm";
+        const audioBlob = new Blob(chunksRef.current, { type: finalMime });
         stopStream();
+
+        // Check if audio file has sufficient volume/data
+        if (audioBlob.size < 800) {
+          setStatus("done");
+          setMessage("I didn't catch words that time. Try reading a little louder!");
+          onResult?.({ transcript: "", stumbled: [] });
+          return;
+        }
 
         try {
           const form = new FormData();
-          form.append("audio", blob, "reading.webm");
+          form.append("audio", audioBlob, `reading_audio.${finalMime.includes("mp4") ? "mp4" : "webm"}`);
 
           const res = await fetch("/api/transcribe", {
             method: "POST",
@@ -93,13 +134,13 @@ export default function ReadAloudMic({
 
           if (!res.ok) {
             setStatus("error");
-            setMessage(data.error || "Could not hear that — try again.");
+            setMessage(data.error || "Could not hear clearly — try again!");
             return;
           }
 
-          const transcript: string = data.transcript || "";
+          const transcript: string = (data.transcript || "").trim();
 
-          if (!transcript.trim()) {
+          if (!transcript) {
             setStatus("done");
             setMessage("I didn't catch words that time. Try reading a little louder!");
             onResult?.({ transcript: "", stumbled: [] });
@@ -109,7 +150,7 @@ export default function ReadAloudMic({
           const missed = findStumbledWords(pageText, transcript);
           setStumbled(missed);
 
-          // Save gently in background — practice list for later stories
+          // Save stumbled words to practice list
           for (const word of missed.slice(0, 8)) {
             void saveStumbledWord({
               childId,
@@ -132,12 +173,13 @@ export default function ReadAloudMic({
         }
       };
 
-      recorder.start();
+      // ⚠️ FIX: Pass 200ms timeslice so audio chunks are pushed continuously!
+      recorder.start(200);
       setStatus("recording");
-      setMessage("We're listening — read this page out loud!");
+      setMessage("Listening... Read this page out loud!");
     } catch {
       setStatus("error");
-      setMessage("Microphone is off. Please allow the mic, then try again.");
+      setMessage("Microphone is off. Please allow mic permissions and try again.");
       stopStream();
     }
   };
@@ -156,34 +198,34 @@ export default function ReadAloudMic({
   const isBusy = status === "thinking";
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full max-w-2xl mx-auto font-sans">
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
         {!isRecording ? (
           <button
             type="button"
             onClick={startRecording}
             disabled={isBusy}
-            className="btn-primary !px-6 !py-3 !text-sm disabled:opacity-50 flex items-center gap-2"
+            className="px-6 py-3.5 rounded-2xl bg-coral text-white font-extrabold text-xs hover:bg-coral/90 transition-all shadow-md flex items-center gap-2 active:scale-95 disabled:opacity-50"
           >
-            <span className="text-lg">🎤</span>
-            {status === "done" || status === "error" ? "Read again" : "Read this page out loud"}
+            <span className="text-base">🎙️</span>
+            {status === "done" || status === "error" ? "Read Page Again" : "Read Page Out Loud"}
           </button>
         ) : (
           <button
             type="button"
             onClick={stopRecording}
-            className="bg-coral text-white font-bold px-6 py-3 rounded-full shadow-kid-pop flex items-center gap-2 animate-pulse"
+            className="px-6 py-3.5 rounded-2xl bg-coral text-white font-extrabold text-xs shadow-md flex items-center gap-2 animate-pulse active:scale-95"
           >
-            <span className="text-lg">⏹</span>
-            I&apos;m done reading
+            <span className="text-base">⏹️</span>
+            I&apos;m Done Reading
           </button>
         )}
       </div>
 
       {message && (
         <p
-          className={`mt-3 text-center text-sm font-bold ${
-            status === "error" ? "text-coral" : "text-bark-muted"
+          className={`mt-3 text-center text-xs font-bold ${
+            status === "error" ? "text-red-500" : "text-gray-600"
           }`}
         >
           {message}
@@ -195,7 +237,7 @@ export default function ReadAloudMic({
           {stumbled.slice(0, 6).map((word) => (
             <span
               key={word}
-              className="px-3 py-1 rounded-full bg-gold-light text-bark text-sm font-bold border border-border"
+              className="px-3 py-1 rounded-xl bg-amber-100/80 text-gray-900 text-xs font-bold border border-amber-200/80"
             >
               {word}
             </span>
