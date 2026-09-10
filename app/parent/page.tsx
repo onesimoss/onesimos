@@ -1,8 +1,9 @@
 /**
  * @file app/parent/page.tsx
- * @description Parent Dashboard — child profile overview cards, reading insights,
- * practice vocabulary list, story-time reminder settings, kid PIN lock management,
- * Parent 4-digit unlock PIN configuration, and test-data reset tools.
+ * @description Parent Dashboard & Academic Report Card View.
+ * Displays child progress metrics including Fluency (WPM), Pronunciation Accuracy (%),
+ * Comprehension Score (%), Estimated Reading Age, Practice Vocabulary, Story Time Reminders,
+ * Kid PINs, 4-Digit Parent Security PIN modal, and test-data reset tooling.
  *
  * @dependencies
  * - @/context/AuthContext (parent authentication & logout)
@@ -10,7 +11,7 @@
  * - @/lib/avatars (avatar image & color resolution)
  * - @/lib/stumbledWords (recent stumbled vocabulary for practice)
  * - @/lib/reminders (story time notification preferences)
- * - @/lib/sessionInsights (reading streaks, page counts, session stats)
+ * - @/lib/sessionInsights (reading session analytics & report card engine)
  * - @/lib/parentGate (4-digit Parent PIN setup and status)
  * - @/lib/sessionBudget (reset test story quota helper)
  */
@@ -36,12 +37,13 @@ import {
 } from "@/lib/reminders";
 import {
   getChildSessions,
-  computeSessionStats,
+  computeReportCardStats,
+  type DetailedReportCardStats,
 } from "@/lib/sessionInsights";
 import { getParentPinStatus, setParentPin } from "@/lib/parentGate";
 import { resetChildStoryQuota } from "@/lib/sessionBudget";
 
-// ─── Section 1: Helper Types & Label Formatters ───
+// ─── Section 1: Helper Formatters & Status Badges ───
 
 function curriculumLabel(value: string): string {
   switch (value) {
@@ -59,13 +61,28 @@ function curriculumLabel(value: string): string {
   }
 }
 
-type ChildStats = {
-  totalSessions: number;
-  totalPages: number;
-  totalMinutes: number;
-  storiesFinished: number;
-  streak: number;
-};
+function renderStatusBadge(status: DetailedReportCardStats["progressStatus"]) {
+  switch (status) {
+    case "Accelerating":
+      return (
+        <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider border border-emerald-200">
+          🚀 Accelerating
+        </span>
+      );
+    case "Needs Practice":
+      return (
+        <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-black uppercase tracking-wider border border-amber-200">
+          💪 Needs Practice
+        </span>
+      );
+    default:
+      return (
+        <span className="px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-800 text-[10px] font-black uppercase tracking-wider border border-sky-200">
+          ✨ On Track
+        </span>
+      );
+  }
+}
 
 // ─── Section 2: Component Implementation ───
 
@@ -78,9 +95,9 @@ export default function ParentDashboard() {
   const [practiceByChild, setPracticeByChild] = useState<
     Record<string, { word: string; count: number }[]>
   >({});
-  const [statsByChild, setStatsByChild] = useState<Record<string, ChildStats>>(
-    {}
-  );
+  const [reportStatsByChild, setReportStatsByChild] = useState<
+    Record<string, DetailedReportCardStats>
+  >({});
   const [fetching, setFetching] = useState(true);
 
   // Child Profile Action States
@@ -111,7 +128,7 @@ export default function ParentDashboard() {
     }
   }, [user, loading, router]);
 
-  // Load All Parent Data (Children, Stats, Practice Words, Parent PIN Status)
+  // Load All Parent Data & Compute Report Card Analytics
   useEffect(() => {
     async function loadDashboardData() {
       if (!user) return;
@@ -126,7 +143,7 @@ export default function ParentDashboard() {
       setChildren(data);
 
       const practiceMap: Record<string, { word: string; count: number }[]> = {};
-      const statsMap: Record<string, ChildStats> = {};
+      const statsMap: Record<string, DetailedReportCardStats> = {};
 
       await Promise.all(
         data.map(async (child) => {
@@ -135,12 +152,12 @@ export default function ParentDashboard() {
             getChildSessions(child.id, 60),
           ]);
           practiceMap[child.id] = words;
-          statsMap[child.id] = computeSessionStats(sessions);
+          statsMap[child.id] = computeReportCardStats(child, sessions, words.length);
         })
       );
 
       setPracticeByChild(practiceMap);
-      setStatsByChild(statsMap);
+      setReportStatsByChild(statsMap);
       setFetching(false);
 
       if (data.length === 0) {
@@ -330,23 +347,24 @@ export default function ParentDashboard() {
       return;
     }
 
-    // Refresh local stats representation
-    setStatsByChild((prev) => ({
-      ...prev,
-      [child.id]: {
-        totalSessions: 0,
-        totalPages: 0,
-        totalMinutes: 0,
-        storiesFinished: 0,
-        streak: 0,
-      },
-    }));
-    setPracticeByChild((prev) => ({
-      ...prev,
-      [child.id]: [],
-    }));
+    // Refresh report card stats locally
+    const emptyStats: DetailedReportCardStats = {
+      totalSessions: 0,
+      totalPages: 0,
+      totalMinutes: 0,
+      storiesFinished: 0,
+      streak: 0,
+      wordsPerMinute: 0,
+      accuracyPercentage: 0,
+      comprehensionPercentage: 0,
+      readingAgeEstimate: "5.0 – 6.5 years",
+      progressStatus: "On Track",
+    };
 
-    setMessage(`Test story quota & reading data reset for ${child.name}.`);
+    setReportStatsByChild((prev) => ({ ...prev, [child.id]: emptyStats }));
+    setPracticeByChild((prev) => ({ ...prev, [child.id]: [] }));
+
+    setMessage(`Test story quota & reading report card reset for ${child.name}.`);
   };
 
   if (loading || fetching || !user) {
@@ -409,10 +427,10 @@ export default function ParentDashboard() {
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl md:text-4xl font-black text-gray-900">
-              Parent Dashboard
+              Academic Report Card
             </h1>
             <p className="text-gray-500 text-sm mt-1">
-              Progress at a glance — calm numbers for you, adventures for them.
+              Fluency, accuracy, and comprehension evidence — quiet progress for you, joy for them.
             </p>
           </div>
 
@@ -446,7 +464,7 @@ export default function ParentDashboard() {
           </div>
         )}
 
-        {/* ─── Section 5: Child Cards Grid ─── */}
+        {/* ─── Section 5: Academic Child Cards Grid ─── */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {children.map((child) => {
             const avatar = getAvatarById(child.avatar_id);
@@ -455,12 +473,17 @@ export default function ParentDashboard() {
             const isPinEdit = pinEditId === child.id;
             const isResetting = resettingId === child.id;
             const practice = practiceByChild[child.id] || [];
-            const stats = statsByChild[child.id] || {
+            const reportStats = reportStatsByChild[child.id] || {
               totalSessions: 0,
               totalPages: 0,
               totalMinutes: 0,
               storiesFinished: 0,
               streak: 0,
+              wordsPerMinute: 0,
+              accuracyPercentage: 0,
+              comprehensionPercentage: 0,
+              readingAgeEstimate: "5.0 – 6.5 years",
+              progressStatus: "On Track",
             };
             const hasKidPin = !!(child.kid_pin && String(child.kid_pin).length === 4);
             const reminderOn = !!child.reminder_enabled;
@@ -473,8 +496,8 @@ export default function ParentDashboard() {
                 className="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
               >
                 <div>
-                  {/* Child Profile Summary */}
-                  <div className="flex items-center gap-4 mb-5">
+                  {/* Child Profile & Status Header */}
+                  <div className="flex items-center gap-4 mb-4">
                     <div
                       className="w-16 h-16 rounded-2xl overflow-hidden border border-gray-200 bg-cream shrink-0 flex items-center justify-center"
                       style={{ backgroundColor: `${avatar.color}22` }}
@@ -486,57 +509,65 @@ export default function ParentDashboard() {
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    <div className="min-w-0">
-                      <h2 className="text-xl font-black text-gray-900 truncate">
-                        {child.name}
-                      </h2>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-1 mb-0.5">
+                        <h2 className="text-xl font-black text-gray-900 truncate">
+                          {child.name}
+                        </h2>
+                        {renderStatusBadge(reportStats.progressStatus)}
+                      </div>
                       <p className="text-xs text-gray-500 font-medium">
-                        Age {child.age} · Reading level {child.reading_level}
+                        Age {child.age} · Reading Level {child.reading_level}
                       </p>
-                      <p className="text-xs font-bold mt-1">
-                        {hasKidPin ? (
-                          <span className="text-emerald-600">Kid PIN set</span>
-                        ) : (
-                          <span className="text-amber-600">PIN not set yet</span>
-                        )}
+                      <p className="text-[11px] font-bold text-gray-700 mt-0.5">
+                        Reading Age Est: <span className="text-coral">{reportStats.readingAgeEstimate}</span>
                       </p>
                     </div>
                   </div>
 
-                  {/* Insights Strip */}
+                  {/* ── Academic Report Card Scores ── */}
                   <div className="grid grid-cols-2 gap-2 mb-4">
-                    <div className="rounded-2xl bg-[#FBF9F5] border border-gray-100 p-3 text-center">
-                      <p className="text-lg font-black text-gray-900">
-                        {stats.streak}
+                    
+                    {/* Fluency (WPM) */}
+                    <div className="rounded-2xl bg-amber-50/70 border border-amber-200/60 p-3 text-center">
+                      <p className="text-xl font-black text-amber-950">
+                        {reportStats.wordsPerMinute} <span className="text-xs font-bold text-amber-800">WPM</span>
                       </p>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                        Day streak
-                      </p>
-                    </div>
-                    <div className="rounded-2xl bg-[#FBF9F5] border border-gray-100 p-3 text-center">
-                      <p className="text-lg font-black text-gray-900">
-                        {stats.storiesFinished}
-                      </p>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                        Stories done
+                      <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider mt-0.5">
+                        Reading Fluency
                       </p>
                     </div>
-                    <div className="rounded-2xl bg-[#FBF9F5] border border-gray-100 p-3 text-center">
-                      <p className="text-lg font-black text-gray-900">
-                        {stats.totalPages}
+
+                    {/* Pronunciation Accuracy */}
+                    <div className="rounded-2xl bg-emerald-50/70 border border-emerald-200/60 p-3 text-center">
+                      <p className="text-xl font-black text-emerald-950">
+                        {reportStats.accuracyPercentage}%
                       </p>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                        Pages read
-                      </p>
-                    </div>
-                    <div className="rounded-2xl bg-[#FBF9F5] border border-gray-100 p-3 text-center">
-                      <p className="text-lg font-black text-gray-900">
-                        {stats.totalSessions}
-                      </p>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                        Sessions
+                      <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mt-0.5">
+                        Accuracy
                       </p>
                     </div>
+
+                    {/* Comprehension Score */}
+                    <div className="rounded-2xl bg-sky-50/70 border border-sky-200/60 p-3 text-center">
+                      <p className="text-xl font-black text-sky-950">
+                        {reportStats.comprehensionPercentage}%
+                      </p>
+                      <p className="text-[10px] font-bold text-sky-700 uppercase tracking-wider mt-0.5">
+                        Comprehension
+                      </p>
+                    </div>
+
+                    {/* Streak & Finished Stories */}
+                    <div className="rounded-2xl bg-[#FBF9F5] border border-gray-100 p-3 text-center">
+                      <p className="text-xl font-black text-gray-900">
+                        {reportStats.streak} <span className="text-xs font-bold text-gray-500">Days</span>
+                      </p>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
+                        Streak ({reportStats.storiesFinished} Finished)
+                      </p>
+                    </div>
+
                   </div>
 
                   {/* Curriculum & Preferences Info */}
@@ -548,9 +579,9 @@ export default function ParentDashboard() {
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-400 font-medium">Daily time</span>
+                      <span className="text-gray-400 font-medium">Daily Target</span>
                       <span className="font-bold text-gray-800">
-                        {child.session_minutes} min
+                        {child.session_minutes} min / day
                       </span>
                     </div>
                     <div className="flex justify-between gap-3">
