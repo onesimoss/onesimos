@@ -10,7 +10,7 @@
  * - @/lib/avatars (avatar color & image resolution)
  * - @/lib/stumbledWords (stumbled word logging)
  * - @/components/ReadingTimer (timed session budget countdown)
- * - @/components/ReadAloudMic (Deepgram speech transcription hook)
+ * - @/components/ReadAloudMic (Deepgram speech transcription component)
  */
 
 "use client";
@@ -119,14 +119,14 @@ export default function KidReadPage() {
     );
   }, [childId, storyId, pageIndex, router]);
 
-  // Log missed words from Deepgram microphone hook
-  const handleStumbledWordsDetected = useCallback(
-    (words: string[]) => {
-      if (!childId || !words.length) return;
-      setHighlightWords((prev) => Array.from(new Set([...prev, ...words])));
+  // Handle results returned from ReadAloudMic
+  const handleMicResult = useCallback(
+    (result: { transcript: string; stumbled: string[] }) => {
+      if (!childId || !result.stumbled.length) return;
+      setHighlightWords((prev) => Array.from(new Set([...prev, ...result.stumbled])));
 
       // Save each stumbled word to DB in background
-      words.forEach((word) => {
+      result.stumbled.forEach((word) => {
         void saveStumbledWord({
           childId,
           storyId,
@@ -263,10 +263,12 @@ export default function KidReadPage() {
           </div>
 
           {/* Read Aloud Microphone Component */}
-          <div className="pt-2">
+          <div className="pt-2 w-full">
             <ReadAloudMic
-              expectedText={currentPage.text}
-              onStumbledWords={handleStumbledWordsDetected}
+              childId={child.id}
+              storyId={story.id}
+              pageText={currentPage.text}
+              onResult={handleMicResult}
             />
           </div>
         </div>
