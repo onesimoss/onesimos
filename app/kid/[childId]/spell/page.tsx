@@ -66,7 +66,6 @@ type GamePhase =
   | 'empty'
   | 'intro'
   | 'playing'
-  | 'checking'
   | 'correct'
   | 'retry'
   | 'complete';
@@ -77,17 +76,41 @@ const ROUND_SIZE = 6;
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const CELEBRATION_MS = 1400;
 const RETRY_MS = 1200;
-const AUTO_HINT_MS_BASE = 10000;
 
 /** Difficulty config per reading level */
 const LEVEL_CONFIG: Record<
   number,
-  { maxWordLen: number; distractors: number; autoHintMs: number; label: string }
+  {
+    maxWordLen: number;
+    distractors: number;
+    autoHintMs: number;
+    label: string;
+  }
 > = {
-  1: { maxWordLen: 3, distractors: 1, autoHintMs: 8000, label: 'Letter Match' },
-  2: { maxWordLen: 4, distractors: 2, autoHintMs: 10000, label: 'Easy Spell' },
-  3: { maxWordLen: 5, distractors: 3, autoHintMs: 12000, label: 'Spell It' },
-  4: { maxWordLen: 7, distractors: 4, autoHintMs: 14000, label: 'Challenge' },
+  1: {
+    maxWordLen: 3,
+    distractors: 1,
+    autoHintMs: 8000,
+    label: 'Letter Match',
+  },
+  2: {
+    maxWordLen: 4,
+    distractors: 2,
+    autoHintMs: 10000,
+    label: 'Easy Spell',
+  },
+  3: {
+    maxWordLen: 5,
+    distractors: 3,
+    autoHintMs: 12000,
+    label: 'Spell It',
+  },
+  4: {
+    maxWordLen: 7,
+    distractors: 4,
+    autoHintMs: 14000,
+    label: 'Challenge',
+  },
 };
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
@@ -205,7 +228,6 @@ export default function SpellingGamePage(): JSX.Element {
   const currentWord = roundWords[wordIndex];
   const level = child?.reading_level ?? 2;
   const cfg = LEVEL_CONFIG[level] ?? LEVEL_CONFIG[2];
-  const isComplete = wordIndex >= roundWords.length;
 
   // ─── DATA FETCH ──────────────────────────────────────────────────────────
 
@@ -302,9 +324,10 @@ export default function SpellingGamePage(): JSX.Element {
     if (phase === 'playing' && currentWord) {
       setupWord(currentWord.word);
     }
-  }, [phase, wordIndex, currentWord, setupWord]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, wordIndex]);
 
-  // Cleanup timer
+  // Cleanup timer on unmount
   useEffect(() => {
     return () => {
       if (autoHintRef.current) clearTimeout(autoHintRef.current);
@@ -323,20 +346,19 @@ export default function SpellingGamePage(): JSX.Element {
     const nextEmpty = slots.findIndex((s) => s.bankId === null);
     if (nextEmpty === -1) return;
 
-    setBank((prev) =>
-      prev.map((t) => (t.id === tileId ? { ...t, used: true } : t)),
+    // Build new state for both bank and slots
+    const newBank = bank.map((t) =>
+      t.id === tileId ? { ...t, used: true } : t,
     );
-    setSlots((prev) =>
-      prev.map((s, i) =>
-        i === nextEmpty ? { bankId: tileId, letter: tile.letter } : s,
-      ),
-    );
-    setHintSlotIndex(null);
-
-    // Check if all slots filled
     const newSlots = slots.map((s, i) =>
       i === nextEmpty ? { bankId: tileId, letter: tile.letter } : s,
     );
+
+    setBank(newBank);
+    setSlots(newSlots);
+    setHintSlotIndex(null);
+
+    // Check if all slots are now filled
     if (newSlots.every((s) => s.letter !== null)) {
       checkAnswer(newSlots);
     }
@@ -347,10 +369,12 @@ export default function SpellingGamePage(): JSX.Element {
     if (phase !== 'playing') return;
 
     const slot = slots[slotIndex];
-    if (!slot.bankId && slot.bankId !== 0) return;
+    if (slot.bankId === null) return;
 
     setBank((prev) =>
-      prev.map((t) => (t.id === slot.bankId ? { ...t, used: false } : t)),
+      prev.map((t) =>
+        t.id === slot.bankId ? { ...t, used: false } : t,
+      ),
     );
     setSlots((prev) =>
       prev.map((s, i) =>
@@ -427,9 +451,8 @@ export default function SpellingGamePage(): JSX.Element {
     advanceWord();
   }
 
-  // ─── RENDER HELPERS ──────────────────────────────────────────────────────
+  // ─── RENDER: LOADING ─────────────────────────────────────────────────────
 
-  /** Loading spinner */
   if (phase === 'loading') {
     return (
       <main className="flex min-h-screen items-center justify-center bg-orange-50">
@@ -443,7 +466,8 @@ export default function SpellingGamePage(): JSX.Element {
     );
   }
 
-  /** Empty state — no stumbled words yet */
+  // ─── RENDER: EMPTY STATE ─────────────────────────────────────────────────
+
   if (phase === 'empty') {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-orange-50 px-6 text-center">
@@ -465,7 +489,8 @@ export default function SpellingGamePage(): JSX.Element {
     );
   }
 
-  /** Intro screen */
+  // ─── RENDER: INTRO ───────────────────────────────────────────────────────
+
   if (phase === 'intro') {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-orange-50 px-6 text-center">
@@ -510,7 +535,8 @@ export default function SpellingGamePage(): JSX.Element {
     );
   }
 
-  /** Completion screen */
+  // ─── RENDER: COMPLETE ────────────────────────────────────────────────────
+
   if (phase === 'complete') {
     const pct = Math.round((stars / roundWords.length) * 100);
     const emoji = pct >= 80 ? '🏆' : pct >= 50 ? '⭐' : '💪';
@@ -554,7 +580,7 @@ export default function SpellingGamePage(): JSX.Element {
     );
   }
 
-  // ─── MAIN GAME UI (playing / checking / correct / retry) ────────────────
+  // ─── RENDER: MAIN GAME (playing / correct / retry) ───────────────────────
 
   const targetWord = currentWord?.word.toUpperCase() ?? '';
   const allFilled = slots.every((s) => s.letter !== null);
@@ -670,34 +696,36 @@ export default function SpellingGamePage(): JSX.Element {
 
         {/* Letter bank */}
         <div className="flex flex-wrap justify-center gap-3">
-          {bank.map((tile) => (
-            <button
-              key={tile.id}
-              onClick={() => handleBankTap(tile.id)}
-              disabled={tile.used || phase !== 'playing'}
-              aria-label={`Letter ${tile.letter}`}
-              className={`
-                flex h-14 w-14 items-center justify-center rounded-xl
-                font-achiko text-2xl uppercase shadow-md transition-all
-                ${
-                  tile.used
-                    ? 'bg-gray-100 text-gray-300 shadow-none'
-                    : 'bg-white text-amber-800 active:scale-90 active:bg-amber-50'
-                }
-                ${
-                  hintSlotIndex !== null &&
-                  !tile.used &&
-                  currentWord &&
-                  tile.letter ===
-                    targetWord[slots.findIndex((s) => s.bankId === null)]
-                    ? 'ring-2 ring-green-400'
-                    : ''
-                }
-              `}
-            >
-              {tile.letter}
-            </button>
-          ))}
+          {bank.map((tile) => {
+            const nextEmptyIdx = slots.findIndex((s) => s.bankId === null);
+            const isHintTarget =
+              hintSlotIndex !== null &&
+              !tile.used &&
+              currentWord &&
+              nextEmptyIdx >= 0 &&
+              tile.letter === targetWord[nextEmptyIdx];
+
+            return (
+              <button
+                key={tile.id}
+                onClick={() => handleBankTap(tile.id)}
+                disabled={tile.used || phase !== 'playing'}
+                aria-label={`Letter ${tile.letter}`}
+                className={`
+                  flex h-14 w-14 items-center justify-center rounded-xl
+                  font-achiko text-2xl uppercase shadow-md transition-all
+                  ${
+                    tile.used
+                      ? 'bg-gray-100 text-gray-300 shadow-none'
+                      : 'bg-white text-amber-800 active:scale-90 active:bg-amber-50'
+                  }
+                  ${isHintTarget ? 'ring-2 ring-green-400' : ''}
+                `}
+              >
+                {tile.letter}
+              </button>
+            );
+          })}
         </div>
       </section>
 
@@ -719,7 +747,7 @@ export default function SpellingGamePage(): JSX.Element {
         </button>
       </footer>
 
-      {/* ── Inline keyframe for shake ── */}
+      {/* ── Inline keyframe for shake animation ── */}
       <style jsx>{`
         @keyframes shake {
           0%,
