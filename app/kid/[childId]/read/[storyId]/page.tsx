@@ -1,42 +1,32 @@
 /**
  * @file app/kid/[childId]/read/[storyId]/page.tsx
- * @description Kid Active Reading Screen — paginated story reader, real-time
- * speech recognition mic, word stumble logging, session timer, and celebration
- * transition to the summary screen upon story completion.
+ * @description Kid Active Reading Screen — paginated story reader.
+ * Now supports BOTH static catalog stories and generated Living Story chapters from Supabase.
  *
  * @dependencies
- * - @/context/AuthContext (parent authentication)
- * - @/lib/sampleStories (story catalog and page text)
- * - @/lib/avatars (avatar color & image resolution)
- * - @/lib/stumbledWords (stumbled word logging)
- * - @/components/ReadingTimer (timed session budget countdown)
- * - @/components/ReadAloudMic (Deepgram speech transcription component)
+ * - @/context/AuthContext
+ * - @/lib/sampleStories, @/lib/avatars, @/lib/stumbledWords
+ * - @/components/ReadingTimer, @/components/ReadAloudMic
  */
 
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 import { getAvatarById } from "@/lib/avatars";
 import type { ChildProfile } from "@/lib/children";
-import { getStoryById } from "@/lib/sampleStories";
+import { getStoryById, type SampleStory } from "@/lib/sampleStories";
 import { saveStumbledWord } from "@/lib/stumbledWords";
 import ReadingTimer from "@/components/ReadingTimer";
 import ReadAloudMic from "@/components/ReadAloudMic";
 
 // ─── Section 1: Helper Text Highlights ───
 
-/**
- * Renders story page text with soft warm gold highlights on stumbling words.
- */
 function renderPageText(text: string, softWords: string[]): React.ReactNode {
-  if (!softWords.length) {
-    return text;
-  }
-
+  if (!softWords.length) return text;
   const lowerSet = new Set(softWords.map((w) => w.toLowerCase()));
   const tokens = text.split(/(\s+)/);
 
@@ -65,77 +55,94 @@ export default function KidReadPage() {
 
   // Story & Child Data States
   const [child, setChild] = useState<ChildProfile | null>(null);
+  const [story, setStory] = useState<SampleStory | null>(null);
   const [fetching, setFetching] = useState(true);
+  
   const [pageIndex, setPageIndex] = useState(0);
   const [sessionEnded, setSessionEnded] = useState(false);
   const [highlightWords, setHighlightWords] = useState<string[]>([]);
-
-  const story = useMemo(() => getStoryById(storyId), [storyId]);
+  const [storyNotFound, setStoryNotFound] = useState(false);
 
   // Auth Protection
   useEffect(() => {
     if (!loading && !user) router.replace("/parent/login");
   }, [user, loading, router]);
 
-  // Load Child Profile
+  // Load Child Profile & Resolve Story (Static or DB)
   useEffect(() => {
     async function loadReaderData() {
-      if (!user || !childId) return;
+      if (!user || !childId || !storyId) return;
       setFetching(true);
 
-      const { data, error } = await supabase
+      // 1. Load Child
+      const { data: childData, error: childErr } = await supabase
         .from("children")
         .select("*")
         .eq("id", childId)
         .eq("parent_id", user.id)
         .single();
 
-      if (error || !data) {
+      if (childErr || !childData) {
         router.replace("/who");
         return;
       }
+      setChild(childData as ChildProfile);
 
-      setChild(data as ChildProfile);
+      // 2. Resolve Story (Check static catalog first)
+      const catalogStory = getStoryById(storyId);
+      if (catalogStory) {
+        setStory(catalogStory);
+        setFetching(false);
+        return;
+      }
+
+      // 3. If not in catalog, check generated_stories in DB
+      const { data: dbStory, error: dbErr } = await supabase
+        .from("generated_stories")
+        .select("story_data")
+        .eq("id", storyId)
+        .single();
+
+      if (dbErr || !dbStory?.story_data) {
+        setStoryNotFound(true);
+      } else {
+        setStory(dbStory.story_data as SampleStory);
+      }
+      
       setFetching(false);
     }
 
     void loadReaderData();
-  }, [user, childId, router]);
+  }, [user, childId, storyId, router]);
 
-  // Reset soft highlights when moving between story pages
+  // Reset highlights on page turn
   useEffect(() => {
     setHighlightWords([]);
   }, [pageIndex]);
 
-  // Session Budget Expiration Callback
   const handleTimeUp = useCallback(() => {
     setSessionEnded(true);
   }, []);
 
-  // Story Completion Redirect to Summary
   const finishReading = useCallback(() => {
     router.push(
       `/kid/${childId}/summary?storyId=${storyId}&pages=${pageIndex + 1}`
     );
   }, [childId, storyId, pageIndex, router]);
 
-  // Handle results returned from ReadAloudMic
   const handleMicResult = useCallback(
     (result: { transcript: string; stumbled: string[] }) => {
       if (!childId || !result.stumbled.length) return;
       setHighlightWords((prev) => Array.from(new Set([...prev, ...result.stumbled])));
 
-      // Save each stumbled word to DB in background
       result.stumbled.forEach((word) => {
-        void saveStumbledWord({
-          childId,
-          storyId,
-          word,
-        });
+        void saveStumbledWord({ childId, storyId, word });
       });
     },
     [childId, storyId]
   );
+
+  // ─── Render States ───
 
   if (loading || fetching || !child) {
     return (
@@ -147,17 +154,17 @@ export default function KidReadPage() {
     );
   }
 
-  if (!story) {
+  if (storyNotFound || !story) {
     return (
       <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center p-6 font-sans">
         <div className="bg-white rounded-3xl p-8 border border-gray-200 shadow-md text-center max-w-md">
           <p className="text-gray-600 font-bold mb-4">Story not found.</p>
-          <Link
-            href={`/kid/${childId}`}
+          <button
+            onClick={() => router.back()}
             className="px-6 py-3 rounded-2xl bg-coral text-white font-bold text-xs hover:bg-coral/90 transition-colors inline-block"
           >
-            Back to Stories
-          </Link>
+            Go Back
+          </button>
         </div>
       </main>
     );
@@ -169,11 +176,9 @@ export default function KidReadPage() {
   const isLastPage = pageIndex >= totalPages - 1;
   const progressPercent = ((pageIndex + 1) / totalPages) * 100;
 
-  // Safe optional extraction for optional page illustration property
   const pageImage = (currentPage as { imageUrl?: string; image?: string }).imageUrl ||
                     (currentPage as { imageUrl?: string; image?: string }).image;
 
-  // Session Budget Ended Screen
   if (sessionEnded) {
     return (
       <main className="min-h-screen bg-gradient-to-b from-amber-50 to-[#FDFBF7] flex items-center justify-center p-6 font-sans">
@@ -206,8 +211,6 @@ export default function KidReadPage() {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-sky-50/50 via-[#FDFBF7] to-amber-50/30 flex flex-col font-sans">
-      
-      {/* ─── Section 3: Header & Progress Bar ─── */}
       <header className="px-6 py-4 flex items-center justify-between gap-4 border-b border-gray-100 bg-white/70 backdrop-blur-sm sticky top-0 z-20">
         <Link
           href={`/kid/${childId}`}
@@ -215,8 +218,6 @@ export default function KidReadPage() {
         >
           <span>←</span> Back
         </Link>
-
-        {/* Story Title & Visual Progress */}
         <div className="flex-1 max-w-xs text-center">
           <p className="text-xs font-black text-gray-800 truncate mb-1">
             {story.title}
@@ -228,8 +229,6 @@ export default function KidReadPage() {
             />
           </div>
         </div>
-
-        {/* Daily Reading Timer */}
         <div className="shrink-0">
           <ReadingTimer
             childId={child.id}
@@ -239,30 +238,22 @@ export default function KidReadPage() {
         </div>
       </header>
 
-      {/* ─── Section 4: Main Reading Card Area ─── */}
       <div className="flex-1 max-w-3xl w-full mx-auto p-4 sm:p-6 flex flex-col justify-between">
         <div className="bg-white rounded-3xl p-6 sm:p-10 border border-gray-100 shadow-xl my-auto text-center flex flex-col items-center">
           
-          {/* Story Image / Page Illustration */}
           <div className="w-full max-w-sm h-48 sm:h-64 rounded-2xl bg-amber-50/60 border border-amber-100/60 overflow-hidden mb-6 flex items-center justify-center text-7xl shadow-inner">
             {pageImage ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={pageImage}
-                alt=""
-                className="w-full h-full object-cover"
-              />
+              <img src={pageImage} alt="" className="w-full h-full object-cover" />
             ) : (
-              <span>{story.coverEmoji || "📖"}</span>
+              <span>{currentPage.imageEmoji || story.coverEmoji || "📖"}</span>
             )}
           </div>
 
-          {/* Page Reading Text */}
           <div className="text-xl sm:text-2xl font-bold text-gray-900 leading-relaxed tracking-wide max-w-xl mb-6">
             {renderPageText(currentPage.text, highlightWords)}
           </div>
 
-          {/* Read Aloud Microphone Component */}
           <div className="pt-2 w-full">
             <ReadAloudMic
               childId={child.id}
@@ -273,7 +264,6 @@ export default function KidReadPage() {
           </div>
         </div>
 
-        {/* ─── Section 5: Bottom Navigation & Final Page CTA ─── */}
         <footer className="pt-4 pb-2 flex items-center justify-between gap-4">
           <button
             type="button"
