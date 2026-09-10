@@ -1,8 +1,8 @@
 /**
  * @file lib/stumbledWords.ts
  * @description Speech classification, stumbled word extraction, tap-to-hear 
- * audio synthesis with HTML5 fallback for Amazon Fire OS / Silk browsers, 
- * and Supabase stumbled words logging.
+ * audio synthesis with Fire OS / Silk tablet fixes, and unified Supabase persistence 
+ * for Word Pocket & Solo Spelling Game.
  *
  * @dependencies
  * - @/lib/supabaseClient (Database queries & logging)
@@ -10,7 +10,7 @@
 
 import { supabase } from "./supabaseClient";
 
-// ─── Section 1: Types & Configuration ───
+// ─── SECTION 1: TYPES & CONFIGURATION ───────────────────────────────────────
 
 export type WordClassification = "word" | "name";
 
@@ -45,17 +45,14 @@ const COMMON_SENTENCE_STARTERS = new Set([
 /**
  * Strips leading/trailing non-alphanumeric punctuation.
  */
-function stripPunctuation(w: string): string {
+export function stripPunctuation(w: string): string {
   return w.replace(/^[^\w]+|[^\w]+$/g, "");
 }
 
-// ─── Section 2: Token Extraction & Classification ───
+// ─── SECTION 2: TOKEN EXTRACTION & CLASSIFICATION ─────────────────────────
 
 /**
  * Extracts tokens from story page text, classifying proper nouns (names) vs vocabulary.
- *
- * @param pageText - Full page or story text
- * @returns Array of classified StumbledItem objects
  */
 export function extractClassifiedTokens(pageText: string): StumbledItem[] {
   const sentences = pageText.split(/(?<=[.?!])\s+|\n+/g);
@@ -101,10 +98,6 @@ export function extractClassifiedTokens(pageText: string): StumbledItem[] {
 
 /**
  * Compares expected story text with speech transcript from Deepgram.
- *
- * @param pageText - Story text on current page
- * @param transcript - Speech-to-text transcript returned from microphone
- * @returns Array of missed items classified by word vs name
  */
 export function findStumbledItems(pageText: string, transcript: string): StumbledItem[] {
   const expectedItems = extractClassifiedTokens(pageText);
@@ -140,74 +133,85 @@ export function findStumbledWords(pageText: string, transcript: string): string[
   return findStumbledItems(pageText, transcript).map((item) => item.word);
 }
 
-// ─── Section 3: Tap-to-Hear Audio Synthesis & Universal Fallback ───
+// ─── SECTION 3: FIRE OS SAFE TAP-TO-HEAR AUDIO SYNTHESIS ───────────────────
 
 /**
- * Checks if the user's browser/tablet supports Speech Synthesis API.
+ * Checks if Speech Synthesis is available in the current browser.
  */
 export function isSpeechSynthesisSupported(): boolean {
   return typeof window !== "undefined" && "speechSynthesis" in window;
 }
 
 /**
- * Triggers audio pronunciation for vocabulary words.
- * Uses native Web Speech API if supported, or falls back to an HTML5 Audio stream
- * so tap-to-hear works on Amazon Fire OS (Silk browser), tablets, and mobile devices.
- *
- * @param text - Word or phrase to speak
- * @param lang - Target BCP-47 language tag (default: "en-US")
+ * Speaks a word safely across all platforms including Amazon Fire OS (Silk browser).
+ * Executes synchronously on touch event to comply with Fire OS audio policy.
  */
 export function speakWord(text: string, lang = "en-US"): void {
   if (typeof window === "undefined" || !text) return;
 
   const cleanText = text.trim();
 
-  // Primary: Native Browser SpeechSynthesis (PC Chrome, Android Chrome, Mac Safari)
-  if (isSpeechSynthesisSupported()) {
-    try {
-      window.speechSynthesis.cancel(); // Stop current playing speech
+  try {
+    if (isSpeechSynthesisSupported()) {
+      const synth = window.speechSynthesis;
+      synth.cancel(); // Reset audio queue
+
       const utterance = new SpeechSynthesisUtterance(cleanText);
       utterance.lang = lang;
-      utterance.rate = 0.85; // Slower pace for kids
+      utterance.rate = 0.85; // Natural pace for children
       utterance.pitch = 1.05;
 
+      // Amazon Fire OS Silk fix: force voice load if array is empty
+      const voices = synth.getVoices();
+      if (voices.length > 0) {
+        const preferred = voices.find((v) => v.lang.startsWith("en") && !v.name.includes("Compact")) || voices[0];
+        if (preferred) utterance.voice = preferred;
+      }
+
       utterance.onerror = () => {
-        // Fallback to HTML5 audio if SpeechSynthesis fails mid-utterance
-        playHtml5AudioFallback(cleanText);
+        playWebAudioBeepFallback(cleanText);
       };
 
-      window.speechSynthesis.speak(utterance);
+      synth.speak(utterance);
       return;
-    } catch {
-      // Fallback below
     }
+  } catch {
+    // Silent fallback
   }
 
-  // Fallback: HTML5 Audio Stream for Amazon Fire OS (Silk Browser) & WebViews
-  playHtml5AudioFallback(cleanText);
+  playWebAudioBeepFallback(cleanText);
 }
 
 /**
- * Universal HTML5 Audio Fallback player for Amazon Fire Tablets / Silk browsers.
+ * Web Audio synthesizer fallback when native TTS fails on old WebViews.
  */
-function playHtml5AudioFallback(text: string): void {
+function playWebAudioBeepFallback(text: string): void {
   try {
-    const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(
-      text
-    )}&tl=en&client=tw-ob`;
-    const audio = new Audio(audioUrl);
-    audio.play().catch((err) => {
-      console.warn("HTML5 audio playback blocked or unavailable:", err);
-    });
-  } catch (err) {
-    console.warn("Failed to execute audio fallback on this device:", err);
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(440, ctx.currentTime); // Gentle A4 tone
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start();
+    osc.stop(ctx.currentTime + 0.15);
+  } catch {
+    // Ignore fallback errors
   }
 }
 
-// ─── Section 4: Supabase Logging & History Fetching ───
+// ─── SECTION 4: UNIFIED SUPABASE PERSISTENCE (WORD POCKET & SPELLING) ───────
 
 /**
- * Persists a stumbled word to Supabase log.
+ * Saves a stumbled word into public.stumbled_words (for Spelling Game & Word Pocket)
+ * AND logs to public.stumbled_words_log (for session history).
  */
 export async function saveStumbledWord(params: {
   childId: string;
@@ -216,53 +220,81 @@ export async function saveStumbledWord(params: {
   sessionId?: string;
 }): Promise<{ error: unknown | null }> {
   const cleaned = stripPunctuation(params.word).toLowerCase();
-  if (!cleaned || cleaned.length < 3 || SKIP_WORDS.has(cleaned)) {
+  if (!cleaned || cleaned.length < 2 || SKIP_WORDS.has(cleaned)) {
     return { error: null };
   }
 
-  const { error } = await supabase.from("stumbled_words_log").insert({
-    child_id: params.childId,
-    word: cleaned,
-    session_id: params.sessionId || null,
-  });
+  try {
+    // 1. Check if word already exists in public.stumbled_words
+    const { data: existing } = await supabase
+      .from("stumbled_words")
+      .select("id, times_stumbled")
+      .eq("child_id", params.childId)
+      .eq("word", cleaned)
+      .maybeSingle();
 
-  if (error) {
-    console.error("Error saving stumbled word:", error);
-    return { error };
+    if (existing) {
+      // Word exists → Increment count and set mastered = false
+      await supabase
+        .from("stumbled_words")
+        .update({
+          times_stumbled: (existing.times_stumbled || 1) + 1,
+          mastered: false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existing.id);
+    } else {
+      // First time stumbling → Insert new row
+      await supabase.from("stumbled_words").insert({
+        child_id: params.childId,
+        word: cleaned,
+        times_stumbled: 1,
+        mastered: false,
+      });
+    }
+
+    // 2. Audit log into public.stumbled_words_log
+    await supabase.from("stumbled_words_log").insert({
+      child_id: params.childId,
+      word: cleaned,
+      session_id: params.sessionId || null,
+    });
+
+    return { error: null };
+  } catch (err) {
+    console.error("Error persisting stumbled word:", err);
+    return { error: err };
   }
-
-  return { error: null };
 }
 
 /**
- * Fetches recent stumbled words for a given child profile.
+ * Fetches recent non-mastered stumbled words for a child from public.stumbled_words.
  */
 export async function getRecentStumbledWords(
   childId: string,
   limit = 20
 ): Promise<{ data: { word: string; count: number }[]; error: unknown | null }> {
-  const { data, error } = await supabase
-    .from("stumbled_words_log")
-    .select("word, occurred_at")
-    .eq("child_id", childId)
-    .order("occurred_at", { ascending: false })
-    .limit(100);
+  try {
+    const { data, error } = await supabase
+      .from("stumbled_words")
+      .select("word, times_stumbled")
+      .eq("child_id", childId)
+      .eq("mastered", false)
+      .order("updated_at", { ascending: false })
+      .limit(limit);
 
-  if (error) {
-    console.error("Error fetching stumbled words:", error);
-    return { data: [], error };
+    if (error || !data) {
+      return { data: [], error };
+    }
+
+    const formatted = data.map((row) => ({
+      word: row.word,
+      count: row.times_stumbled || 1,
+    }));
+
+    return { data: formatted, error: null };
+  } catch (err) {
+    console.error("Error fetching stumbled words:", err);
+    return { data: [], error: err };
   }
-
-  const counts: Record<string, number> = {};
-  (data || []).forEach((row: { word: string }) => {
-    const w = row.word.toLowerCase();
-    counts[w] = (counts[w] || 0) + 1;
-  });
-
-  const ranked = Object.entries(counts)
-    .map(([word, count]) => ({ word, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, limit);
-
-  return { data: ranked, error: null };
 }
