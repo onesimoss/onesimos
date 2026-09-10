@@ -1,19 +1,12 @@
 /**
  * @file app/parent/page.tsx
- * @description Parent Dashboard & Academic Report Card View.
- * Displays child progress metrics including Fluency (WPM), Pronunciation Accuracy (%),
- * Comprehension Score (%), Estimated Reading Age, Practice Vocabulary, Story Time Reminders,
- * Kid PINs, 4-Digit Parent Security PIN modal, and test-data reset tooling.
+ * @description Parent Dashboard — multi-child summary cards with academic snapshot.
+ * Deep report, PIN, reminders, and history live on /parent/child/[childId].
  *
  * @dependencies
- * - @/context/AuthContext (parent authentication & logout)
- * - @/lib/children (child profiles API, PINs, deletion)
- * - @/lib/avatars (avatar image & color resolution)
- * - @/lib/stumbledWords (recent stumbled vocabulary for practice)
- * - @/lib/reminders (story time notification preferences)
- * - @/lib/sessionInsights (reading session analytics & report card engine)
- * - @/lib/parentGate (4-digit Parent PIN setup and status)
- * - @/lib/sessionBudget (reset test story quota helper)
+ * - @/context/AuthContext
+ * - @/lib/children, @/lib/avatars, @/lib/stumbledWords
+ * - @/lib/sessionInsights, @/lib/parentGate, @/lib/sessionBudget
  */
 
 "use client";
@@ -26,15 +19,10 @@ import LogoutButton from "@/components/LogoutButton";
 import {
   getChildrenForParent,
   deleteChild,
-  setChildPin,
   type ChildProfile,
 } from "@/lib/children";
 import { getAvatarById } from "@/lib/avatars";
 import { getRecentStumbledWords } from "@/lib/stumbledWords";
-import {
-  updateChildReminder,
-  requestNotificationPermission,
-} from "@/lib/reminders";
 import {
   getChildSessions,
   computeReportCardStats,
@@ -43,54 +31,37 @@ import {
 import { getParentPinStatus, setParentPin } from "@/lib/parentGate";
 import { resetChildStoryQuota } from "@/lib/sessionBudget";
 
-// ─── Section 1: Helper Formatters & Status Badges ───
-
-function curriculumLabel(value: string): string {
-  switch (value) {
-    case "british":
-      return "British / Commonwealth";
-    case "american":
-      return "American English";
-    case "international":
-      return "International / IB";
-    case "nigerian":
-    case "ghanaian":
-      return "British / Commonwealth";
-    default:
-      return "Other / Flexible";
-  }
-}
+// ─── Section 1: Helpers ───
 
 function renderStatusBadge(status: DetailedReportCardStats["progressStatus"]) {
   switch (status) {
     case "Accelerating":
       return (
         <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider border border-emerald-200">
-          🚀 Accelerating
+          Accelerating
         </span>
       );
     case "Needs Practice":
       return (
         <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-black uppercase tracking-wider border border-amber-200">
-          💪 Needs Practice
+          Needs Practice
         </span>
       );
     default:
       return (
         <span className="px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-800 text-[10px] font-black uppercase tracking-wider border border-sky-200">
-          ✨ On Track
+          On Track
         </span>
       );
   }
 }
 
-// ─── Section 2: Component Implementation ───
+// ─── Section 2: Dashboard ───
 
 export default function ParentDashboard() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
-  // Child Data States
   const [children, setChildren] = useState<ChildProfile[]>([]);
   const [practiceByChild, setPracticeByChild] = useState<
     Record<string, { word: string; count: number }[]>
@@ -100,16 +71,10 @@ export default function ParentDashboard() {
   >({});
   const [fetching, setFetching] = useState(true);
 
-  // Child Profile Action States
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
-  const [pinEditId, setPinEditId] = useState<string | null>(null);
-  const [pinValue, setPinValue] = useState("");
-  const [pinSaving, setPinSaving] = useState(false);
-  const [reminderSavingId, setReminderSavingId] = useState<string | null>(null);
   const [resettingId, setResettingId] = useState<string | null>(null);
 
-  // Parent PIN Security States
   const [hasParentPin, setHasParentPin] = useState<boolean | null>(null);
   const [showParentPinModal, setShowParentPinModal] = useState(false);
   const [newParentPin, setNewParentPin] = useState("");
@@ -117,28 +82,23 @@ export default function ParentDashboard() {
   const [parentPinSaving, setParentPinSaving] = useState(false);
   const [parentPinError, setParentPinError] = useState("");
 
-  // Feedback Banner States
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  // Authentication Protection
   useEffect(() => {
     if (!loading && !user) {
       router.replace("/parent/login");
     }
   }, [user, loading, router]);
 
-  // Load All Parent Data & Compute Report Card Analytics
   useEffect(() => {
     async function loadDashboardData() {
       if (!user) return;
       setFetching(true);
 
-      // Check Parent PIN configuration status
       const { hasPin } = await getParentPinStatus(user.id);
       setHasParentPin(hasPin);
 
-      // Fetch list of child profiles for parent
       const { data } = await getChildrenForParent(user.id);
       setChildren(data);
 
@@ -148,7 +108,7 @@ export default function ParentDashboard() {
       await Promise.all(
         data.map(async (child) => {
           const [{ data: words }, { data: sessions }] = await Promise.all([
-            getRecentStumbledWords(child.id, 8),
+            getRecentStumbledWords(child.id, 6),
             getChildSessions(child.id, 60),
           ]);
           practiceMap[child.id] = words;
@@ -168,22 +128,15 @@ export default function ParentDashboard() {
     void loadDashboardData();
   }, [user, router]);
 
-  // ─── Section 3: Event Handlers ───
-
-  /**
-   * Save or update secret 4-digit Parent PIN.
-   */
   const handleSaveParentPin = async (e: React.FormEvent) => {
     e.preventDefault();
     setParentPinError("");
-
     if (!user) return;
 
     if (newParentPin.length !== 4) {
       setParentPinError("Parent PIN must be exactly 4 digits.");
       return;
     }
-
     if (newParentPin !== confirmParentPin) {
       setParentPinError("Codes do not match. Try again.");
       return;
@@ -205,9 +158,6 @@ export default function ParentDashboard() {
     setMessage("Parent unlock PIN saved successfully!");
   };
 
-  /**
-   * Remove a child profile permanently.
-   */
   const handleDeleteChild = async (child: ChildProfile) => {
     if (!user) return;
     setDeletingId(child.id);
@@ -224,116 +174,9 @@ export default function ParentDashboard() {
 
     const next = children.filter((c) => c.id !== child.id);
     setChildren(next);
-
-    if (next.length === 0) {
-      router.replace("/onboarding");
-    }
+    if (next.length === 0) router.replace("/onboarding");
   };
 
-  /**
-   * Save 4-digit PIN for a child profile.
-   */
-  const handleSaveKidPin = async (child: ChildProfile) => {
-    if (!user) return;
-    setPinSaving(true);
-    setError("");
-    setMessage("");
-
-    const { error: pinError } = await setChildPin(child.id, user.id, pinValue);
-    setPinSaving(false);
-
-    if (pinError) {
-      setError(pinError.message || "Could not save PIN.");
-      return;
-    }
-
-    setChildren((prev) =>
-      prev.map((c) =>
-        c.id === child.id ? { ...c, kid_pin: pinValue.replace(/\D/g, "") } : c
-      )
-    );
-    setPinEditId(null);
-    setPinValue("");
-    setMessage(`Kid PIN saved for ${child.name}.`);
-  };
-
-  /**
-   * Toggle Story Time Reminder preference.
-   */
-  const handleReminderToggle = async (child: ChildProfile, enabled: boolean) => {
-    if (!user) return;
-    setReminderSavingId(child.id);
-    setError("");
-    setMessage("");
-
-    if (enabled) {
-      const permission = await requestNotificationPermission();
-      if (permission === "denied") {
-        setError(
-          "Notifications are blocked in this browser. Reminder is saved for in-app cues."
-        );
-      }
-    }
-
-    const timeLocal = child.reminder_time_local || "16:30";
-    const { error: remError } = await updateChildReminder(child.id, user.id, {
-      enabled,
-      timeLocal,
-    });
-    setReminderSavingId(null);
-
-    if (remError) {
-      setError(remError.message || "Could not update reminder.");
-      return;
-    }
-
-    setChildren((prev) =>
-      prev.map((c) =>
-        c.id === child.id ? { ...c, reminder_enabled: enabled } : c
-      )
-    );
-    setMessage(
-      enabled
-        ? `Story Time Reminder turned on for ${child.name}.`
-        : `Story Time Reminder turned off for ${child.name}.`
-    );
-  };
-
-  /**
-   * Update Story Time Reminder preferred time.
-   */
-  const handleReminderTime = async (child: ChildProfile, timeLocal: string) => {
-    if (!user) return;
-    setReminderSavingId(child.id);
-    setError("");
-
-    const { error: remError, timeLocal: saved } = await updateChildReminder(
-      child.id,
-      user.id,
-      {
-        enabled: !!child.reminder_enabled,
-        timeLocal,
-      }
-    );
-    setReminderSavingId(null);
-
-    if (remError) {
-      setError(remError.message || "Could not save time.");
-      return;
-    }
-
-    setChildren((prev) =>
-      prev.map((c) =>
-        c.id === child.id
-          ? { ...c, reminder_time_local: saved || timeLocal }
-          : c
-      )
-    );
-  };
-
-  /**
-   * Reset test reading session history and unblock monthly quotas for testing.
-   */
   const handleResetTestData = async (child: ChildProfile) => {
     setResettingId(child.id);
     setError("");
@@ -347,7 +190,6 @@ export default function ParentDashboard() {
       return;
     }
 
-    // Refresh report card stats locally
     const emptyStats: DetailedReportCardStats = {
       totalSessions: 0,
       totalPages: 0,
@@ -363,8 +205,7 @@ export default function ParentDashboard() {
 
     setReportStatsByChild((prev) => ({ ...prev, [child.id]: emptyStats }));
     setPracticeByChild((prev) => ({ ...prev, [child.id]: [] }));
-
-    setMessage(`Test story quota & reading report card reset for ${child.name}.`);
+    setMessage(`Test data reset for ${child.name}.`);
   };
 
   if (loading || fetching || !user) {
@@ -377,18 +218,13 @@ export default function ParentDashboard() {
 
   return (
     <main className="min-h-screen bg-[#FDFBF7] font-sans pb-16">
-      
-      {/* ─── Section 4: Top Navigation Bar ─── */}
       <header className="border-b border-gray-200 bg-white/80 backdrop-blur-md sticky top-0 z-20">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-3">
           <Link href="/parent" className="font-extrabold text-2xl text-gray-900 tracking-tight">
             Onesimos
           </Link>
           <div className="flex items-center gap-2 sm:gap-4">
-            <Link
-              href="/who"
-              className="text-xs sm:text-sm font-bold text-coral hover:underline"
-            >
+            <Link href="/who" className="text-xs sm:text-sm font-bold text-coral hover:underline">
               Who&apos;s reading?
             </Link>
             <span className="hidden md:inline text-xs text-gray-500 font-medium">
@@ -400,8 +236,6 @@ export default function ParentDashboard() {
       </header>
 
       <div className="max-w-6xl mx-auto px-6 py-8">
-        
-        {/* Banner Alert if Parent PIN is missing */}
         {hasParentPin === false && (
           <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
@@ -409,68 +243,62 @@ export default function ParentDashboard() {
               <div>
                 <p className="text-sm font-bold text-amber-900">Set a 4-Digit Parent Code</p>
                 <p className="text-xs text-amber-700">
-                  Prevent kids from switching back into Parent Settings without authorization.
+                  Keep parent settings out of kids&apos; reach.
                 </p>
               </div>
             </div>
             <button
               type="button"
               onClick={() => setShowParentPinModal(true)}
-              className="px-4 py-2 bg-amber-600 text-white rounded-xl text-xs font-bold hover:bg-amber-700 transition-colors"
+              className="px-4 py-2 bg-amber-600 text-white rounded-xl text-xs font-bold hover:bg-amber-700"
             >
               Set Parent PIN
             </button>
           </div>
         )}
 
-        {/* Dashboard Title & Quick Actions */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl md:text-4xl font-black text-gray-900">
-              Academic Report Card
+              Family overview
             </h1>
             <p className="text-gray-500 text-sm mt-1">
-              Fluency, accuracy, and comprehension evidence — quiet progress for you, joy for them.
+              Snapshot per child — open a full report for growth story, history, and settings.
             </p>
           </div>
-
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => setShowParentPinModal(true)}
-              className="px-4 py-2.5 rounded-full border border-gray-200 bg-white text-xs font-bold text-gray-700 hover:bg-gray-50 shadow-sm transition-colors"
+              className="px-4 py-2.5 rounded-full border border-gray-200 bg-white text-xs font-bold text-gray-700 hover:bg-gray-50 shadow-sm"
             >
               {hasParentPin ? "Change Parent PIN" : "Set Parent PIN"}
             </button>
             <Link
               href="/onboarding"
-              className="px-5 py-2.5 bg-coral text-white rounded-full text-xs font-bold hover:bg-coral/90 transition-colors shadow-sm"
+              className="px-5 py-2.5 bg-coral text-white rounded-full text-xs font-bold hover:bg-coral/90 shadow-sm"
             >
               + Add child
             </Link>
           </div>
         </div>
 
-        {/* Feedback Banners */}
         {message && (
           <div className="mb-6 bg-emerald-50 border border-emerald-200 text-emerald-800 p-3.5 rounded-2xl text-xs font-bold">
             {message}
           </div>
         )}
-
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 text-red-600 p-3.5 rounded-2xl text-xs font-bold">
             {error}
           </div>
         )}
 
-        {/* ─── Section 5: Academic Child Cards Grid ─── */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {children.map((child) => {
             const avatar = getAvatarById(child.avatar_id);
             const isConfirming = confirmId === child.id;
             const isDeleting = deletingId === child.id;
-            const isPinEdit = pinEditId === child.id;
             const isResetting = resettingId === child.id;
             const practice = practiceByChild[child.id] || [];
             const reportStats = reportStatsByChild[child.id] || {
@@ -483,283 +311,138 @@ export default function ParentDashboard() {
               accuracyPercentage: 0,
               comprehensionPercentage: 0,
               readingAgeEstimate: "5.0 – 6.5 years",
-              progressStatus: "On Track",
+              progressStatus: "On Track" as const,
             };
-            const hasKidPin = !!(child.kid_pin && String(child.kid_pin).length === 4);
-            const reminderOn = !!child.reminder_enabled;
-            const reminderTime = child.reminder_time_local || "16:30";
-            const savingReminder = reminderSavingId === child.id;
 
             return (
               <div
                 key={child.id}
-                className="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                className="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-all flex flex-col"
               >
-                <div>
-                  {/* Child Profile & Status Header */}
-                  <div className="flex items-center gap-4 mb-4">
-                    <div
-                      className="w-16 h-16 rounded-2xl overflow-hidden border border-gray-200 bg-cream shrink-0 flex items-center justify-center"
-                      style={{ backgroundColor: `${avatar.color}22` }}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={avatar.imageUrl}
-                        alt=""
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-1 mb-0.5">
-                        <h2 className="text-xl font-black text-gray-900 truncate">
-                          {child.name}
-                        </h2>
-                        {renderStatusBadge(reportStats.progressStatus)}
-                      </div>
-                      <p className="text-xs text-gray-500 font-medium">
-                        Age {child.age} · Reading Level {child.reading_level}
-                      </p>
-                      <p className="text-[11px] font-bold text-gray-700 mt-0.5">
-                        Reading Age Est: <span className="text-coral">{reportStats.readingAgeEstimate}</span>
-                      </p>
-                    </div>
+                <div className="flex items-center gap-4 mb-4">
+                  <div
+                    className="w-14 h-14 rounded-2xl overflow-hidden border border-gray-200 shrink-0"
+                    style={{ backgroundColor: `${avatar.color}22` }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={avatar.imageUrl} alt="" className="w-full h-full object-cover" />
                   </div>
-
-                  {/* ── Academic Report Card Scores ── */}
-                  <div className="grid grid-cols-2 gap-2 mb-4">
-                    
-                    {/* Fluency (WPM) */}
-                    <div className="rounded-2xl bg-amber-50/70 border border-amber-200/60 p-3 text-center">
-                      <p className="text-xl font-black text-amber-950">
-                        {reportStats.wordsPerMinute} <span className="text-xs font-bold text-amber-800">WPM</span>
-                      </p>
-                      <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider mt-0.5">
-                        Reading Fluency
-                      </p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <h2 className="text-lg font-black text-gray-900 truncate">
+                        {child.name}
+                      </h2>
+                      {renderStatusBadge(reportStats.progressStatus)}
                     </div>
-
-                    {/* Pronunciation Accuracy */}
-                    <div className="rounded-2xl bg-emerald-50/70 border border-emerald-200/60 p-3 text-center">
-                      <p className="text-xl font-black text-emerald-950">
-                        {reportStats.accuracyPercentage}%
-                      </p>
-                      <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mt-0.5">
-                        Accuracy
-                      </p>
-                    </div>
-
-                    {/* Comprehension Score */}
-                    <div className="rounded-2xl bg-sky-50/70 border border-sky-200/60 p-3 text-center">
-                      <p className="text-xl font-black text-sky-950">
-                        {reportStats.comprehensionPercentage}%
-                      </p>
-                      <p className="text-[10px] font-bold text-sky-700 uppercase tracking-wider mt-0.5">
-                        Comprehension
-                      </p>
-                    </div>
-
-                    {/* Streak & Finished Stories */}
-                    <div className="rounded-2xl bg-[#FBF9F5] border border-gray-100 p-3 text-center">
-                      <p className="text-xl font-black text-gray-900">
-                        {reportStats.streak} <span className="text-xs font-bold text-gray-500">Days</span>
-                      </p>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
-                        Streak ({reportStats.storiesFinished} Finished)
-                      </p>
-                    </div>
-
-                  </div>
-
-                  {/* Curriculum & Preferences Info */}
-                  <div className="space-y-2 text-xs mb-4 pt-2 border-t border-gray-100">
-                    <div className="flex justify-between gap-3">
-                      <span className="text-gray-400 font-medium">Curriculum</span>
-                      <span className="font-bold text-gray-800 text-right">
-                        {curriculumLabel(child.curriculum)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400 font-medium">Daily Target</span>
-                      <span className="font-bold text-gray-800">
-                        {child.session_minutes} min / day
-                      </span>
-                    </div>
-                    <div className="flex justify-between gap-3">
-                      <span className="text-gray-400 font-medium">Interests</span>
-                      <span className="font-bold text-gray-800 text-right capitalize truncate">
-                        {(child.interests || []).join(", ") || "—"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Practice Vocabulary List */}
-                  <div className="mb-4 rounded-2xl bg-[#FBF9F5] border border-gray-100 p-3">
-                    <p className="text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-wider">
-                      Words to practice
+                    <p className="text-xs text-gray-500 font-medium">
+                      Age {child.age} · Level {child.reading_level}
                     </p>
-                    {practice.length === 0 ? (
-                      <p className="text-xs text-gray-400 font-medium">
-                        No practice list yet. It fills in when they read aloud.
-                      </p>
-                    ) : (
-                      <div className="flex flex-wrap gap-1.5">
-                        {practice.map((item) => (
-                          <span
-                            key={item.word}
-                            className="px-2.5 py-1 rounded-full bg-amber-100/70 text-gray-900 text-xs font-bold border border-amber-200/50"
-                          >
-                            {item.word}
-                            {item.count > 1 ? ` · ${item.count}` : ""}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                    <p className="text-[11px] font-bold text-gray-600 mt-0.5">
+                      Est. reading age:{" "}
+                      <span className="text-coral">{reportStats.readingAgeEstimate}</span>
+                    </p>
                   </div>
+                </div>
 
-                  {/* Story Time Reminder Controls */}
-                  <div className="mb-4 rounded-2xl border border-gray-100 bg-gray-50/60 p-3">
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <div>
-                        <p className="text-xs font-bold text-gray-800">Story Time Reminder</p>
-                        <p className="text-[10px] text-gray-400">
-                          Optional · once a day · off after 7:30pm
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        disabled={savingReminder}
-                        onClick={() => handleReminderToggle(child, !reminderOn)}
-                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${
-                          reminderOn ? "bg-emerald-500" : "bg-gray-300"
-                        }`}
-                        aria-label={reminderOn ? "Turn reminder off" : "Turn reminder on"}
-                      >
-                        <span
-                          className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                            reminderOn ? "translate-x-5" : ""
-                          }`}
-                        />
-                      </button>
-                    </div>
-                    <label className="block text-[10px] font-bold text-gray-400 mb-1">
-                      Preferred time
-                    </label>
-                    <input
-                      type="time"
-                      value={reminderTime}
-                      disabled={savingReminder}
-                      onChange={(e) => handleReminderTime(child, e.target.value)}
-                      className="w-full px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-gray-800 font-bold text-xs focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                    />
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  <div className="rounded-2xl bg-amber-50/80 border border-amber-100 p-2.5 text-center">
+                    <p className="text-lg font-black text-amber-950">
+                      {reportStats.wordsPerMinute}
+                    </p>
+                    <p className="text-[9px] font-bold text-amber-800 uppercase">WPM</p>
                   </div>
+                  <div className="rounded-2xl bg-emerald-50/80 border border-emerald-100 p-2.5 text-center">
+                    <p className="text-lg font-black text-emerald-950">
+                      {reportStats.accuracyPercentage}%
+                    </p>
+                    <p className="text-[9px] font-bold text-emerald-800 uppercase">Accuracy</p>
+                  </div>
+                  <div className="rounded-2xl bg-sky-50/80 border border-sky-100 p-2.5 text-center">
+                    <p className="text-lg font-black text-sky-950">
+                      {reportStats.comprehensionPercentage}%
+                    </p>
+                    <p className="text-[9px] font-bold text-sky-800 uppercase">Comprehend</p>
+                  </div>
+                </div>
 
-                  {/* Kid PIN Configuration */}
-                  {isPinEdit ? (
-                    <div className="mb-4 rounded-2xl border border-gray-200 bg-gray-50 p-3">
-                      <p className="text-xs font-bold text-gray-800 mb-2">
-                        4-digit PIN for {child.name}
-                      </p>
-                      <input
-                        type="password"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        maxLength={4}
-                        value={pinValue}
-                        onChange={(e) =>
-                          setPinValue(e.target.value.replace(/\D/g, "").slice(0, 4))
-                        }
-                        placeholder="••••"
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-center text-xl tracking-[0.4em] font-bold focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                      />
-                      <div className="flex gap-2 mt-3">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPinEditId(null);
-                            setPinValue("");
-                          }}
-                          className="flex-1 py-1.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-white"
-                          disabled={pinSaving}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleSaveKidPin(child)}
-                          disabled={pinSaving || pinValue.length !== 4}
-                          className="flex-1 py-1.5 rounded-xl bg-gray-900 text-white text-xs font-bold hover:bg-black disabled:opacity-50"
-                        >
-                          {pinSaving ? "Saving..." : "Save PIN"}
-                        </button>
-                      </div>
-                    </div>
+                <div className="mb-4 min-h-[3rem]">
+                  {practice.length === 0 ? (
+                    <p className="text-[11px] text-gray-400 font-medium">
+                      Practice words appear after read-aloud sessions.
+                    </p>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPinEditId(child.id);
-                        setPinValue("");
-                        setConfirmId(null);
-                      }}
-                      className="w-full mb-3 text-xs font-bold text-gray-600 hover:text-gray-900 py-2 border border-gray-200 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-colors"
-                    >
-                      {hasKidPin ? "Change Kid PIN" : "Set Kid PIN"}
-                    </button>
+                    <div className="flex flex-wrap gap-1.5">
+                      {practice.slice(0, 5).map((item) => (
+                        <span
+                          key={item.word}
+                          className="px-2 py-0.5 rounded-full bg-amber-100/70 text-gray-900 text-[11px] font-bold border border-amber-200/50"
+                        >
+                          {item.word}
+                        </span>
+                      ))}
+                      {practice.length > 5 && (
+                        <span className="text-[11px] font-bold text-gray-400">
+                          +{practice.length - 5}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
 
-                {/* Bottom Profile Actions & Tester Tooling */}
-                <div>
+                <div className="mt-auto space-y-2 pt-2 border-t border-gray-100">
                   {!isConfirming ? (
-                    <div className="flex flex-col gap-2 pt-2">
+                    <>
+                      <Link
+                        href={`/parent/child/${child.id}`}
+                        className="block w-full py-2.5 rounded-2xl bg-gray-900 text-white text-xs font-black hover:bg-black text-center shadow-sm"
+                      >
+                        View full report →
+                      </Link>
                       <Link
                         href={`/kid/${child.id}`}
-                        className="w-full py-2.5 rounded-2xl bg-coral text-white text-xs font-black hover:bg-coral/90 text-center shadow-sm transition-colors"
+                        className="block w-full py-2 rounded-2xl border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-50 text-center"
                       >
-                        Open Kid View
+                        Open kid view
                       </Link>
-                      <div className="flex justify-between items-center px-1 pt-1">
+                      <div className="flex justify-between items-center px-1">
                         <button
                           type="button"
                           disabled={isResetting}
                           onClick={() => void handleResetTestData(child)}
-                          className="text-[11px] font-bold text-gray-400 hover:text-amber-700 transition-colors py-1 disabled:opacity-50"
+                          className="text-[11px] font-bold text-gray-400 hover:text-amber-700 disabled:opacity-50"
                         >
-                          {isResetting ? "Resetting..." : "🔄 Reset Test Quota"}
+                          {isResetting ? "Resetting..." : "Reset test quota"}
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            setConfirmId(child.id);
-                            setPinEditId(null);
-                          }}
-                          className="text-[11px] font-bold text-gray-400 hover:text-red-500 transition-colors py-1"
+                          onClick={() => setConfirmId(child.id)}
+                          className="text-[11px] font-bold text-gray-400 hover:text-red-500"
                         >
-                          Remove profile
+                          Remove
                         </button>
                       </div>
-                    </div>
+                    </>
                   ) : (
-                    <div className="rounded-2xl border border-red-200 bg-red-50 p-3 mt-2">
+                    <div className="rounded-2xl border border-red-200 bg-red-50 p-3">
                       <p className="text-xs text-gray-800 mb-3 text-center">
-                        Remove <span className="font-bold">{child.name}</span>&apos;s profile?
+                        Remove <span className="font-bold">{child.name}</span>?
                       </p>
                       <div className="flex gap-2">
                         <button
                           type="button"
                           onClick={() => setConfirmId(null)}
                           disabled={isDeleting}
-                          className="flex-1 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-bold text-gray-600"
+                          className="flex-1 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-bold"
                         >
                           Keep
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDeleteChild(child)}
+                          onClick={() => void handleDeleteChild(child)}
                           disabled={isDeleting}
-                          className="flex-1 py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 disabled:opacity-50"
+                          className="flex-1 py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold disabled:opacity-50"
                         >
-                          {isDeleting ? "Removing..." : "Remove"}
+                          {isDeleting ? "..." : "Remove"}
                         </button>
                       </div>
                     </div>
@@ -771,7 +454,6 @@ export default function ParentDashboard() {
         </div>
       </div>
 
-      {/* ─── Section 6: Parent 4-Digit Security PIN Modal ─── */}
       {showParentPinModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl border border-gray-100">
@@ -780,49 +462,47 @@ export default function ParentDashboard() {
               {hasParentPin ? "Change Parent PIN" : "Set Parent PIN"}
             </h3>
             <p className="text-gray-500 text-xs mb-6">
-              Enter a secret 4-digit code to protect Parent Dashboard access.
+              Secret 4-digit code for parent access.
             </p>
-
             <form onSubmit={handleSaveParentPin} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-gray-700 text-left mb-1">
-                  New 4-Digit Code
+                  New code
                 </label>
                 <input
                   type="password"
                   inputMode="numeric"
-                  pattern="[0-9]*"
                   maxLength={4}
                   value={newParentPin}
-                  onChange={(e) => setNewParentPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                  onChange={(e) =>
+                    setNewParentPin(e.target.value.replace(/\D/g, "").slice(0, 4))
+                  }
                   placeholder="••••"
                   className="w-full px-4 py-2.5 rounded-2xl border border-gray-200 bg-gray-50 text-center text-2xl tracking-[0.4em] font-bold focus:outline-none focus:ring-2 focus:ring-yellow-400"
                   autoFocus
                 />
               </div>
-
               <div>
                 <label className="block text-xs font-bold text-gray-700 text-left mb-1">
-                  Confirm Code
+                  Confirm
                 </label>
                 <input
                   type="password"
                   inputMode="numeric"
-                  pattern="[0-9]*"
                   maxLength={4}
                   value={confirmParentPin}
-                  onChange={(e) => setConfirmParentPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                  onChange={(e) =>
+                    setConfirmParentPin(e.target.value.replace(/\D/g, "").slice(0, 4))
+                  }
                   placeholder="••••"
                   className="w-full px-4 py-2.5 rounded-2xl border border-gray-200 bg-gray-50 text-center text-2xl tracking-[0.4em] font-bold focus:outline-none focus:ring-2 focus:ring-yellow-400"
                 />
               </div>
-
               {parentPinError && (
                 <p className="text-xs font-bold text-red-600 bg-red-50 py-2 px-3 rounded-xl">
                   {parentPinError}
                 </p>
               )}
-
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"
@@ -832,17 +512,20 @@ export default function ParentDashboard() {
                     setNewParentPin("");
                     setConfirmParentPin("");
                   }}
-                  disabled={parentPinSaving}
-                  className="flex-1 py-2.5 rounded-2xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50"
+                  className="flex-1 py-2.5 rounded-2xl border border-gray-200 text-xs font-bold text-gray-600"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={parentPinSaving || newParentPin.length !== 4 || confirmParentPin.length !== 4}
-                  className="flex-1 py-2.5 rounded-2xl bg-[#FCE588] text-black text-xs font-bold hover:bg-yellow-300 disabled:opacity-50"
+                  disabled={
+                    parentPinSaving ||
+                    newParentPin.length !== 4 ||
+                    confirmParentPin.length !== 4
+                  }
+                  className="flex-1 py-2.5 rounded-2xl bg-[#FCE588] text-black text-xs font-bold disabled:opacity-50"
                 >
-                  {parentPinSaving ? "Saving..." : "Save Code"}
+                  {parentPinSaving ? "Saving..." : "Save"}
                 </button>
               </div>
             </form>
