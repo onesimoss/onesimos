@@ -2,7 +2,8 @@
  * @file lib/livingStory.ts
  * @description Living Story Book Generation Engine for Onesimos (The Moat).
  * Dynamically weaves a child's recent stumbling vocabulary, reading level, and 
- * interests into personal story chapters set in vibrant African environments.
+ * interests into coherent, highly engageable personal story chapters set in 
+ * vibrant African environments.
  *
  * @dependencies
  * - @/lib/supabaseClient (Database persistence for generated chapters)
@@ -16,7 +17,7 @@ import type { ChildProfile } from "./children";
 import { getRecentStumbledWords } from "./stumbledWords";
 import type { SampleStory, StoryPage, ComprehensionQuestion } from "./sampleStories";
 
-// ─── Section 1: Types & Storage Interfaces ───
+// ─── SECTION 1: TYPES & INTERFACES ─────────────────────────────────────────
 
 export interface GeneratedChapterRecord {
   id: string;
@@ -28,8 +29,6 @@ export interface GeneratedChapterRecord {
   created_at: string;
 }
 
-// ─── Section 2: Personal Story Generation Templates ───
-
 interface StoryTemplate {
   titlePrefix: string;
   coverEmoji: string;
@@ -38,167 +37,226 @@ interface StoryTemplate {
   questions: (childName: string, words: string[]) => ComprehensionQuestion[];
 }
 
-/**
- * Story templates tailored for Level 1 & 2 (Ages 3–6, Emerging Readers).
- */
+// ─── SECTION 2: TEMPLATE GENERATOR HELPERS ─────────────────────────────────
+
+function capitalize(str: string): string {
+  if (!str) return "";
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
+
+// ─── SECTION 3: LEVEL 1 & 2 TEMPLATES (EMERGING READERS, AGES 3–6) ─────────
+
 const LEVEL_1_2_TEMPLATES: StoryTemplate[] = [
   {
-    titlePrefix: "The Secret Trail to the River",
-    coverEmoji: "🌊",
-    themes: ["adventure", "animals"],
+    titlePrefix: "and the Secret Garden Trail",
+    coverEmoji: "🌿",
+    themes: ["nature", "adventure"],
     pages: (name, words) => {
-      const target1 = words[0] || "whisper";
-      const target2 = words[1] || "bridge";
+      const w1 = words[0] ? words[0].toLowerCase() : "tree";
+      const w2 = words[1] ? words[1].toLowerCase() : "river";
+      const w3 = words[2] ? words[2].toLowerCase() : "green";
+
       return [
-        { text: `${name} walked down a quiet path near the big iroko tree.`, imageEmoji: "🌳" },
-        { text: `The birds began to ${target1} in the morning breeze.`, imageEmoji: "🐦" },
-        { text: `${name} saw a tiny wooden ${target2} across the stream.`, imageEmoji: "🌉" },
-        { text: "A small puppy ran across and wagged its tail with joy.", imageEmoji: "🐶" },
-        { text: `${name} felt happy and brave after a wonderful adventure.`, imageEmoji: "⭐" },
+        {
+          text: `${name} went out into the warm morning sunshine.`,
+          imageEmoji: "☀️",
+        },
+        {
+          text: `Near the garden gate stood a tall ${w1} with bright branches.`,
+          imageEmoji: "🌳",
+        },
+        {
+          text: `${name} could hear the peaceful sound of the nearby ${w2}.`,
+          imageEmoji: "🌊",
+        },
+        {
+          text: `All around, the grass looked fresh and ${w3} in the light.`,
+          imageEmoji: "🌱",
+        },
+        {
+          text: `${name} smiled proudly, feeling happy after a lovely walk outside.`,
+          imageEmoji: "🌟",
+        },
       ];
     },
-    questions: (name, words) => [
-      {
-        id: `gen-q1-${Date.now()}`,
-        questionText: `Where did ${name} walk in the morning?`,
-        options: ["Near the big iroko tree", "Inside a giant shop", "On a snowy mountain"],
-        correctIndex: 0,
-        type: "literal",
-        explanation: `${name} walked down a quiet path near the big iroko tree.`,
-      },
-      {
-        id: `gen-q2-${Date.now()}`,
-        questionText: `What animal ran across the tiny wooden bridge?`,
-        options: ["A small puppy", "A big lion", "A quiet fish"],
-        correctIndex: 0,
-        type: "literal",
-        explanation: "A small puppy ran across and wagged its tail!",
-      },
-    ],
+    questions: (name, words) => {
+      const w1 = words[0] ? words[0].toLowerCase() : "tree";
+      return [
+        {
+          id: `gen-q1-${Date.now()}`,
+          questionText: `What did ${name} see near the garden gate?`,
+          options: [`A tall ${w1}`, "A small cat", "A red bicycle"],
+          correctIndex: 0,
+          type: "literal",
+          explanation: `${name} found a tall ${w1} standing near the garden gate.`,
+        },
+        {
+          id: `gen-q2-${Date.now()}`,
+          questionText: `How did ${name} feel at the end of the walk?`,
+          options: ["Happy and proud", "Tired and sad", "Scared"],
+          correctIndex: 0,
+          type: "inferential",
+          explanation: `${name} felt happy and proud after exploring outside.`,
+        },
+      ];
+    },
   },
   {
-    titlePrefix: "The Golden Sunshine Adventure",
-    coverEmoji: "☀️",
-    themes: ["family", "adventure"],
+    titlePrefix: "and the Golden Box of Courage",
+    coverEmoji: "✨",
+    themes: ["family", "discovery"],
     pages: (name, words) => {
-      const target1 = words[0] || "courage";
-      const target2 = words[1] || "glimmer";
+      const w1 = words[0] ? words[0].toLowerCase() : "found";
+      const w2 = words[1] ? words[1].toLowerCase() : "near";
+
       return [
-        { text: `The warm morning sun began to shine over ${name}'s house.`, imageEmoji: "☀️" },
-        { text: `${name} found a small box with a bright golden ${target2}.`, imageEmoji: "✨" },
-        { text: `Mama smiled and said, "It takes ${target1} to try new things."`, imageEmoji: "👩" },
-        { text: `${name} held the golden box and skipped happily into the garden.`, imageEmoji: "🌻" },
-        { text: "Every new day brings bright new discoveries!", imageEmoji: "🌈" },
+        {
+          text: `${name} sat with grandmother on the cozy veranda.`,
+          imageEmoji: "🏡",
+        },
+        {
+          text: `Together, they ${w1} a carved wooden chest under the table.`,
+          imageEmoji: "🎁",
+        },
+        {
+          text: `Grandmother placed it right ${w2} ${name}'s hands.`,
+          imageEmoji: "🤲",
+        },
+        {
+          text: "Inside was a shining star badge that glowed warmly.",
+          imageEmoji: "⭐",
+        },
+        {
+          text: `${name} held it tightly, ready to learn new things every day!`,
+          imageEmoji: "🚀",
+        },
       ];
     },
-    questions: (name, words) => [
+    questions: (name) => [
       {
         id: `gen-q1-${Date.now()}`,
-        questionText: `What did ${name} find in the small box?`,
-        options: ["A silver key", "A bright golden glimmer", "A blue marble"],
-        correctIndex: 1,
-        type: "literal",
-        explanation: `${name} found a small box with a bright golden glimmer.`,
-      },
-      {
-        id: `gen-q2-${Date.now()}`,
-        questionText: "What did Mama say it takes to try new things?",
-        options: ["Courage", "Speed", "Money"],
+        questionText: `Where were ${name} and grandmother sitting?`,
+        options: ["On the cozy veranda", "In a noisy bus", "At school"],
         correctIndex: 0,
-        type: "inferential",
-        explanation: "Mama explained that trying new things takes courage.",
+        type: "literal",
+        explanation: "They were enjoying a calm moment on the veranda.",
       },
     ],
   },
 ];
 
-/**
- * Story templates tailored for Level 3 & 4 (Ages 7–9, Confident Readers).
- */
+// ─── SECTION 4: LEVEL 3 & 4 TEMPLATES (CONFIDENT READERS, AGES 7–9) ────────
+
 const LEVEL_3_4_TEMPLATES: StoryTemplate[] = [
   {
-    titlePrefix: "The Whispering Library of Lagos",
+    titlePrefix: "and the Whispering Baobab Tree",
     coverEmoji: "📚",
-    themes: ["mystery", "culture", "adventure"],
+    themes: ["culture", "mystery", "adventure"],
     pages: (name, words) => {
-      const target1 = words[0] || "curious";
-      const target2 = words[1] || "shadow";
-      const target3 = words[2] || "glimmer";
+      const w1 = words[0] ? words[0].toLowerCase() : "river";
+      const w2 = words[1] ? words[1].toLowerCase() : "iroko";
+      const w3 = words[2] ? words[2].toLowerCase() : "green";
+
       return [
-        { text: `${name} visited grandmother's quiet courtyard house in Lagos.`, imageEmoji: "🏡" },
-        { text: `Being very ${target1}, ${name} explored behind the carved wooden doors.`, imageEmoji: "🔍" },
-        { text: `A soft ${target2} moved across a bookshelf full of glowing leather books.`, imageEmoji: "📚" },
-        { text: `One ancient book had a golden ${target3} along its smooth spine.`, imageEmoji: "✨" },
-        { text: `As ${name} opened the cover, the pages shared stories of courage and wisdom.`, imageEmoji: "📖" },
-        { text: `${name} closed the book proudly, ready to share the secret with family.`, imageEmoji: "💡" },
+        {
+          text: `${name} loved reading storybooks beneath the shade of the village courtyard.`,
+          imageEmoji: "🏡",
+        },
+        {
+          text: `One afternoon, an ancient breeze drifted gently from the direction of the ${w1}.`,
+          imageEmoji: "🌊",
+        },
+        {
+          text: `The wind ruffled the leaves of a magnificent ${w2} tree standing tall nearby.`,
+          imageEmoji: "🌳",
+        },
+        {
+          text: `Underneath its ${w3} canopy, ${name} discovered a collection of glowing parchment scrolls.`,
+          imageEmoji: "📜",
+        },
+        {
+          text: `Each scroll contained stories of African heroes, bravery, and wisdom.`,
+          imageEmoji: "🏆",
+        },
+        {
+          text: `${name} closed the scroll with joy, inspired to write new adventures.`,
+          imageEmoji: "✏️",
+        },
       ];
     },
-    questions: (name, words) => [
+    questions: (name) => [
       {
         id: `gen-q1-${Date.now()}`,
-        questionText: `Where was grandmother's house located?`,
-        options: ["In Lagos", "In London", "On an island"],
+        questionText: `What did ${name} discover under the tree?`,
+        options: [
+          "Glowing parchment scrolls",
+          "A forgotten football",
+          "A pair of shoes",
+        ],
         correctIndex: 0,
         type: "literal",
-        explanation: "Grandmother's quiet courtyard house was in Lagos.",
+        explanation: `${name} found ancient glowing parchment scrolls filled with heroic tales.`,
       },
       {
         id: `gen-q2-${Date.now()}`,
-        questionText: `What was special about the books on the bookshelf?`,
-        options: ["They were covered in dust", "They were glowing leather books", "They were torn"],
-        correctIndex: 1,
-        type: "literal",
-        explanation: "The bookshelf was full of glowing leather books.",
+        questionText: "What lesson did the scrolls teach?",
+        options: [
+          "Bravery and wisdom",
+          "How to drive a car",
+          "How to cook soup",
+        ],
+        correctIndex: 0,
+        type: "inferential",
+        explanation: "The stories shared powerful lessons about African history, bravery, and wisdom.",
       },
     ],
   },
 ];
 
-// ─── Section 3: Core Story Generator Engine ───
+// ─── SECTION 5: CORE ENGINE LOGIC ─────────────────────────────────────────
 
 /**
- * Generates a personalized Living Story chapter for a child profile, weaving their 
- * real stumbled words into a brand-new level-matched story.
- *
- * @param child - Target ChildProfile object
- * @returns Generated SampleStory object
+ * Generates a personalized Living Story chapter for a child profile,
+ * weaving their stumbled vocabulary seamlessly into a brand new story.
  */
-export async function generateLivingChapterForChild(child: ChildProfile): Promise<SampleStory> {
+export async function generateLivingChapterForChild(
+  child: ChildProfile
+): Promise<SampleStory> {
   // 1. Fetch recent stumbled words for this child
   const { data: recentStumbled } = await getRecentStumbledWords(child.id, 6);
   const targetWords = (recentStumbled || []).map((w) => w.word);
 
-  // 2. Select appropriate template set by child's reading level
-  const isEarlyReader = (child.reading_level || 2) <= 2;
+  // 2. Choose level-appropriate template pool
+  const level = child.reading_level || 2;
+  const isEarlyReader = level <= 2;
   const pool = isEarlyReader ? LEVEL_1_2_TEMPLATES : LEVEL_3_4_TEMPLATES;
-  
-  // Pick a template pseudorandomly based on date to keep it fresh
-  const templateIndex = Math.floor(Math.random() * pool.length);
-  const selectedTemplate = pool[templateIndex];
 
-  // 3. Build unique story ID and title
+  // Pick random template
+  const selectedTemplate = pool[Math.floor(Math.random() * pool.length)];
+
+  // 3. Construct story metadata
   const timestamp = Date.now();
   const storyId = `living-${child.id.slice(0, 5)}-${timestamp}`;
-  const title = `${child.name} and ${selectedTemplate.titlePrefix}`;
+  const title = `${capitalize(child.name)} ${selectedTemplate.titlePrefix}`;
 
-  // 4. Generate story pages and comprehension questions with woven target words
+  // 4. Generate story pages and questions
   const pages = selectedTemplate.pages(child.name, targetWords);
   const questions = selectedTemplate.questions(child.name, targetWords);
 
   const newStory: SampleStory = {
     id: storyId,
     title,
-    levelMin: child.reading_level || 2,
-    levelMax: child.reading_level || 2,
-    targetAgeGroup: `Ages ${child.age}`,
+    levelMin: level,
+    levelMax: level,
+    targetAgeGroup: `Ages ${child.age || 6}`,
     themes: selectedTemplate.themes,
-    estimatedMinutes: isEarlyReader ? 4 : 7,
+    estimatedMinutes: isEarlyReader ? 3 : 5,
     coverEmoji: selectedTemplate.coverEmoji,
     pages,
     questions,
   };
 
-  // 5. Persist to Supabase if generated_stories table exists (background silent save)
+  // 5. Persist story to public.generated_stories in Supabase
   try {
     await supabase.from("generated_stories").insert({
       id: storyId,
@@ -210,7 +268,6 @@ export async function generateLivingChapterForChild(child: ChildProfile): Promis
       created_at: new Date().toISOString(),
     });
   } catch (err) {
-    // Non-blocking fallback if table hasn't been created yet
     console.warn("Generated story created in-memory (DB save bypassed):", err);
   }
 
@@ -219,9 +276,6 @@ export async function generateLivingChapterForChild(child: ChildProfile): Promis
 
 /**
  * Fetches all generated Living Story chapters for a child from Supabase.
- *
- * @param childId - Target child profile UUID
- * @returns Array of generated SampleStory objects
  */
 export async function getGeneratedStoriesForChild(
   childId: string
