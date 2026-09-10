@@ -1,21 +1,57 @@
 /**
  * @file app/api/transcribe/route.ts
- * @description Next.js Server Route for Deepgram Speech-to-Text Transcription.
- * Dynamically detects audio MIME types (supporting WebM, MP4, AAC, OGG) to 
- * ensure speech recognition works across PC, Amazon Fire OS, iOS, and Android.
+ * @description Deepgram Speech-to-Text for Onesimos read-aloud sessions.
+ * Accepts WebM / MP4 / AAC / OGG from Chrome, Safari, and Amazon Silk (Fire OS).
+ * Optional `keywords` form field boosts story vocabulary so African names and
+ * page words are less often missed or hallucinated.
  *
- * @dependencies
- * - Next.js App Router (NextRequest, NextResponse)
+ * @module app/api/transcribe/route
  */
 
 import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(request: NextRequest) {
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+/** Max keyword boosts Deepgram accepts cleanly in one request */
+const MAX_KEYWORDS = 40;
+
+/**
+ * Build Deepgram listen URL with child-reading-friendly params.
+ * Keywords format: keyterm:intensifier (e.g. chinedu:3)
+ */
+function buildDeepgramUrl(keywords: string[]): string {
+  const params = new URLSearchParams({
+    model: "nova-2",
+    language: "en",
+    smart_format: "true",
+    punctuate: "true",
+    utterances: "false",
+    filler_words: "false",
+  });
+
+  const unique = Array.from(
+    new Set(
+      keywords
+        .map((k) => k.trim().toLowerCase().replace(/[^\w'-]/g, ""))
+        .filter((k) => k.length >= 2 && k.length <= 24)
+    )
+  ).slice(0, MAX_KEYWORDS);
+
+  for (const word of unique) {
+    // Intensity 2–3 gently biases the model toward story lexicon
+    params.append("keywords", `${word}:3`);
+  }
+
+  return `https://api.deepgram.com/v1/listen?${params.toString()}`;
+}
+
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const formData = await request.formData();
-    const audio = formData.get("audio") as File;
+    const audio = formData.get("audio");
 
-    if (!audio) {
+    if (!audio || !(audio instanceof Blob)) {
       return NextResponse.json(
         { error: "No audio file provided" },
         { status: 400 }
@@ -24,53 +60,83 @@ export async function POST(request: NextRequest) {
 
     const apiKey = process.env.DEEPGRAM_API_KEY;
     if (!apiKey) {
-      console.error("DEEPGRAM_API_KEY is missing in environment variables.");
+      console.error("[Transcribe] DEEPGRAM_API_KEY missing");
       return NextResponse.json(
         { error: "Deepgram API key not configured on server" },
         { status: 500 }
       );
     }
 
-    // Convert incoming audio file to ArrayBuffer Buffer
+    // Optional comma-separated page words for keyword boosting
+    const keywordsRaw = formData.get("keywords");
+    const keywords: string[] =
+      typeof keywordsRaw === "string" && keywordsRaw.trim().length > 0
+        ? keywordsRaw.split(",").map((k) => k.trim()).filter(Boolean)
+        : [];
+
     const buffer = Buffer.from(await audio.arrayBuffer());
 
-    // Dynamically detect incoming audio format (e.g. 'audio/webm', 'audio/mp4', 'audio/aac')
-    // Defaults to 'audio/webm' if browser omits content type header
-    const contentType = audio.type && audio.type.length > 0 ? audio.type : "audio/webm";
+    // Reject only truly empty payloads (not quiet kid mics)
+    if (buffer.length < 64) {
+      return NextResponse.json(
+        { error: "Audio too short", transcript: "" },
+        { status: 400 }
+      );
+    }
 
-    console.log(`[Transcribe API] Incoming audio size: ${buffer.length} bytes, format: ${contentType}`);
+    const contentType =
+      audio.type && audio.type.length > 0 ? audio.type : "audio/webm";
 
-    // Call Deepgram STT API with dynamic Content-Type header
-    const response = await fetch(
-      "https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&punctuate=true",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Token ${apiKey}`,
-          "Content-Type": contentType,
-        },
-        body: buffer,
-      }
+    const url = buildDeepgramUrl(keywords);
+
+    console.log(
+      `[Transcribe] bytes=${buffer.length} type=${contentType} keywords=${keywords.length}`
     );
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Token ${apiKey}`,
+        "Content-Type": contentType,
+      },
+      body: buffer,
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Deepgram API returned error:", response.status, errorText);
+      console.error("[Transcribe] Deepgram error:", response.status, errorText);
       return NextResponse.json(
         { error: `Deepgram API error: ${response.status}` },
         { status: response.status }
       );
     }
 
-    const data = await response.json();
-    const transcript: string =
-      data?.results?.channels?.[0]?.alternatives?.[0]?.transcript || "";
+    const data = (await response.json()) as {
+      results?: {
+        channels?: Array<{
+          alternatives?: Array<{
+            transcript?: string;
+            confidence?: number;
+          }>;
+        }>;
+      };
+    };
 
-    console.log(`[Transcribe API] Success transcript: "${transcript}"`);
+    const alternative = data?.results?.channels?.[0]?.alternatives?.[0];
+    const transcript = (alternative?.transcript || "").trim();
+    const confidence =
+      typeof alternative?.confidence === "number" ? alternative.confidence : null;
 
-    return NextResponse.json({ transcript });
+    console.log(
+      `[Transcribe] ok transcript="${transcript}" confidence=${confidence ?? "n/a"}`
+    );
+
+    return NextResponse.json({
+      transcript,
+      confidence,
+    });
   } catch (error) {
-    console.error("Unhandled transcribe API error:", error);
+    console.error("[Transcribe] Unhandled error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
