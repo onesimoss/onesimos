@@ -22,6 +22,11 @@ export interface StumbledItem {
   count?: number;
 }
 
+/** Strictly typed interface for items returned with a stumble frequency count */
+export interface StumbledWordCountItem extends StumbledItem {
+  count: number;
+}
+
 const SKIP_WORDS = new Set([
   "a", "an", "the",
   "i", "im", "ive",
@@ -87,7 +92,7 @@ function levenshteinDistance(a: string, b: string): number {
 }
 
 /**
- * Returns true if candidate is phonetically/spelling close to target (>=70% match).
+ * Returns true if candidate is phonetically/spelling close to target (>=65% match).
  */
 function isFuzzyMatch(target: string, candidate: string): boolean {
   if (target === candidate) return true;
@@ -307,7 +312,7 @@ export async function saveStumbledWord(params: {
 export async function getRecentStumbledWords(
   childId: string,
   limit = 20
-): Promise<{ data: StumbledItem[]; error: unknown | null }> {
+): Promise<{ data: StumbledWordCountItem[]; error: unknown | null }> {
   try {
     const { data, error } = await supabase
       .from("stumbled_words")
@@ -321,7 +326,7 @@ export async function getRecentStumbledWords(
       return { data: [], error };
     }
 
-    const items: StumbledItem[] = data.map((row) => {
+    const items: StumbledWordCountItem[] = data.map((row) => {
       const lower = row.word.toLowerCase();
       const isName = isGeoName(lower) || /^[A-Z]/.test(row.word);
       return {
