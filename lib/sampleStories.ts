@@ -1,18 +1,34 @@
 /**
  * @file lib/sampleStories.ts
- * @description Curated, level-graded story catalog for Onesimos (Ages 3–9, Levels 1–4).
- * Enforces strict level matching so young readers receive text tailored to their 
- * exact decoding capability before facing post-story comprehension questions.
+ * @description Curated, level-graded story catalog for Onesimos (Ages 3–9, Levels 1–4)
+ * with structured post-story comprehension questions (literal, inferential, vocabulary).
  *
  * @dependencies None
  */
 
 // ─── Section 1: Types & Interfaces ───
 
+export type QuestionType = "literal" | "inferential" | "vocabulary";
+
+export interface ComprehensionQuestion {
+  /** Unique question identifier */
+  id: string;
+  /** The question prompt displayed to the child */
+  questionText: string;
+  /** Multiple-choice options (3 choices for age-appropriate simplicity) */
+  options: string[];
+  /** Zero-based index of the correct option */
+  correctIndex: number;
+  /** Classification of cognitive comprehension skill tested */
+  type: QuestionType;
+  /** Gentle explanation shown after answering */
+  explanation: string;
+}
+
 export interface StoryPage {
   /** Text content displayed on this story page */
   text: string;
-  /** Cover or page emoji illustration */
+  /** Cover or page emoji illustration clue */
   imageEmoji?: string;
   /** Optional custom illustration URL */
   imageUrl?: string;
@@ -29,7 +45,7 @@ export interface SampleStory {
   levelMax: number;
   /** Human-readable age group recommendation */
   targetAgeGroup: string;
-  /** Theme tags used for interest matching (e.g., "adventure", "animals", "space") */
+  /** Theme tags used for interest matching */
   themes: string[];
   /** Estimated reading duration in minutes */
   estimatedMinutes: number;
@@ -37,9 +53,11 @@ export interface SampleStory {
   coverEmoji: string;
   /** Ordered array of story pages */
   pages: StoryPage[];
+  /** Post-story comprehension questions */
+  questions: ComprehensionQuestion[];
 }
 
-// ─── Section 2: Story Catalog (Levels 1 to 4) ───
+// ─── Section 2: Story Catalog with Comprehension Questions ───
 
 export const SAMPLE_STORIES: SampleStory[] = [
   // ── Level 1: Pre-Reader / Early Beginner (Ages 3–4) ──
@@ -60,6 +78,24 @@ export const SAMPLE_STORIES: SampleStory[] = [
       { text: "Then they sat and rested under the tree.", imageEmoji: "🌙" },
       { text: "What a happy day!", imageEmoji: "😊" },
     ],
+    questions: [
+      {
+        id: "red-ball-q1",
+        questionText: "What color was Sam's ball?",
+        options: ["Blue", "Red", "Yellow"],
+        correctIndex: 1,
+        type: "literal",
+        explanation: "Sam had a bright red ball!",
+      },
+      {
+        id: "red-ball-q2",
+        questionText: "Who played with Sam?",
+        options: ["A puppy", "A kitten", "A bird"],
+        correctIndex: 0,
+        type: "literal",
+        explanation: "The small puppy saw the ball and played with Sam.",
+      },
+    ],
   },
   {
     id: "luna-star",
@@ -78,6 +114,24 @@ export const SAMPLE_STORIES: SampleStory[] = [
       { text: "Luna made a wish for the star to feel brave.", imageEmoji: "🙏" },
       { text: "The tiny star smiled and danced home.", imageEmoji: "🌌" },
       { text: "Luna waved goodnight. The sky felt warm.", imageEmoji: "🌙" },
+    ],
+    questions: [
+      {
+        id: "luna-q1",
+        questionText: "What did Luna see in the night sky?",
+        options: ["A red ball", "A tiny star", "A flying kite"],
+        correctIndex: 1,
+        type: "literal",
+        explanation: "Luna saw a tiny blinking star in the sky.",
+      },
+      {
+        id: "luna-q2",
+        questionText: "What wish did Luna make for the star?",
+        options: ["To feel brave", "To go fast", "To sleep"],
+        correctIndex: 0,
+        type: "inferential",
+        explanation: "Luna wished for the star to feel brave so it could dance home.",
+      },
     ],
   },
 
@@ -101,6 +155,32 @@ export const SAMPLE_STORIES: SampleStory[] = [
       { text: "They walked home slowly under the bright sun.", imageEmoji: "☀️" },
       { text: "Tayo knew a big friendship could start small.", imageEmoji: "💚" },
     ],
+    questions: [
+      {
+        id: "dino-q1",
+        questionText: "Where did Tayo find the green egg?",
+        options: ["In his bedroom", "Near the river", "On a bus"],
+        correctIndex: 1,
+        type: "literal",
+        explanation: "Tayo found the soft green egg near the river.",
+      },
+      {
+        id: "dino-q2",
+        questionText: "What hatched out of the egg?",
+        options: ["A baby dinosaur", "A small bird", "A tiny fish"],
+        correctIndex: 0,
+        type: "literal",
+        explanation: "Crack! A friendly baby dinosaur hatched out.",
+      },
+      {
+        id: "dino-q3",
+        questionText: "What does 'gentle' mean when Tayo sang songs?",
+        options: ["Loud and noisy", "Soft and kind", "Fast and hard"],
+        correctIndex: 1,
+        type: "vocabulary",
+        explanation: "Gentle means soft, quiet, and kind.",
+      },
+    ],
   },
   {
     id: "bisi-kite",
@@ -118,6 +198,24 @@ export const SAMPLE_STORIES: SampleStory[] = [
       { text: "It danced higher than the banana trees.", imageEmoji: "🌴" },
       { text: "Bisi laughed as her brother clapped his hands.", imageEmoji: "👏" },
       { text: "The sky was full of color and happy wind.", imageEmoji: "🌈" },
+    ],
+    questions: [
+      {
+        id: "bisi-q1",
+        questionText: "What made Bisi's kite fly high?",
+        options: ["The warm wind", "Rain drops", "Heavy stones"],
+        correctIndex: 0,
+        type: "literal",
+        explanation: "The warm wind blew across the field and lifted the kite.",
+      },
+      {
+        id: "bisi-q2",
+        questionText: "How did Bisi feel when the kite flew?",
+        options: ["Sad", "Happy and excited", "Scared"],
+        correctIndex: 1,
+        type: "inferential",
+        explanation: "Bisi laughed as her red kite danced higher than the trees.",
+      },
     ],
   },
 
@@ -165,6 +263,36 @@ export const SAMPLE_STORIES: SampleStory[] = [
         imageEmoji: "🏆",
       },
     ],
+    questions: [
+      {
+        id: "market-q1",
+        questionText: "How many tomatoes did Mama and Amaka need?",
+        options: ["Three", "Six", "Ten"],
+        correctIndex: 1,
+        type: "literal",
+        explanation: "Mama said they needed six ripe tomatoes for dinner.",
+      },
+      {
+        id: "market-q2",
+        questionText: "What animal trotted past their feet in the market?",
+        options: ["A little goat", "A big dog", "A small cat"],
+        correctIndex: 0,
+        type: "literal",
+        explanation: "A playful little goat trotted past their feet!",
+      },
+      {
+        id: "market-q3",
+        questionText: "Why did Amaka feel proud on the walk home?",
+        options: [
+          "She ran very fast",
+          "She helped Mama carefully at the market",
+          "She bought a toy",
+        ],
+        correctIndex: 1,
+        type: "inferential",
+        explanation: "Amaka felt proud because Mama praised her for being a wonderful helper.",
+      },
+    ],
   },
   {
     id: "football-rain",
@@ -203,6 +331,24 @@ export const SAMPLE_STORIES: SampleStory[] = [
       {
         text: "They walked back home muddy, soaked, and beaming with pride.",
         imageEmoji: "🌤️",
+      },
+    ],
+    questions: [
+      {
+        id: "football-q1",
+        questionText: "What happened to the weather during the match?",
+        options: ["It became very hot", "It started raining", "It started snowing"],
+        correctIndex: 1,
+        type: "literal",
+        explanation: "First raindrops began to fall as dark gray clouds gathered.",
+      },
+      {
+        id: "football-q2",
+        questionText: "How did Chike score the goal?",
+        options: ["He kicked it from far", "He headed a high cross", "The goalkeeper missed"],
+        correctIndex: 1,
+        type: "literal",
+        explanation: "Chike leaped high and headed the ball into the goal!",
       },
     ],
   },
@@ -255,6 +401,36 @@ export const SAMPLE_STORIES: SampleStory[] = [
         imageEmoji: "🏡",
       },
     ],
+    questions: [
+      {
+        id: "iroko-q1",
+        questionText: "What was embedded in the wooden door instead of a handle?",
+        options: ["A golden key", "A silver leaf", "A bronze coin"],
+        correctIndex: 1,
+        type: "literal",
+        explanation: "The door had no handle, only a shimmering silver leaf.",
+      },
+      {
+        id: "iroko-q2",
+        questionText: "What lesson did Zainab learn from the floating book?",
+        options: [
+          "Trees grow tall",
+          "Bravery is a story you write every day",
+          "Doors are made of wood",
+        ],
+        correctIndex: 1,
+        type: "inferential",
+        explanation: "Zainab realized that bravery is a story you write every day.",
+      },
+      {
+        id: "iroko-q3",
+        questionText: "What does 'ancient' mean when describing the iroko tree?",
+        options: ["Very young", "Very old", "Very small"],
+        correctIndex: 1,
+        type: "vocabulary",
+        explanation: "Ancient means extremely old, having lived for many years.",
+      },
+    ],
   },
   {
     id: "river-courage",
@@ -291,6 +467,28 @@ export const SAMPLE_STORIES: SampleStory[] = [
         imageEmoji: "👴",
       },
     ],
+    questions: [
+      {
+        id: "river-q1",
+        questionText: "What animal needed help near the river bank?",
+        options: ["A stranded baby crane", "A lost dog", "A trapped fish"],
+        correctIndex: 0,
+        type: "literal",
+        explanation: "A stranded baby crane fluttered its injured wing near the reed bank.",
+      },
+      {
+        id: "river-q2",
+        questionText: "What did Grandfather say true courage is?",
+        options: [
+          "Loud and strong",
+          "Quiet and kind",
+          "Fast and brave",
+        ],
+        correctIndex: 1,
+        type: "inferential",
+        explanation: "Grandfather told Zainab that true courage is quiet and kind.",
+      },
+    ],
   },
 ];
 
@@ -310,12 +508,6 @@ export function getStoryById(id: string): SampleStory | undefined {
  * Adaptive story selection engine. Filters and ranks stories for a child profile
  * based on their exact reading level (1–4) and interest preferences.
  *
- * Scored Criteria:
- * - Exact level match (`levelMin <= readingLevel <= levelMax`): +10 points
- * - Adjacent level match (within ±1 level for warm-up or challenge): +4 points
- * - Distant level match (> 1 level gap): Filtered out completely (0 points)
- * - Matching theme interest: +3 points per matching theme
- *
  * @param options - Object containing readingLevel (1–4) and child interest tags
  * @returns Array of SampleStory objects ranked by fit score (highest fit first)
  */
@@ -329,7 +521,9 @@ export function getStoriesForChild(options: {
   const scoredStories = SAMPLE_STORIES.map((story) => {
     // 1. Evaluate Level Fit
     const isExactLevel = readingLevel >= story.levelMin && readingLevel <= story.levelMax;
-    const isAdjacentLevel = Math.abs(readingLevel - story.levelMin) === 1 || Math.abs(readingLevel - story.levelMax) === 1;
+    const isAdjacentLevel =
+      Math.abs(readingLevel - story.levelMin) === 1 ||
+      Math.abs(readingLevel - story.levelMax) === 1;
 
     // Strict Filter: Never serve stories that are > 1 level away from child's capability
     if (!isExactLevel && !isAdjacentLevel) {
@@ -338,9 +532,9 @@ export function getStoriesForChild(options: {
 
     let levelScore = 0;
     if (isExactLevel) {
-      levelScore = 10; // Strongest preference
+      levelScore = 10;
     } else if (isAdjacentLevel) {
-      levelScore = 4;  // Secondary preference for warm-up or slight challenge
+      levelScore = 4;
     }
 
     // 2. Evaluate Theme Interest Fit
@@ -354,9 +548,10 @@ export function getStoriesForChild(options: {
     };
   });
 
-  // Filter out zero-score (level mismatched) stories and sort descending by score
   return scoredStories
     .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score)
     .map((item) => item.story);
-}
+}git add lib/sampleStories.ts
+git commit -m "feat(step-g): add structured comprehension questions (literal, inferential, vocabulary) to story catalog"
+git push origin main
