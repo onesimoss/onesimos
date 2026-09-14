@@ -387,7 +387,7 @@ export default function ChildReportPage(): JSX.Element {
 
           <div className="bg-white rounded-3xl p-5 border border-gray-200 shadow-xs text-center">
             <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Reading Age</p>
-            <p className="font-achiko text-3xl text-amber-900">{stats.estimatedReadingAge}</p>
+            <p className="font-achiko text-3xl text-amber-900">{stats.readingAgeEstimate}</p>
             <p className="text-[10px] text-gray-400 font-bold mt-1">Estimated Level</p>
           </div>
         </section>
