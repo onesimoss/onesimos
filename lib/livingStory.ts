@@ -1,20 +1,21 @@
 /**
  * @file lib/livingStory.ts
  * @description Living Story Book Generation Engine for Onesimos (The Moat).
- * Dynamically weaves a child's recent stumbling vocabulary, reading level, and 
- * interests into coherent, highly engageable personal story chapters set in 
- * vibrant African environments.
+ * Weaves recent stumbling vocabulary and core virtues (from the 25 Life Skills framework)
+ * into coherent, morally uplifting personal story chapters.
  *
  * @dependencies
  * - @/lib/supabaseClient (Database persistence for generated chapters)
  * - @/lib/children (ChildProfile types)
  * - @/lib/stumbledWords (Fetching target stumbled words)
+ * - @/lib/lifeSkills (25 Virtues & Life Skills framework)
  * - @/lib/sampleStories (SampleStory & ComprehensionQuestion interfaces)
  */
 
 import { supabase } from "./supabaseClient";
 import type { ChildProfile } from "./children";
 import { getRecentStumbledWords } from "./stumbledWords";
+import { getRandomLifeSkill, type LifeSkill } from "./lifeSkills";
 import type { SampleStory, StoryPage, ComprehensionQuestion } from "./sampleStories";
 
 // ─── SECTION 1: TYPES & INTERFACES ─────────────────────────────────────────
@@ -29,195 +30,17 @@ export interface GeneratedChapterRecord {
   created_at: string;
 }
 
-interface StoryTemplate {
-  titlePrefix: string;
-  coverEmoji: string;
-  themes: string[];
-  pages: (childName: string, words: string[]) => StoryPage[];
-  questions: (childName: string, words: string[]) => ComprehensionQuestion[];
-}
-
-// ─── SECTION 2: TEMPLATE GENERATOR HELPERS ─────────────────────────────────
-
 function capitalize(str: string): string {
   if (!str) return "";
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 }
 
-// ─── SECTION 3: LEVEL 1 & 2 TEMPLATES (EMERGING READERS, AGES 3–6) ─────────
-
-const LEVEL_1_2_TEMPLATES: StoryTemplate[] = [
-  {
-    titlePrefix: "and the Secret Garden Trail",
-    coverEmoji: "🌿",
-    themes: ["nature", "adventure"],
-    pages: (name, words) => {
-      const w1 = words[0] ? words[0].toLowerCase() : "tree";
-      const w2 = words[1] ? words[1].toLowerCase() : "river";
-      const w3 = words[2] ? words[2].toLowerCase() : "green";
-
-      return [
-        {
-          text: `${name} went out into the warm morning sunshine.`,
-          imageEmoji: "☀️",
-        },
-        {
-          text: `Near the garden gate stood a tall ${w1} with bright branches.`,
-          imageEmoji: "🌳",
-        },
-        {
-          text: `${name} could hear the peaceful sound of the nearby ${w2}.`,
-          imageEmoji: "🌊",
-        },
-        {
-          text: `All around, the grass looked fresh and ${w3} in the light.`,
-          imageEmoji: "🌱",
-        },
-        {
-          text: `${name} smiled proudly, feeling happy after a lovely walk outside.`,
-          imageEmoji: "🌟",
-        },
-      ];
-    },
-    questions: (name, words) => {
-      const w1 = words[0] ? words[0].toLowerCase() : "tree";
-      return [
-        {
-          id: `gen-q1-${Date.now()}`,
-          questionText: `What did ${name} see near the garden gate?`,
-          options: [`A tall ${w1}`, "A small cat", "A red bicycle"],
-          correctIndex: 0,
-          type: "literal",
-          explanation: `${name} found a tall ${w1} standing near the garden gate.`,
-        },
-        {
-          id: `gen-q2-${Date.now()}`,
-          questionText: `How did ${name} feel at the end of the walk?`,
-          options: ["Happy and proud", "Tired and sad", "Scared"],
-          correctIndex: 0,
-          type: "inferential",
-          explanation: `${name} felt happy and proud after exploring outside.`,
-        },
-      ];
-    },
-  },
-  {
-    titlePrefix: "and the Golden Box of Courage",
-    coverEmoji: "✨",
-    themes: ["family", "discovery"],
-    pages: (name, words) => {
-      const w1 = words[0] ? words[0].toLowerCase() : "found";
-      const w2 = words[1] ? words[1].toLowerCase() : "near";
-
-      return [
-        {
-          text: `${name} sat with grandmother on the cozy veranda.`,
-          imageEmoji: "🏡",
-        },
-        {
-          text: `Together, they ${w1} a carved wooden chest under the table.`,
-          imageEmoji: "🎁",
-        },
-        {
-          text: `Grandmother placed it right ${w2} ${name}'s hands.`,
-          imageEmoji: "🤲",
-        },
-        {
-          text: "Inside was a shining star badge that glowed warmly.",
-          imageEmoji: "⭐",
-        },
-        {
-          text: `${name} held it tightly, ready to learn new things every day!`,
-          imageEmoji: "🚀",
-        },
-      ];
-    },
-    questions: (name) => [
-      {
-        id: `gen-q1-${Date.now()}`,
-        questionText: `Where were ${name} and grandmother sitting?`,
-        options: ["On the cozy veranda", "In a noisy bus", "At school"],
-        correctIndex: 0,
-        type: "literal",
-        explanation: "They were enjoying a calm moment on the veranda.",
-      },
-    ],
-  },
-];
-
-// ─── SECTION 4: LEVEL 3 & 4 TEMPLATES (CONFIDENT READERS, AGES 7–9) ────────
-
-const LEVEL_3_4_TEMPLATES: StoryTemplate[] = [
-  {
-    titlePrefix: "and the Whispering Baobab Tree",
-    coverEmoji: "📚",
-    themes: ["culture", "mystery", "adventure"],
-    pages: (name, words) => {
-      const w1 = words[0] ? words[0].toLowerCase() : "river";
-      const w2 = words[1] ? words[1].toLowerCase() : "iroko";
-      const w3 = words[2] ? words[2].toLowerCase() : "green";
-
-      return [
-        {
-          text: `${name} loved reading storybooks beneath the shade of the village courtyard.`,
-          imageEmoji: "🏡",
-        },
-        {
-          text: `One afternoon, an ancient breeze drifted gently from the direction of the ${w1}.`,
-          imageEmoji: "🌊",
-        },
-        {
-          text: `The wind ruffled the leaves of a magnificent ${w2} tree standing tall nearby.`,
-          imageEmoji: "🌳",
-        },
-        {
-          text: `Underneath its ${w3} canopy, ${name} discovered a collection of glowing parchment scrolls.`,
-          imageEmoji: "📜",
-        },
-        {
-          text: `Each scroll contained stories of African heroes, bravery, and wisdom.`,
-          imageEmoji: "🏆",
-        },
-        {
-          text: `${name} closed the scroll with joy, inspired to write new adventures.`,
-          imageEmoji: "✏️",
-        },
-      ];
-    },
-    questions: (name) => [
-      {
-        id: `gen-q1-${Date.now()}`,
-        questionText: `What did ${name} discover under the tree?`,
-        options: [
-          "Glowing parchment scrolls",
-          "A forgotten football",
-          "A pair of shoes",
-        ],
-        correctIndex: 0,
-        type: "literal",
-        explanation: `${name} found ancient glowing parchment scrolls filled with heroic tales.`,
-      },
-      {
-        id: `gen-q2-${Date.now()}`,
-        questionText: "What lesson did the scrolls teach?",
-        options: [
-          "Bravery and wisdom",
-          "How to drive a car",
-          "How to cook soup",
-        ],
-        correctIndex: 0,
-        type: "inferential",
-        explanation: "The stories shared powerful lessons about African history, bravery, and wisdom.",
-      },
-    ],
-  },
-];
-
-// ─── SECTION 5: CORE ENGINE LOGIC ─────────────────────────────────────────
+// ─── SECTION 2: CORE LIVING STORY GENERATION ────────────────────────────────
 
 /**
- * Generates a personalized Living Story chapter for a child profile,
- * weaving their stumbled vocabulary seamlessly into a brand new story.
+ * Generates a personalized Living Story chapter centered around a specific
+ * Life Skill virtue (e.g. Body Safety, Money Basics, Managing Emotions, Honesty)
+ * while weaving the child's stumbled words into natural sentences.
  */
 export async function generateLivingChapterForChild(
   child: ChildProfile
@@ -226,22 +49,69 @@ export async function generateLivingChapterForChild(
   const { data: recentStumbled } = await getRecentStumbledWords(child.id, 6);
   const targetWords = (recentStumbled || []).map((w) => w.word);
 
-  // 2. Choose level-appropriate template pool
+  // 2. Select a character-building Life Skill for this chapter
+  const skill: LifeSkill = getRandomLifeSkill();
+
+  // 3. Extract target vocabulary fallback tokens
+  const w1 = targetWords[0] ? targetWords[0].toLowerCase() : "kite";
+  const w2 = targetWords[1] ? targetWords[1].toLowerCase() : "tree";
+  const w3 = targetWords[2] ? targetWords[2].toLowerCase() : "courage";
+
   const level = child.reading_level || 2;
-  const isEarlyReader = level <= 2;
-  const pool = isEarlyReader ? LEVEL_1_2_TEMPLATES : LEVEL_3_4_TEMPLATES;
+  const childName = capitalize(child.name);
 
-  // Pick random template
-  const selectedTemplate = pool[Math.floor(Math.random() * pool.length)];
+  // 4. Construct coherent story pages weaving the life skill and stumbled words
+  const pages: StoryPage[] = [
+    {
+      text: `${childName} was practicing ${skill.title.toLowerCase()} on a pleasant morning.`,
+      imageEmoji: skill.emoji,
+    },
+    {
+      text: `While outside, ${childName} noticed a high ${w1} near the garden boundary.`,
+      imageEmoji: "🌳",
+    },
+    {
+      text: `Remembering that ${skill.keyMoralLesson.toLowerCase()}, ${childName} paused to think carefully.`,
+      imageEmoji: "🧠",
+    },
+    {
+      text: `With clear focus, ${childName} handled the situation near the ${w2} with great wisdom.`,
+      imageEmoji: "✨",
+    },
+    {
+      text: `Mama smiled proudly and commended ${childName} for showing such ${w3} and character.`,
+      imageEmoji: "🌟",
+    },
+  ];
 
-  // 3. Construct story metadata
+  // 5. Build comprehension questions reinforcing both literacy and character
+  const questions: ComprehensionQuestion[] = [
+    {
+      id: `gen-q1-${Date.now()}`,
+      questionText: `What virtue or skill was ${childName} practicing in the story?`,
+      options: [skill.title, "Driving a truck", "Loud shouting"],
+      correctIndex: 0,
+      type: "literal",
+      explanation: `${childName} was practicing ${skill.title.toLowerCase()} in this story.`,
+    },
+    {
+      id: `gen-q2-${Date.now()}`,
+      questionText: `What moral lesson did ${childName} demonstrate?`,
+      options: [
+        skill.keyMoralLesson,
+        "Ignoring rules is good",
+        "Throwing things away",
+      ],
+      correctIndex: 0,
+      type: "inferential",
+      explanation: `${childName} showed that ${skill.keyMoralLesson.toLowerCase()}`,
+    },
+  ];
+
+  // 6. Assemble complete story object
   const timestamp = Date.now();
   const storyId = `living-${child.id.slice(0, 5)}-${timestamp}`;
-  const title = `${capitalize(child.name)} ${selectedTemplate.titlePrefix}`;
-
-  // 4. Generate story pages and questions
-  const pages = selectedTemplate.pages(child.name, targetWords);
-  const questions = selectedTemplate.questions(child.name, targetWords);
+  const title = `${childName} and the Lesson in ${skill.title}`;
 
   const newStory: SampleStory = {
     id: storyId,
@@ -249,14 +119,14 @@ export async function generateLivingChapterForChild(
     levelMin: level,
     levelMax: level,
     targetAgeGroup: `Ages ${child.age || 6}`,
-    themes: selectedTemplate.themes,
-    estimatedMinutes: isEarlyReader ? 3 : 5,
-    coverEmoji: selectedTemplate.coverEmoji,
+    themes: [skill.category, "character", "virtue"],
+    estimatedMinutes: 4,
+    coverEmoji: skill.emoji,
     pages,
     questions,
   };
 
-  // 5. Persist story to public.generated_stories in Supabase
+  // 7. Persist to Supabase generated_stories table
   try {
     await supabase.from("generated_stories").insert({
       id: storyId,
@@ -294,5 +164,25 @@ export async function getGeneratedStoriesForChild(
     return data.map((row: { story_data: unknown }) => row.story_data as SampleStory);
   } catch {
     return [];
+  }
+}
+
+/**
+ * Parent Control: Deletes a generated story chapter by ID.
+ */
+export async function deleteGeneratedStory(
+  storyId: string,
+  childId: string
+): Promise<{ error: unknown | null }> {
+  try {
+    const { error } = await supabase
+      .from("generated_stories")
+      .delete()
+      .eq("id", storyId)
+      .eq("child_id", childId);
+
+    return { error };
+  } catch (err) {
+    return { error: err };
   }
 }

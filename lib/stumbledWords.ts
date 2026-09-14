@@ -1,7 +1,7 @@
 /**
  * @file lib/stumbledWords.ts
- * @description Speech classification, precision stumble extraction algorithm,
- * tap-to-hear audio synthesis for Amazon Fire OS / Silk, and unified Supabase persistence.
+ * @description Speech classification, strict phonics stumble extraction algorithm,
+ * tap-to-hear audio synthesis for Amazon Fire OS / Silk, and Supabase persistence.
  *
  * @dependencies
  * - @/lib/supabaseClient (Database logging)
@@ -92,37 +92,41 @@ function levenshteinDistance(a: string, b: string): number {
 }
 
 /**
- * Precision fuzzy match algorithm tailored for child speech:
- * - Words <= 3 letters: Require 100% exact match.
- * - Words 4-6 letters: Max 1 edit distance AND same starting letter.
- * - Words 7+ letters: Max 2 edit distance (85%+ similarity) AND same starting letter.
+ * Strict phonics speech matcher for children's reading:
+ * - Words <= 4 letters: MUST match 100% exactly (e.g. "kite" vs "kit" -> STUMBLE!).
+ * - Words 5-6 letters: Candidate must be at least 5 chars, same start and end letter, max 1 edit.
+ * - Words 7+ letters: Max 1-2 edit distance (85%+ similarity) AND same starting letter.
  */
 function isPrecisionMatch(target: string, candidate: string): boolean {
   if (target === candidate) return true;
   if (!target || !candidate) return false;
 
-  // Rule 1: Short words (3 or fewer chars) MUST match exactly
-  if (target.length <= 3) {
-    return target === candidate;
+  // Strict Rule 1: Words 4 letters or fewer MUST match 100% exactly!
+  // Prevents "kite" -> "kit", "cat" -> "bat", "tree" -> "free" from slipping through.
+  if (target.length <= 4) {
+    return false;
   }
 
-  // Rule 2: Must share the same starting letter
+  // Strict Rule 2: Must share the same starting letter
   if (target.charAt(0) !== candidate.charAt(0)) {
     return false;
   }
 
-  const distance = levenshteinDistance(target, candidate);
-
-  // Rule 3: Medium words (4-6 chars) allow at most 1 edit distance
+  // Strict Rule 3: Medium words (5-6 chars)
   if (target.length <= 6) {
-    return distance <= 1;
+    if (candidate.length < 4) return false;
+    if (target.charAt(target.length - 1) !== candidate.charAt(candidate.length - 1)) {
+      return false;
+    }
+    return levenshteinDistance(target, candidate) <= 1;
   }
 
-  // Rule 4: Long words (7+ chars) allow at most 2 edit distance
+  // Strict Rule 4: Long words (7+ chars)
+  const distance = levenshteinDistance(target, candidate);
   const maxLen = Math.max(target.length, candidate.length);
   const similarity = 1 - distance / maxLen;
 
-  return similarity >= 0.82;
+  return similarity >= 0.85;
 }
 
 // ─── SECTION 2: TOKEN EXTRACTION & CLASSIFICATION ─────────────────────────
@@ -174,8 +178,8 @@ export function extractClassifiedTokens(pageText: string): StumbledItem[] {
 }
 
 /**
- * Precision stumble detection algorithm.
- * Uses strict thresholds to accurately catch misread or skipped words.
+ * Strict stumble detection algorithm.
+ * Accurately catches misread words, silent 'e' drops, and skipped tokens.
  */
 export function findStumbledItems(pageText: string, transcript: string): StumbledItem[] {
   const expectedItems = extractClassifiedTokens(pageText);
@@ -197,7 +201,7 @@ export function findStumbledItems(pageText: string, transcript: string): Stumble
   for (const item of expectedItems) {
     if (seen.has(item.word)) continue;
 
-    // Check if expected word exists in transcript directly or via precision match
+    // Check if expected word exists in transcript directly or via strict precision match
     const found = heardTokens.some((heard) => isPrecisionMatch(item.word, heard));
 
     if (!found) {
