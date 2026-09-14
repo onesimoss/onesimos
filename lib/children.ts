@@ -1,4 +1,20 @@
+/**
+ * @file lib/children.ts
+ * @description Child profile types, CRUD helpers, session management,
+ *              and age-band segmentation for Onesimos reading modes.
+ *
+ * @section Age Bands (Step K)
+ * - "pre-reader"  → ages 3–4  (letter sounds, picture-heavy, no WPM)
+ * - "emerging"    → ages 5–7  (CVC words, short sentences, literal comprehension)
+ * - "confident"   → ages 8–9  (multi-syllable, inferential + vocab, WPM tracking)
+ *
+ * @dependencies
+ * - @/lib/supabaseClient
+ */
+
 import { supabase } from "./supabaseClient";
+
+// ─── Section 1: Curriculum & Age Band Types ───
 
 export type Curriculum =
   | "nigerian"
@@ -7,6 +23,82 @@ export type Curriculum =
   | "ghanaian"
   | "international"
   | "other";
+
+/**
+ * Age-segmented reading mode.
+ * Derived from the child's numeric age via getAgeBand().
+ */
+export type AgeBand = "pre-reader" | "emerging" | "confident";
+
+/**
+ * Configuration for each age band — used by UI screens to adapt
+ * reading flow, comprehension difficulty, and avatar speech pacing.
+ */
+export interface AgeBandConfig {
+  band: AgeBand;
+  ageRange: [number, number];
+  label: string;
+  kidLabel: string;
+  description: string;
+  /** Whether WPM tracking is meaningful for this band */
+  trackWpm: boolean;
+  /** Default comprehension question types for this band */
+  comprehensionTypes: ("literal" | "inferential" | "vocabulary")[];
+  /** Suggested max sentence length (words) for generated stories */
+  maxSentenceWords: number;
+}
+
+export const AGE_BAND_CONFIG: Record<AgeBand, AgeBandConfig> = {
+  "pre-reader": {
+    band: "pre-reader",
+    ageRange: [3, 4],
+    label: "Pre-Reader",
+    kidLabel: "I'm just starting! 🌱",
+    description: "Letters, simple sounds, and picture-heavy stories. No reading speed pressure.",
+    trackWpm: false,
+    comprehensionTypes: ["literal"],
+    maxSentenceWords: 6,
+  },
+  emerging: {
+    band: "emerging",
+    ageRange: [5, 7],
+    label: "Emerging Reader",
+    kidLabel: "I can read a bit! 📖",
+    description: "Short words, simple sentences, and literal comprehension questions.",
+    trackWpm: true,
+    comprehensionTypes: ["literal", "vocabulary"],
+    maxSentenceWords: 10,
+  },
+  confident: {
+    band: "confident",
+    ageRange: [8, 9],
+    label: "Confident Reader",
+    kidLabel: "I'm a strong reader! 🚀",
+    description: "Multi-syllable words, longer paragraphs, inferential and vocabulary challenges.",
+    trackWpm: true,
+    comprehensionTypes: ["literal", "inferential", "vocabulary"],
+    maxSentenceWords: 16,
+  },
+};
+
+/**
+ * Derive the age band from a child's numeric age.
+ * Ages outside 3–9 default to the nearest band.
+ */
+export function getAgeBand(age: number): AgeBand {
+  if (age <= 4) return "pre-reader";
+  if (age <= 7) return "emerging";
+  return "confident";
+}
+
+/**
+ * Get the full config object for a given age.
+ */
+export function getAgeBandConfig(age: number): AgeBandConfig {
+  return AGE_BAND_CONFIG[getAgeBand(age)];
+}
+
+// ─── Section 2: Profile Types ───
 
 export interface ChildProfile {
   id: string;
@@ -37,6 +129,8 @@ export interface CreateChildInput {
   session_minutes: 20 | 30 | 45;
   cultural_context?: string;
 }
+
+// ─── Section 3: CRUD Operations ───
 
 export async function getChildrenForParent(parentId: string) {
   const { data, error } = await supabase
@@ -97,6 +191,8 @@ export async function deleteChild(childId: string, parentId: string) {
   return { error: null };
 }
 
+// ─── Section 4: PIN Management ───
+
 export async function setChildPin(
   childId: string,
   parentId: string,
@@ -147,6 +243,8 @@ export async function verifyChildPin(childId: string, pin: string) {
   return { ok: true, error: null, needsPinSetup: false };
 }
 
+// ─── Section 5: Utility Helpers ───
+
 export async function hasAnyChildren(parentId: string) {
   const { data, error } = await supabase
     .from("children")
@@ -171,6 +269,8 @@ export function defaultReadingLevelFromAge(age: number): number {
   if (age === 9) return 7;
   return Math.min(age - 2, 12);
 }
+
+// ─── Section 6: Kid Session (localStorage) ───
 
 const KID_SESSION_KEY = "onesimos_kid_session";
 
