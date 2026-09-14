@@ -1,9 +1,9 @@
 /**
  * @file app/kid/[childId]/page.tsx
- * @description Kid Home View — 3-story active grid, completed stories bookshelf
- * (Read for Fun mode without mic/token burn), personal Living Story chapters
- * with target word badges, divided Word Pocket (Vocab vs Names), font system alignment,
- * and Parent PIN gate.
+ * @description Kid Home View — 4-story active grid (2x2 layout), daily virtue affirmation,
+ * completed stories bookshelf (Read for Fun mode without mic/token burn), personal
+ * Living Story chapters with target word badges, divided Word Pocket (Vocab vs Names),
+ * font system alignment, and Parent Gate access.
  *
  * @module app/kid/[childId]/page
  */
@@ -42,7 +42,14 @@ import {
   sendFriendlyStoryNotification,
 } from "@/lib/reminders";
 
-// ─── HELPERS ────────────────────────────────────────────────────────────────
+// ─── AFFIRMATIONS ───────────────────────────────────────────────────────────
+
+const DAILY_AFFIRMATIONS = [
+  "I take my time, I learn from mistakes, and my mind grows every day! 🌟",
+  "I am patient with new words because practice builds courage! 💪",
+  "My voice is strong, kind, and capable of great things! ✨",
+  "Every book I read opens a new door of wisdom and joy! 📚",
+];
 
 function storyFitLabel(story: SampleStory, readingLevel: number): string {
   if (readingLevel >= story.levelMin && readingLevel <= story.levelMax) {
@@ -80,6 +87,12 @@ export default function KidHomePage(): JSX.Element {
   const [monthlyUsage, setMonthlyUsage] = useState<MonthlyUsageStatus | null>(null);
   const [limitModalOpen, setLimitModalOpen] = useState(false);
   const [startingStoryId, setStartingStoryId] = useState<string | null>(null);
+
+  // Pick daily affirmation deterministically based on date
+  const affirmation = useMemo(() => {
+    const day = new Date().getDate();
+    return DAILY_AFFIRMATIONS[day % DAILY_AFFIRMATIONS.length];
+  }, []);
 
   // Auth Protection
   useEffect(() => {
@@ -165,7 +178,7 @@ export default function KidHomePage(): JSX.Element {
     void loadKidHomeData();
   }, [user, childId, router]);
 
-  // Catalog filtered by reading level and split into Active vs Bookshelf
+  // Catalog filtered by reading level: Active 4-story grid vs Bookshelf
   const { activeStories, bookshelfStories } = useMemo(() => {
     if (!child) return { activeStories: [], bookshelfStories: [] };
     
@@ -180,14 +193,14 @@ export default function KidHomePage(): JSX.Element {
     for (const story of all) {
       if (completedStoryIds.has(story.id)) {
         completed.push(story);
-      } else if (active.length < 3) {
+      } else if (active.length < 4) { // Exactly 4 books for 2x2 grid layout
         active.push(story);
       }
     }
 
-    // If child finished all active stories, populate active grid with next stories
+    // If child finished all active stories, populate active grid with next 4 stories
     if (active.length === 0 && all.length > 0) {
-      active.push(...all.slice(0, 3));
+      active.push(...all.slice(0, 4));
     }
 
     return { activeStories: active, bookshelfStories: completed };
@@ -333,7 +346,7 @@ export default function KidHomePage(): JSX.Element {
         )}
 
         {/* Child Hero Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div
             className="w-24 h-28 mx-auto rounded-3xl overflow-hidden border-4 border-white shadow-md mb-4 flex items-center justify-center"
             style={{ backgroundColor: `${avatar.color}33` }}
@@ -358,14 +371,21 @@ export default function KidHomePage(): JSX.Element {
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 border border-gray-200 text-gray-800 font-bold text-xs shadow-sm">
               {timeIsUp
                 ? "Daily reading complete 🌟"
-                : `Today's time · ${formatMMSS(secondsLeft || 0)} left`}
+                : `Today's time: ${formatMMSS(secondsLeft || 0)} left`}
             </div>
             {freeStoriesLeft !== null && (
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 border border-gray-200 text-gray-600 font-bold text-xs shadow-sm">
-                Free stories · {freeStoriesLeft} of {FREE_MONTHLY_STORY_LIMIT} left
+                Free stories: {freeStoriesLeft} of {FREE_MONTHLY_STORY_LIMIT} left
               </div>
             )}
           </div>
+        </div>
+
+        {/* Daily Effort & Virtue Affirmation Banner */}
+        <div className="mb-8 rounded-3xl bg-amber-100/70 border border-amber-200 p-4 text-center shadow-2xs">
+          <p className="font-switzer font-bold text-amber-900 text-xs sm:text-sm">
+            {affirmation}
+          </p>
         </div>
 
         {/* Spelling Practice Quick Launcher Banner */}
@@ -436,7 +456,7 @@ export default function KidHomePage(): JSX.Element {
           </section>
         )}
 
-        {/* Section 2: Active Stories Grid (Max 3 unread books) */}
+        {/* Section 2: Active Stories Grid (Balanced 2x2 layout, max 4 books) */}
         {timeIsUp ? (
           <div className="bg-white rounded-3xl p-8 text-center border border-gray-200 shadow-sm mb-8 font-switzer">
             <div className="text-5xl mb-3">🌟</div>
@@ -503,7 +523,7 @@ export default function KidHomePage(): JSX.Element {
                   <span>🪵</span> My Bookshelf
                 </h2>
                 <p className="text-xs text-amber-800 font-switzer">
-                  Completed stories — read again anytime for fun!
+                  Completed stories: read again anytime for fun!
                 </p>
               </div>
               <span className="text-xs font-bold bg-white text-amber-800 px-3 py-1 rounded-full border border-amber-200">

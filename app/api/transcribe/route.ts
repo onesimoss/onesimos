@@ -2,8 +2,9 @@
  * @file app/api/transcribe/route.ts
  * @description Deepgram Speech-to-Text for Onesimos read-aloud sessions.
  * Accepts WebM / MP4 / AAC / OGG from Chrome, Safari, and Amazon Silk (Fire OS).
- * Optional `keywords` form field boosts story vocabulary so African names and
- * page words are less often missed or hallucinated.
+ * Keyword boosting is strictly restricted to long/complex vocabulary (> 4 letters)
+ * so short phonics target words (like "kite", "cat", "hat") are decoded naturally
+ * without Deepgram auto-correcting speech errors.
  *
  * @module app/api/transcribe/route
  */
@@ -14,11 +15,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /** Max keyword boosts Deepgram accepts cleanly in one request */
-const MAX_KEYWORDS = 40;
+const MAX_KEYWORDS = 30;
 
 /**
  * Build Deepgram listen URL with child-reading-friendly params.
- * Keywords format: keyterm:intensifier (e.g. chinedu:3)
+ * Only boosts words with > 4 letters to avoid auto-correcting short phonics errors.
  */
 function buildDeepgramUrl(keywords: string[]): string {
   const params = new URLSearchParams({
@@ -30,17 +31,19 @@ function buildDeepgramUrl(keywords: string[]): string {
     filler_words: "false",
   });
 
-  const unique = Array.from(
+  // CRITICAL FIX: Only boost long/complex words (> 4 chars).
+  // Short phonics words (<= 4 chars like "kite", "cat") MUST NOT be boosted,
+  // allowing Deepgram to accurately transcribe "kit" when the child mispronounces "kite".
+  const longVocabularyOnly = Array.from(
     new Set(
       keywords
         .map((k) => k.trim().toLowerCase().replace(/[^\w'-]/g, ""))
-        .filter((k) => k.length >= 2 && k.length <= 24)
+        .filter((k) => k.length > 4 && k.length <= 24)
     )
   ).slice(0, MAX_KEYWORDS);
 
-  for (const word of unique) {
-    // Intensity 2–3 gently biases the model toward story lexicon
-    params.append("keywords", `${word}:3`);
+  for (const word of longVocabularyOnly) {
+    params.append("keywords", `${word}:2`);
   }
 
   return `https://api.deepgram.com/v1/listen?${params.toString()}`;
@@ -76,7 +79,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const buffer = Buffer.from(await audio.arrayBuffer());
 
-    // Reject only truly empty payloads (not quiet kid mics)
+    // Reject only empty payloads
     if (buffer.length < 64) {
       return NextResponse.json(
         { error: "Audio too short", transcript: "" },
@@ -90,7 +93,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const url = buildDeepgramUrl(keywords);
 
     console.log(
-      `[Transcribe] bytes=${buffer.length} type=${contentType} keywords=${keywords.length}`
+      `[Transcribe] bytes=${buffer.length} type=${contentType} rawKeywords=${keywords.length}`
     );
 
     const response = await fetch(url, {
