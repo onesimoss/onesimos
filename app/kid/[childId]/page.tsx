@@ -1,20 +1,11 @@
 /**
  * @file app/kid/[childId]/page.tsx
- * @description Kid Home View — story catalog, personal Living Story chapters,
- * daily reading session budget timer, free plan monthly quota gate, Word Pocket
- * (categorised into Vocabulary Words vs Names & Places), Solo Spelling Game launcher,
- * and Parent Gate access.
+ * @description Kid Home View — 3-story active grid, completed stories bookshelf
+ * (Read for Fun mode without mic/token burn), personal Living Story chapters
+ * with target word badges, divided Word Pocket (Vocab vs Names), font system alignment,
+ * and Parent PIN gate.
  *
- * @dependencies
- * - @/context/AuthContext (parent authentication)
- * - @/lib/sessionBudget (daily budget + monthly quota checks)
- * - @/lib/stumbledWords (recent stumbled words + speech synthesis)
- * - @/lib/geoNames (African & Diaspora names protection)
- * - @/lib/sampleStories (story catalog for kid's level)
- * - @/lib/livingStory (fetching generated personal chapters)
- * - @/lib/avatars (avatar image & color resolution)
- * - @/lib/sessionInsights (fetching completed reading session history)
- * - @/components/ParentGate (4-digit Parent PIN lock)
+ * @module app/kid/[childId]/page
  */
 
 "use client";
@@ -174,14 +165,33 @@ export default function KidHomePage(): JSX.Element {
     void loadKidHomeData();
   }, [user, childId, router]);
 
-  // Catalog filtered by reading level and interests
-  const catalogStories = useMemo(() => {
-    if (!child) return [];
-    return getStoriesForChild({
+  // Catalog filtered by reading level and split into Active vs Bookshelf
+  const { activeStories, bookshelfStories } = useMemo(() => {
+    if (!child) return { activeStories: [], bookshelfStories: [] };
+    
+    const all = getStoriesForChild({
       readingLevel: child.reading_level || 3,
       interests: child.interests || [],
     });
-  }, [child]);
+
+    const active: SampleStory[] = [];
+    const completed: SampleStory[] = [];
+
+    for (const story of all) {
+      if (completedStoryIds.has(story.id)) {
+        completed.push(story);
+      } else if (active.length < 3) {
+        active.push(story);
+      }
+    }
+
+    // If child finished all active stories, populate active grid with next stories
+    if (active.length === 0 && all.length > 0) {
+      active.push(...all.slice(0, 3));
+    }
+
+    return { activeStories: active, bookshelfStories: completed };
+  }, [child, completedStoryIds]);
 
   // Word Pocket categorization: Vocabulary vs Names & Places
   const { vocabularyWords, nameWords } = useMemo(() => {
@@ -210,26 +220,30 @@ export default function KidHomePage(): JSX.Element {
 
   // Handle Story Selection & Quota Check
   const handleStartStory = useCallback(
-    async (storyId: string) => {
+    async (storyId: string, isFunMode = false) => {
       if (!child) return;
 
-      if ((secondsLeft ?? 0) <= 0) {
+      if (!isFunMode && (secondsLeft ?? 0) <= 0) {
         return;
       }
 
       setStartingStoryId(storyId);
 
-      const usage = await checkMonthlyStoryLimit(child.id, user?.email);
-      setMonthlyUsage(usage);
+      // Skip quota check for "Read for Fun" mode
+      if (!isFunMode) {
+        const usage = await checkMonthlyStoryLimit(child.id, user?.email);
+        setMonthlyUsage(usage);
 
-      if (!usage.isPaidPlan && !usage.allowed) {
-        setStartingStoryId(null);
-        setLimitModalOpen(true);
-        return;
+        if (!usage.isPaidPlan && !usage.allowed) {
+          setStartingStoryId(null);
+          setLimitModalOpen(true);
+          return;
+        }
       }
 
       setStartingStoryId(null);
-      router.push(`/kid/${child.id}/read/${storyId}`);
+      const modeParam = isFunMode ? "?mode=fun" : "";
+      router.push(`/kid/${child.id}/read/${storyId}${modeParam}`);
     },
     [child, secondsLeft, user?.email, router]
   );
@@ -272,7 +286,9 @@ export default function KidHomePage(): JSX.Element {
           >
             🔒 Parent Portal
           </button>
-          <span className="font-achiko text-2xl text-amber-900">Onesimos</span>
+          <span className="font-achiko text-3xl text-amber-900 tracking-wide">
+            Onesimos
+          </span>
           <Link
             href="/who"
             className="text-xs font-bold text-gray-600 hover:text-gray-900 bg-white/80 px-3.5 py-1.5 rounded-full border border-gray-200 transition-colors shadow-2xs font-switzer"
@@ -305,7 +321,7 @@ export default function KidHomePage(): JSX.Element {
                 type="button"
                 onClick={() => {
                   setReminderDismissed(true);
-                  const first = catalogStories[0];
+                  const first = activeStories[0];
                   if (first) void handleStartStory(first.id);
                 }}
                 className="px-4 py-2 rounded-2xl bg-amber-500 text-white text-xs font-bold hover:bg-amber-600 shadow-sm font-switzer"
@@ -332,7 +348,7 @@ export default function KidHomePage(): JSX.Element {
           <h1 className="font-achiko text-4xl md:text-5xl text-amber-950 mb-2">
             Hi, {child.name}!
           </h1>
-          <p className="text-amber-800 text-base font-switzer">
+          <p className="text-amber-800 text-base font-switzer font-medium">
             {timeIsUp
               ? "You did amazing today. See you tomorrow!"
               : "Pick a story or practise your spelling!"}
@@ -375,7 +391,7 @@ export default function KidHomePage(): JSX.Element {
           </Link>
         </div>
 
-        {/* Section: Personal Living Stories (Generated Chapters) */}
+        {/* Section 1: Personal Living Stories (Generated Chapters) */}
         {personalStories.length > 0 && !timeIsUp && (
           <section className="mb-8">
             <div className="flex items-center justify-between mb-4">
@@ -402,7 +418,7 @@ export default function KidHomePage(): JSX.Element {
                         Personal Chapter
                       </span>
                     </div>
-                    <h3 className="font-achiko text-xl text-amber-950 mb-1">
+                    <h3 className="font-switzer font-extrabold text-xl text-amber-950 mb-1">
                       {story.title}
                     </h3>
                     <p className="text-xs text-amber-800 mb-3 font-switzer">
@@ -420,7 +436,7 @@ export default function KidHomePage(): JSX.Element {
           </section>
         )}
 
-        {/* Story Grid or Rest Card */}
+        {/* Section 2: Active Stories Grid (Max 3 unread books) */}
         {timeIsUp ? (
           <div className="bg-white rounded-3xl p-8 text-center border border-gray-200 shadow-sm mb-8 font-switzer">
             <div className="text-5xl mb-3">🌟</div>
@@ -435,12 +451,11 @@ export default function KidHomePage(): JSX.Element {
         ) : (
           <section className="mb-8">
             <h2 className="font-achiko text-2xl text-amber-900 mb-4">
-              📚 Story Library
+              📚 Active Stories
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {catalogStories.map((story) => {
+              {activeStories.map((story) => {
                 const isStarting = startingStoryId === story.id;
-                const isCompleted = completedStoryIds.has(story.id);
 
                 return (
                   <button
@@ -453,14 +468,11 @@ export default function KidHomePage(): JSX.Element {
                     <div>
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-4xl">{story.coverEmoji}</span>
-                        {isCompleted && (
-                          <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                            <span>Completed</span>
-                            <span>✅</span>
-                          </span>
-                        )}
+                        <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold uppercase tracking-wider">
+                          Ready to Read
+                        </span>
                       </div>
-                      <h3 className="font-achiko text-xl text-amber-950 mb-1">
+                      <h3 className="font-switzer font-extrabold text-xl text-amber-950 mb-1">
                         {story.title}
                       </h3>
                       <p className="text-xs text-gray-500 mb-1 font-switzer">
@@ -470,25 +482,64 @@ export default function KidHomePage(): JSX.Element {
                         {storyFitLabel(story, child.reading_level || 3)}
                       </p>
                     </div>
-                    <div className="flex items-center justify-between pt-1 font-switzer">
-                      <span
-                        className={`inline-block py-2 px-4 rounded-xl text-xs font-bold shadow-2xs ${
-                          isCompleted
-                            ? "bg-gray-100 text-gray-800"
-                            : "bg-amber-500 text-white"
-                        }`}
-                      >
-                        {isStarting
-                          ? "Opening..."
-                          : isCompleted
-                          ? "Read again ↺"
-                          : "Read now →"}
+                    <div className="pt-1 font-switzer">
+                      <span className="inline-block py-2 px-4 rounded-xl text-xs font-bold bg-amber-500 text-white shadow-2xs">
+                        {isStarting ? "Opening..." : "Read now →"}
                       </span>
-                      {isCompleted && <span className="text-xs">⭐ Star reader</span>}
                     </div>
                   </button>
                 );
               })}
+            </div>
+          </section>
+        )}
+
+        {/* Section 3: The Bookshelf (Completed Books with Read-for-Fun Mode) */}
+        {bookshelfStories.length > 0 && (
+          <section className="mb-8 bg-amber-100/50 rounded-3xl p-6 border border-amber-200/80">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="font-achiko text-2xl text-amber-900 flex items-center gap-2">
+                  <span>🪵</span> My Bookshelf
+                </h2>
+                <p className="text-xs text-amber-800 font-switzer">
+                  Completed stories — read again anytime for fun!
+                </p>
+              </div>
+              <span className="text-xs font-bold bg-white text-amber-800 px-3 py-1 rounded-full border border-amber-200">
+                {bookshelfStories.length} Read
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {bookshelfStories.map((story) => (
+                <div
+                  key={story.id}
+                  className="bg-white rounded-2xl p-4 border border-amber-200/80 shadow-xs flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-3xl">{story.coverEmoji}</span>
+                      <span className="text-xs text-emerald-700 font-bold flex items-center gap-1">
+                        <span>Read</span>
+                        <span>✅</span>
+                      </span>
+                    </div>
+                    <h3 className="font-switzer font-extrabold text-base text-gray-900 mb-1">
+                      {story.title}
+                    </h3>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => void handleStartStory(story.id, true)}
+                    className="mt-3 w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all text-center flex items-center justify-center gap-1.5"
+                  >
+                    <span>Read for Fun (No Mic)</span>
+                    <span>📖</span>
+                  </button>
+                </div>
+              ))}
             </div>
           </section>
         )}
