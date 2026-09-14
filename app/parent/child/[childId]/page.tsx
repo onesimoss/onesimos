@@ -1,13 +1,13 @@
 /**
  * @file app/parent/child/[childId]/page.tsx
  * @description Dedicated Academic Progress Report Page for a single child profile.
- * Provides plain-language "Before & After" growth narratives, fluency (WPM),
- * accuracy, comprehension scores, vocabulary focus, session history, and the 
- * AI Living Story Book personal chapter generator engine with delete & preview controls.
+ *              Step K.5: Adaptive Difficulty Bridge — auto-detects when a child's
+ *              accuracy (≥85%) and comprehension (≥80%) consistently exceed thresholds
+ *              and surfaces a one-tap Level Up nudge for the parent.
  *
  * @dependencies
  * - @/context/AuthContext (parent authentication)
- * - @/lib/children (child profiles API, PINs)
+ * - @/lib/children (child profiles API, PINs, age band helpers)
  * - @/lib/avatars (avatar resolution)
  * - @/lib/stumbledWords (vocabulary practice list)
  * - @/lib/sessionInsights (sessions history & report card stats engine)
@@ -27,7 +27,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 import { getAvatarById } from "@/lib/avatars";
-import type { ChildProfile } from "@/lib/children";
+import { getAgeBand, type ChildProfile } from "@/lib/children";
 import { setChildPin, deleteChild } from "@/lib/children";
 import { getRecentStumbledWords, type StumbledWordCountItem } from "@/lib/stumbledWords";
 import type { SampleStory } from "@/lib/sampleStories";
@@ -133,6 +133,7 @@ export default function ChildReportPage(): JSX.Element {
   const [generatingChapter, setGeneratingChapter] = useState(false);
   const [deletingStoryId, setDeletingStoryId] = useState<string | null>(null);
   const [showConfirmDeleteChild, setShowConfirmDeleteChild] = useState(false);
+  const [levelUpSaving, setLevelUpSaving] = useState(false);
 
   // Feedback Messages
   const [message, setMessage] = useState("");
@@ -267,6 +268,36 @@ export default function ChildReportPage(): JSX.Element {
     router.replace("/parent");
   };
 
+  /**
+   * K.5 Adaptive Difficulty Bridge — bumps reading level by 1 in Supabase.
+   * Only callable when the nudge thresholds are met.
+   */
+  const handleLevelUp = async (): Promise<void> => {
+    if (!child || !user) return;
+    const nextLevel = (child.reading_level || 2) + 1;
+    if (nextLevel > 12) return;
+
+    setLevelUpSaving(true);
+    setError("");
+    setMessage("");
+
+    const { error: updateErr } = await supabase
+      .from("children")
+      .update({ reading_level: nextLevel })
+      .eq("id", child.id)
+      .eq("parent_id", user.id);
+
+    setLevelUpSaving(false);
+
+    if (updateErr) {
+      setError("Could not update reading level. Try again.");
+      return;
+    }
+
+    setChild((prev) => (prev ? { ...prev, reading_level: nextLevel } : prev));
+    setMessage(`🎉 ${child.name} advanced to Level ${nextLevel}! Stories will adapt on next read.`);
+  };
+
   if (loading || fetching || !child || !stats) {
     return (
       <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center font-switzer">
@@ -279,6 +310,15 @@ export default function ChildReportPage(): JSX.Element {
 
   const avatar = getAvatarById(child.avatar_id);
   const narrative = generateProgressNarrative(child, stats, sessions, practiceWords);
+  const ageBand = getAgeBand(child.age);
+  const isPreReader = ageBand === "pre-reader";
+
+  // K.5 Nudge eligibility: accuracy ≥ 85% AND comprehension ≥ 80% AND room to grow
+  const meetsLevelUpThreshold =
+    stats.accuracyPercentage >= 85 &&
+    stats.comprehensionPercentage >= 80 &&
+    (child.reading_level || 2) < 12 &&
+    sessions.length >= 3;
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-sky-50/50 via-[#FDFBF7] to-amber-50/30 font-switzer pb-16">
@@ -369,8 +409,12 @@ export default function ChildReportPage(): JSX.Element {
         <section className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8 font-switzer">
           <div className="bg-white rounded-3xl p-5 border border-gray-200 shadow-xs text-center">
             <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Fluency Speed</p>
-            <p className="font-achiko text-3xl text-amber-900">{stats.wordsPerMinute}</p>
-            <p className="text-[10px] text-gray-400 font-bold mt-1">Words / Minute</p>
+            <p className="font-achiko text-3xl text-amber-900">
+              {isPreReader ? "—" : stats.wordsPerMinute}
+            </p>
+            <p className="text-[10px] text-gray-400 font-bold mt-1">
+              {isPreReader ? "Not tracked yet" : "Words / Minute"}
+            </p>
           </div>
 
           <div className="bg-white rounded-3xl p-5 border border-gray-200 shadow-xs text-center">
@@ -391,6 +435,38 @@ export default function ChildReportPage(): JSX.Element {
             <p className="text-[10px] text-gray-400 font-bold mt-1">Estimated Level</p>
           </div>
         </section>
+
+        {/* K.5 Adaptive Difficulty Bridge — Level Up Nudge */}
+        {meetsLevelUpThreshold && (
+          <section className="bg-gradient-to-r from-emerald-50 to-sky-50 rounded-3xl p-6 sm:p-8 border-2 border-emerald-300 shadow-sm mb-8 font-switzer">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <span className="text-4xl shrink-0">🚀</span>
+                <div>
+                  <h2 className="font-achiko text-xl text-emerald-950 mb-1">
+                    Ready for Level {(child.reading_level || 2) + 1}!
+                  </h2>
+                  <p className="text-xs text-emerald-800 leading-relaxed">
+                    {child.name} is consistently scoring above 85% accuracy and 80% comprehension
+                    across {sessions.length} sessions. {isPreReader
+                      ? "Their story understanding is growing fast!"
+                      : "Their fluency and understanding are strong enough for harder stories."}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleLevelUp()}
+                disabled={levelUpSaving}
+                className="px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-all shrink-0 active:scale-95 disabled:opacity-50 font-switzer"
+              >
+                {levelUpSaving
+                  ? "Updating..."
+                  : `Level Up to ${(child.reading_level || 2) + 1} →`}
+              </button>
+            </div>
+          </section>
+        )}
 
         {/* AI Living Story Book Engine (The Product Moat) */}
         <section className="bg-gradient-to-br from-amber-50 to-orange-50/80 rounded-3xl p-6 sm:p-8 border-2 border-amber-300 shadow-sm mb-8 font-switzer">
