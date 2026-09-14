@@ -1,3 +1,23 @@
+/**
+ * @file app/onboarding/page.tsx
+ * @description Parent onboarding wizard — 6-step child profile creation.
+ *              Step K.1: Age-band indicator shown live during age selection
+ *              and reading level confirmation.
+ *
+ * @steps
+ *  0 — Welcome
+ *  1 — Name + Age (with live age-band badge)
+ *  2 — Avatar
+ *  3 — Curriculum
+ *  4 — Interests
+ *  5 — Reading level + session time (with age-band context)
+ *
+ * @dependencies
+ * - @/context/AuthContext
+ * - @/components/AvatarPicker
+ * - @/lib/children
+ */
+
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -8,8 +28,12 @@ import AvatarPicker from "@/components/AvatarPicker";
 import {
   createChild,
   defaultReadingLevelFromAge,
+  getAgeBandConfig,
   type Curriculum,
+  type AgeBand,
 } from "@/lib/children";
+
+// ─── Section 1: Constants ───
 
 const INTERESTS = [
   { id: "dinosaurs", label: "Dinosaurs", emoji: "\u{1F995}" },
@@ -51,6 +75,35 @@ const LEVEL_HINTS = [
   { level: 9, label: "Advanced", desc: "Chapter-style text" },
 ];
 
+/**
+ * Visual config for each age band badge in the onboarding UI.
+ */
+const AGE_BAND_STYLES: Record<
+  AgeBand,
+  { bg: string; border: string; text: string; icon: string }
+> = {
+  "pre-reader": {
+    bg: "bg-emerald-50",
+    border: "border-emerald-300",
+    text: "text-emerald-800",
+    icon: "\u{1F331}",
+  },
+  emerging: {
+    bg: "bg-sky-50",
+    border: "border-sky-300",
+    text: "text-sky-800",
+    icon: "\u{1F4D6}",
+  },
+  confident: {
+    bg: "bg-violet-50",
+    border: "border-violet-300",
+    text: "text-violet-800",
+    icon: "\u{1F680}",
+  },
+};
+
+// ─── Section 2: Component ───
+
 export default function OnboardingPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -70,6 +123,12 @@ export default function OnboardingPage() {
   const totalSteps = 6;
   const progress = ((step + 1) / totalSteps) * 100;
 
+  // Derive age band reactively from age
+  const ageBandConfig = useMemo(() => getAgeBandConfig(age), [age]);
+  const bandStyle = AGE_BAND_STYLES[ageBandConfig.band];
+
+  // ─── Effects ───
+
   useEffect(() => {
     if (!loading && !user) {
       router.replace("/login");
@@ -79,6 +138,8 @@ export default function OnboardingPage() {
   useEffect(() => {
     setReadingLevel(defaultReadingLevelFromAge(age));
   }, [age]);
+
+  // ─── Helpers ───
 
   const canContinue = useMemo(() => {
     if (step === 1) return name.trim().length >= 2;
@@ -126,6 +187,8 @@ export default function OnboardingPage() {
     router.push("/dashboard");
   };
 
+  // ─── Loading State ───
+
   if (loading || !user) {
     return (
       <main className="min-h-screen bg-cream flex items-center justify-center">
@@ -134,8 +197,11 @@ export default function OnboardingPage() {
     );
   }
 
+  // ─── Render ───
+
   return (
     <main className="min-h-screen bg-cream flex flex-col">
+      {/* Progress Bar */}
       <div className="w-full max-w-2xl mx-auto px-6 pt-6">
         <div className="flex items-center justify-between mb-4">
           <Link href="/" className="font-logo text-2xl text-bark">
@@ -153,6 +219,7 @@ export default function OnboardingPage() {
         </div>
       </div>
 
+      {/* Step Content */}
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-2xl card !p-8">
           {error && (
@@ -161,6 +228,7 @@ export default function OnboardingPage() {
             </div>
           )}
 
+          {/* ── Step 0: Welcome ── */}
           {step === 0 && (
             <div className="text-center">
               <div className="text-5xl mb-4">{"\u2728"}</div>
@@ -181,6 +249,7 @@ export default function OnboardingPage() {
             </div>
           )}
 
+          {/* ── Step 1: Name + Age (with Age Band Badge) ── */}
           {step === 1 && (
             <div>
               <h1 className="font-heading text-3xl font-extrabold text-bark mb-2">
@@ -221,11 +290,29 @@ export default function OnboardingPage() {
                     <span>3</span>
                     <span>9</span>
                   </div>
+
+                  {/* Age Band Badge — live preview */}
+                  <div
+                    className={`mt-4 p-4 rounded-2xl border-2 ${bandStyle.bg} ${bandStyle.border} transition-all duration-300`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xl">{bandStyle.icon}</span>
+                      <span
+                        className={`font-heading font-extrabold text-sm ${bandStyle.text}`}
+                      >
+                        {ageBandConfig.kidLabel}
+                      </span>
+                    </div>
+                    <p className={`text-xs leading-relaxed ${bandStyle.text} opacity-80`}>
+                      {ageBandConfig.description}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
+          {/* ── Step 2: Avatar ── */}
           {step === 2 && (
             <div>
               <h1 className="font-heading text-3xl font-extrabold text-bark mb-2">
@@ -238,6 +325,7 @@ export default function OnboardingPage() {
             </div>
           )}
 
+          {/* ── Step 3: Curriculum ── */}
           {step === 3 && (
             <div>
               <h1 className="font-heading text-3xl font-extrabold text-bark mb-2">
@@ -268,6 +356,7 @@ export default function OnboardingPage() {
             </div>
           )}
 
+          {/* ── Step 4: Interests ── */}
           {step === 4 && (
             <div>
               <h1 className="font-heading text-3xl font-extrabold text-bark mb-2">
@@ -301,6 +390,7 @@ export default function OnboardingPage() {
             </div>
           )}
 
+          {/* ── Step 5: Reading Level + Session Time (with Age Band Context) ── */}
           {step === 5 && (
             <div>
               <h1 className="font-heading text-3xl font-extrabold text-bark mb-2">
@@ -309,6 +399,21 @@ export default function OnboardingPage() {
               <p className="text-bark-muted mb-6">
                 Start honest — Onesimos will adjust automatically as they read.
               </p>
+
+              {/* Age Band Context Banner */}
+              <div
+                className={`mb-6 p-3 rounded-xl border ${bandStyle.bg} ${bandStyle.border} flex items-center gap-2`}
+              >
+                <span className="text-lg">{bandStyle.icon}</span>
+                <span className={`text-sm font-bold ${bandStyle.text}`}>
+                  {ageBandConfig.label} mode
+                </span>
+                <span className={`text-xs ${bandStyle.text} opacity-70`}>
+                  — {ageBandConfig.trackWpm
+                    ? "Reading speed will be tracked"
+                    : "No speed pressure, just fun"}
+                </span>
+              </div>
 
               <div className="mb-8">
                 <label className="block text-sm font-bold text-bark-light mb-3">
@@ -368,6 +473,7 @@ export default function OnboardingPage() {
             </div>
           )}
 
+          {/* ── Navigation ── */}
           {step > 0 && (
             <div className="mt-10 flex items-center justify-between gap-3">
               <button
