@@ -37,10 +37,6 @@ import {
   type ReadingSessionRow,
   type DetailedReportCardStats,
 } from "@/lib/sessionInsights";
-import {
-  updateChildReminder,
-  requestNotificationPermission,
-} from "@/lib/reminders";
 import { resetChildStoryQuota } from "@/lib/sessionBudget";
 import {
   generateLivingChapterForChild,
@@ -133,7 +129,6 @@ export default function ChildReportPage(): JSX.Element {
   const [pinEdit, setPinEdit] = useState(false);
   const [pinValue, setPinValue] = useState("");
   const [pinSaving, setPinSaving] = useState(false);
-  const [reminderSaving, setReminderSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [generatingChapter, setGeneratingChapter] = useState(false);
   const [deletingStoryId, setDeletingStoryId] = useState<string | null>(null);
@@ -245,12 +240,12 @@ export default function ChildReportPage(): JSX.Element {
   };
 
   const handleResetQuota = async (): Promise<void> => {
-    if (!user || !child) return;
+    if (!child) return;
     setResetting(true);
     setMessage("");
     setError("");
 
-    const { error: resetErr } = await resetChildStoryQuota(child.id, user.id);
+    const { error: resetErr } = await resetChildStoryQuota(child.id);
     setResetting(false);
 
     if (resetErr) {
