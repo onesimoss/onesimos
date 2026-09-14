@@ -1,6 +1,8 @@
 /**
  * @file app/parent/page.tsx
  * @description Parent Dashboard — multi-child summary cards with academic snapshot.
+ *              Step K.1: Age-band badges on each child card. Pre-readers show
+ *              "—" for WPM since speed tracking is not meaningful at ages 3–4.
  * Deep report, PIN, reminders, and history live on /parent/child/[childId].
  *
  * @dependencies
@@ -19,7 +21,9 @@ import LogoutButton from "@/components/LogoutButton";
 import {
   getChildrenForParent,
   deleteChild,
+  getAgeBandConfig,
   type ChildProfile,
+  type AgeBand,
 } from "@/lib/children";
 import { getAvatarById } from "@/lib/avatars";
 import { getRecentStumbledWords } from "@/lib/stumbledWords";
@@ -54,6 +58,47 @@ function renderStatusBadge(status: DetailedReportCardStats["progressStatus"]) {
         </span>
       );
   }
+}
+
+/**
+ * Visual styles for age band badges on the parent dashboard.
+ */
+const AGE_BAND_STYLES: Record<
+  AgeBand,
+  { bg: string; border: string; text: string; icon: string }
+> = {
+  "pre-reader": {
+    bg: "bg-emerald-50",
+    border: "border-emerald-200",
+    text: "text-emerald-700",
+    icon: "\u{1F331}",
+  },
+  emerging: {
+    bg: "bg-sky-50",
+    border: "border-sky-200",
+    text: "text-sky-700",
+    icon: "\u{1F4D6}",
+  },
+  confident: {
+    bg: "bg-violet-50",
+    border: "border-violet-200",
+    text: "text-violet-700",
+    icon: "\u{1F680}",
+  },
+};
+
+function renderAgeBandBadge(age: number) {
+  const config = getAgeBandConfig(age);
+  const style = AGE_BAND_STYLES[config.band];
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${style.bg} ${style.border} ${style.text}`}
+    >
+      <span className="text-xs">{style.icon}</span>
+      {config.label}
+    </span>
+  );
 }
 
 // ─── Section 2: Dashboard ───
@@ -313,6 +358,8 @@ export default function ParentDashboard() {
               readingAgeEstimate: "5.0 – 6.5 years",
               progressStatus: "On Track" as const,
             };
+            const bandConfig = getAgeBandConfig(child.age);
+            const isPreReader = bandConfig.band === "pre-reader";
 
             return (
               <div
@@ -334,9 +381,12 @@ export default function ParentDashboard() {
                       </h2>
                       {renderStatusBadge(reportStats.progressStatus)}
                     </div>
-                    <p className="text-xs text-gray-500 font-medium">
-                      Age {child.age} · Level {child.reading_level}
-                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-xs text-gray-500 font-medium">
+                        Age {child.age} · Level {child.reading_level}
+                      </p>
+                      {renderAgeBandBadge(child.age)}
+                    </div>
                     <p className="text-[11px] font-bold text-gray-600 mt-0.5">
                       Est. reading age:{" "}
                       <span className="text-coral">{reportStats.readingAgeEstimate}</span>
@@ -345,11 +395,21 @@ export default function ParentDashboard() {
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 mb-4">
-                  <div className="rounded-2xl bg-amber-50/80 border border-amber-100 p-2.5 text-center">
-                    <p className="text-lg font-black text-amber-950">
-                      {reportStats.wordsPerMinute}
+                  <div className={`rounded-2xl p-2.5 text-center ${
+                    isPreReader
+                      ? "bg-gray-50 border border-gray-100"
+                      : "bg-amber-50/80 border border-amber-100"
+                  }`}>
+                    <p className={`text-lg font-black ${
+                      isPreReader ? "text-gray-400" : "text-amber-950"
+                    }`}>
+                      {isPreReader ? "—" : reportStats.wordsPerMinute}
                     </p>
-                    <p className="text-[9px] font-bold text-amber-800 uppercase">WPM</p>
+                    <p className={`text-[9px] font-bold uppercase ${
+                      isPreReader ? "text-gray-400" : "text-amber-800"
+                    }`}>
+                      WPM
+                    </p>
                   </div>
                   <div className="rounded-2xl bg-emerald-50/80 border border-emerald-100 p-2.5 text-center">
                     <p className="text-lg font-black text-emerald-950">
