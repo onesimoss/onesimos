@@ -1,4 +1,17 @@
-﻿"use client";
+﻿/**
+ * @file app/page.tsx
+ * @description Landing Page for Onesimos.
+ * Updated to adhere to strict design rules:
+ * - Achiko for logo/brand headings (`font-logo`)
+ * - Switzer for body and UI copy
+ * - Zero em dashes (`—`)
+ * - Removed scroll mouse graphic
+ * - Expanded spacing on bottom CTA subtext
+ *
+ * @fonts Achiko (headings/logo) + Switzer (body/UI)
+ */
+
+"use client";
 
 import Link from "next/link";
 import Image from "next/image";
@@ -33,9 +46,9 @@ const FEATURES = [
 
 const STEPS = [
   { num: "1", emoji: "👨‍👩‍👧", title: "Create a Profile", desc: "Set up your child's avatar, age, and reading level in under a minute." },
-  { num: "2", emoji: "📚", title: "Pick a Story",     desc: "Choose from themed adventures — dinosaurs, space, fantasy, and more." },
-  { num: "3", emoji: "🎙️", title: "Read Aloud",       desc: "Your child reads while Onesimos listens and gently guides them." },
-  { num: "4", emoji: "🎉", title: "Celebrate!",       desc: "Earn badges, unlock new stories, and watch confidence soar." },
+  { num: "2", emoji: "📚", title: "Pick a Story", desc: "Choose from themed adventures: dinosaurs, space, fantasy, and more." },
+  { num: "3", emoji: "🎙️", title: "Read Aloud", desc: "Your child reads while Onesimos listens and gently guides them." },
+  { num: "4", emoji: "🎉", title: "Celebrate!", desc: "Earn badges, unlock new stories, and watch confidence soar." },
 ];
 
 export default function LandingPage() {
@@ -48,7 +61,7 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <main className="min-h-screen w-full overflow-x-hidden">
+    <main className="min-h-screen w-full overflow-x-hidden font-switzer">
 
       {/* ============================================ */}
       {/* HERO SECTION                                  */}
@@ -101,7 +114,7 @@ export default function LandingPage() {
               </Link>
               <Link
                 href="/signup"
-                className="btn-primary !py-2 !px-5 !text-sm"
+                className="btn-primary !py-2 !px-5 !text-sm font-switzer font-bold"
               >
                 Get Started Free
               </Link>
@@ -112,27 +125,27 @@ export default function LandingPage() {
         {/* Hero Content */}
         <div className="relative z-10 text-center px-6 max-w-5xl mx-auto mt-20 animate-fade-up">
           <div className="inline-block mb-6 px-4 py-1.5 rounded-full glass text-white/90 text-sm font-semibold">
-            🎯 Designed for Ages 3–9
+            🎯 Designed for Ages 3 to 9
           </div>
 
-          {/* ACHIKO LOGO TITLE (no font-black/font-extrabold classes to avoid breaking the font) */}
+          {/* ACHIKO LOGO TITLE */}
           <h1 className="font-logo text-6xl sm:text-7xl md:text-8xl lg:text-9xl text-white mb-6 leading-[0.95] drop-shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
             ONESIMOS
           </h1>
 
-          <p className="font-heading text-lg sm:text-xl md:text-2xl text-white/95 font-medium mb-10 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg sm:text-xl md:text-2xl text-white/95 font-medium mb-10 max-w-2xl mx-auto leading-relaxed font-switzer">
             A playful reading platform where kids unlock incredible stories,
             conquer tricky words, and build a{" "}
             <span className="text-gold font-bold">lifelong love for reading</span>.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/signup" className="btn-gold !text-lg !px-10 !py-4">
+            <Link href="/signup" className="btn-gold !text-lg !px-10 !py-4 font-switzer font-bold">
               🚀 Start Reading Free
             </Link>
             <Link
               href="#how-it-works"
-              className="btn-secondary !bg-white/10 !text-white !border-white/30 hover:!bg-white/20 !text-lg !px-10 !py-4"
+              className="btn-secondary !bg-white/10 !text-white !border-white/30 hover:!bg-white/20 !text-lg !px-10 !py-4 font-switzer font-bold"
             >
               See How It Works
             </Link>
@@ -146,13 +159,6 @@ export default function LandingPage() {
             <span className="flex items-center gap-1.5">💯 Free to Start</span>
           </div>
         </div>
-
-        {/* Scroll Indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 animate-bounce">
-          <div className="w-6 h-10 rounded-full border-2 border-white/40 flex items-start justify-center p-1.5">
-            <div className="w-1.5 h-3 bg-white/60 rounded-full" />
-          </div>
-        </div>
       </section>
 
       {/* FEATURES SECTION */}
@@ -163,7 +169,7 @@ export default function LandingPage() {
               Everything Your Child Needs to <span className="text-coral">Fall in Love</span> with Reading
             </h2>
             <p className="text-bark-muted text-lg max-w-2xl mx-auto">
-              Onesimos turns every reading session into a personal adventure — built around your child.
+              Onesimos turns every reading session into a personal adventure, built around your child.
             </p>
           </div>
 
@@ -230,12 +236,15 @@ export default function LandingPage() {
           <p className="text-white/80 text-xl mb-10 max-w-xl mx-auto">
             Join families making reading the best part of their day.
           </p>
-          <Link href="/signup" className="btn-gold !text-xl !px-12 !py-5">
-            🎉 Create Free Account
-          </Link>
-          <p className="text-white/50 text-sm mt-4">
-            No credit card required · Set up in 60 seconds
-          </p>
+          
+          <div className="flex flex-col items-center justify-center">
+            <Link href="/signup" className="btn-gold !text-xl !px-12 !py-5 font-switzer font-bold">
+              🎉 Create Free Account
+            </Link>
+            <p className="text-white/70 text-xs sm:text-sm mt-8 tracking-wide font-medium">
+              No credit card required · Set up in 60 seconds
+            </p>
+          </div>
         </div>
       </section>
 
@@ -245,11 +254,9 @@ export default function LandingPage() {
           <div className="font-logo text-3xl text-white">
             Onesimos
           </div>
-          <div className="flex gap-8 text-sm">
+          <div className="flex gap-8 text-sm font-medium">
             <Link href="/signup" className="hover:text-white transition-colors">Sign Up</Link>
             <Link href="/login" className="hover:text-white transition-colors">Log In</Link>
-            <span>Privacy</span>
-            <span>Terms</span>
           </div>
           <p className="text-sm">© {new Date().getFullYear()} Onesimos. Made with ❤️ for little readers.</p>
         </div>
