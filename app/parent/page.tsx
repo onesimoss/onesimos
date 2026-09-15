@@ -1,21 +1,22 @@
 /**
  * @file app/parent/page.tsx
- * @description Parent Dashboard — multi-child summary cards with academic snapshot.
- *              Step K.1: Age-band badges on each child card. Pre-readers show
- *              "—" for WPM since speed tracking is not meaningful at ages 3–4.
- * Deep report, PIN, reminders, and history live on /parent/child/[childId].
+ * @description Parent Dashboard — multi-child summary cards with academic snapshot,
+ *              Paystack membership status badges, and payment success verification.
+ *              Wrapped in Suspense for safe Next.js 14 SSR prerendering.
  *
+ * @fonts Achiko (headings/logo) + Switzer (body/UI)
  * @dependencies
  * - @/context/AuthContext
  * - @/lib/children, @/lib/avatars, @/lib/stumbledWords
  * - @/lib/sessionInsights, @/lib/parentGate, @/lib/sessionBudget
+ * - @/lib/payments
  */
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import LogoutButton from "@/components/LogoutButton";
 import {
@@ -34,6 +35,10 @@ import {
 } from "@/lib/sessionInsights";
 import { getParentPinStatus, setParentPin } from "@/lib/parentGate";
 import { resetChildStoryQuota } from "@/lib/sessionBudget";
+import {
+  getParentSubscription,
+  type ParentSubscriptionRow,
+} from "@/lib/payments";
 
 // ─── Section 1: Helpers ───
 
@@ -71,19 +76,19 @@ const AGE_BAND_STYLES: Record<
     bg: "bg-emerald-50",
     border: "border-emerald-200",
     text: "text-emerald-700",
-    icon: "\u{1F331}",
+    icon: "🌱",
   },
   emerging: {
     bg: "bg-sky-50",
     border: "border-sky-200",
     text: "text-sky-700",
-    icon: "\u{1F4D6}",
+    icon: "📖",
   },
   confident: {
     bg: "bg-violet-50",
     border: "border-violet-200",
     text: "text-violet-700",
-    icon: "\u{1F680}",
+    icon: "🚀",
   },
 };
 
@@ -101,13 +106,15 @@ function renderAgeBandBadge(age: number) {
   );
 }
 
-// ─── Section 2: Dashboard ───
+// ─── Section 2: Dashboard Content ───
 
-export default function ParentDashboard() {
+function ParentDashboardContent() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [children, setChildren] = useState<ChildProfile[]>([]);
+  const [subscription, setSubscription] = useState<ParentSubscriptionRow | null>(null);
   const [practiceByChild, setPracticeByChild] = useState<
     Record<string, { word: string; count: number }[]>
   >({});
@@ -130,6 +137,9 @@ export default function ParentDashboard() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
+  // Check for successful payment callback param
+  const paymentSuccess = searchParams.get("payment") === "success";
+
   useEffect(() => {
     if (!loading && !user) {
       router.replace("/parent/login");
@@ -141,17 +151,21 @@ export default function ParentDashboard() {
       if (!user) return;
       setFetching(true);
 
-      const { hasPin } = await getParentPinStatus(user.id);
-      setHasParentPin(hasPin);
+      const [pinStatus, subStatus, childrenRes] = await Promise.all([
+        getParentPinStatus(user.id),
+        getParentSubscription(user.id),
+        getChildrenForParent(user.id),
+      ]);
 
-      const { data } = await getChildrenForParent(user.id);
-      setChildren(data);
+      setHasParentPin(pinStatus.hasPin);
+      setSubscription(subStatus);
+      setChildren(childrenRes.data);
 
       const practiceMap: Record<string, { word: string; count: number }[]> = {};
       const statsMap: Record<string, DetailedReportCardStats> = {};
 
       await Promise.all(
-        data.map(async (child) => {
+        childrenRes.data.map(async (child) => {
           const [{ data: words }, { data: sessions }] = await Promise.all([
             getRecentStumbledWords(child.id, 6),
             getChildSessions(child.id, 60),
@@ -165,7 +179,7 @@ export default function ParentDashboard() {
       setReportStatsByChild(statsMap);
       setFetching(false);
 
-      if (data.length === 0) {
+      if (childrenRes.data.length === 0) {
         router.replace("/onboarding");
       }
     }
@@ -255,20 +269,37 @@ export default function ParentDashboard() {
 
   if (loading || fetching || !user) {
     return (
-      <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center">
+      <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center font-sans">
         <p className="text-gray-500 font-bold animate-pulse">Loading Parent Dashboard...</p>
       </main>
     );
   }
 
+  const isPaidSubscriber =
+    subscription?.status === "active" &&
+    (subscription.plan === "premium_monthly" || subscription.plan === "premium_annual");
+
   return (
     <main className="min-h-screen bg-[#FDFBF7] font-sans pb-16">
+      {/* Top Header */}
       <header className="border-b border-gray-200 bg-white/80 backdrop-blur-md sticky top-0 z-20">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-3">
-          <Link href="/parent" className="font-extrabold text-2xl text-gray-900 tracking-tight">
+          <Link href="/parent" className="font-extrabold text-2xl text-gray-900 tracking-tight font-achiko">
             Onesimos
           </Link>
           <div className="flex items-center gap-2 sm:gap-4">
+            {/* Membership Status Link */}
+            <Link
+              href="/parent/pricing"
+              className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-all ${
+                isPaidSubscriber
+                  ? "bg-amber-100/80 text-amber-900 border-amber-300 hover:bg-amber-200"
+                  : "bg-amber-500 text-white border-amber-600 hover:bg-amber-600 shadow-2xs"
+              }`}
+            >
+              {isPaidSubscriber ? "⭐ Premium Active" : "✨ Upgrade to Unlimited"}
+            </Link>
+
             <Link href="/who" className="text-xs sm:text-sm font-bold text-coral hover:underline">
               Who&apos;s reading?
             </Link>
@@ -281,6 +312,29 @@ export default function ParentDashboard() {
       </header>
 
       <div className="max-w-6xl mx-auto px-6 py-8">
+        {/* Payment Celebration Banner */}
+        {paymentSuccess && (
+          <div className="mb-6 p-4 rounded-3xl bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">🎉</span>
+              <div>
+                <p className="font-black text-sm">Welcome to Onesimos Premium!</p>
+                <p className="text-xs text-amber-100">
+                  Unlimited stories and AI Living Chapters are now unlocked for all your children.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => router.replace("/parent")}
+              className="px-3.5 py-1.5 rounded-xl bg-white text-amber-900 text-xs font-bold hover:bg-amber-50 shrink-0"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {/* Set Parent PIN Notice */}
         {hasParentPin === false && (
           <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
@@ -302,9 +356,10 @@ export default function ParentDashboard() {
           </div>
         )}
 
+        {/* Action Header */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl md:text-4xl font-black text-gray-900">
+            <h1 className="text-3xl md:text-4xl font-black text-gray-900 font-achiko">
               Family overview
             </h1>
             <p className="text-gray-500 text-sm mt-1">
@@ -339,6 +394,7 @@ export default function ParentDashboard() {
           </div>
         )}
 
+        {/* Children Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {children.map((child) => {
             const avatar = getAvatarById(child.avatar_id);
@@ -593,5 +649,19 @@ export default function ParentDashboard() {
         </div>
       )}
     </main>
+  );
+}
+
+export default function ParentDashboard() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center font-sans">
+          <p className="text-gray-500 font-bold animate-pulse">Loading Parent Dashboard...</p>
+        </div>
+      }
+    >
+      <ParentDashboardContent />
+    </Suspense>
   );
 }
