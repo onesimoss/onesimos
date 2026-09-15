@@ -3,14 +3,13 @@
  * @description Kid Home View — 4-story active grid (2x2 layout), daily virtue affirmation,
  * completed stories bookshelf (Read for Fun mode without mic/token burn), personal
  * Living Story chapters with target word badges, divided Word Pocket (Vocab vs Names),
- * font system alignment, and Parent Gate access.
+ * Paystack membership unlock flow, and Parent Gate access.
  *
+ * @fonts Achiko (headings/logo) + Switzer (body/UI)
  * @module app/kid/[childId]/page
  */
 
 "use client";
-
-// ─── IMPORTS ────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -42,7 +41,7 @@ import {
   sendFriendlyStoryNotification,
 } from "@/lib/reminders";
 
-// ─── AFFIRMATIONS ───────────────────────────────────────────────────────────
+// ─── Section 1: Affirmations & Helpers ───
 
 const DAILY_AFFIRMATIONS = [
   "I take my time, I learn from mistakes, and my mind grows every day! 🌟",
@@ -61,7 +60,7 @@ function storyFitLabel(story: SampleStory, readingLevel: number): string {
   return "Easy warm-up";
 }
 
-// ─── MAIN COMPONENT ─────────────────────────────────────────────────────────
+// ─── Section 2: Main Component ───
 
 export default function KidHomePage(): JSX.Element {
   const params = useParams<{ childId: string }>();
@@ -79,6 +78,7 @@ export default function KidHomePage(): JSX.Element {
 
   // UI & Navigation States
   const [gateOpen, setGateOpen] = useState(false);
+  const [gateTarget, setGateTarget] = useState<"/parent" | "/parent/pricing">("/parent");
   const [showReminder, setShowReminder] = useState(false);
   const [reminderDismissed, setReminderDismissed] = useState(false);
   const [activeSpeakingWord, setActiveSpeakingWord] = useState<string | null>(null);
@@ -127,7 +127,7 @@ export default function KidHomePage(): JSX.Element {
       );
       setSecondsLeft(left);
 
-      // 2. Check monthly story quota
+      // 2. Check monthly story quota (supports parent-level active subscriptions)
       const usage = await checkMonthlyStoryLimit(profile.id, user.email);
       setMonthlyUsage(usage);
 
@@ -181,7 +181,7 @@ export default function KidHomePage(): JSX.Element {
   // Catalog filtered by reading level: Active 4-story grid vs Bookshelf
   const { activeStories, bookshelfStories } = useMemo(() => {
     if (!child) return { activeStories: [], bookshelfStories: [] };
-    
+
     const all = getStoriesForChild({
       readingLevel: child.reading_level || 3,
       interests: child.interests || [],
@@ -193,7 +193,7 @@ export default function KidHomePage(): JSX.Element {
     for (const story of all) {
       if (completedStoryIds.has(story.id)) {
         completed.push(story);
-      } else if (active.length < 4) { // Exactly 4 books for 2x2 grid layout
+      } else if (active.length < 4) {
         active.push(story);
       }
     }
@@ -294,7 +294,10 @@ export default function KidHomePage(): JSX.Element {
         <div className="flex items-center justify-between mb-8">
           <button
             type="button"
-            onClick={() => setGateOpen(true)}
+            onClick={() => {
+              setGateTarget("/parent");
+              setGateOpen(true);
+            }}
             className="text-xs font-bold text-gray-600 hover:text-gray-900 bg-white/80 px-3.5 py-1.5 rounded-full border border-gray-200 transition-colors shadow-2xs font-switzer"
           >
             🔒 Parent Portal
@@ -358,7 +361,9 @@ export default function KidHomePage(): JSX.Element {
               className="w-full h-full object-cover"
             />
           </div>
-          <h1 className="font-achiko text-4xl md:text-5xl text-amber-950 mb-2">
+          
+          {/* Main Greeting — Font Achiko */}
+          <h1 className="font-achiko text-4xl md:text-5xl text-amber-950 mb-2 tracking-tight">
             Hi, {child.name}!
           </h1>
           <p className="text-amber-800 text-base font-switzer font-medium">
@@ -535,7 +540,7 @@ export default function KidHomePage(): JSX.Element {
               {bookshelfStories.map((story) => (
                 <div
                   key={story.id}
-                  className="bg-white rounded-2xl p-4 border border-amber-200/80 shadow-xs flex flex-col justify-between"
+                  className="bg-white rounded-2xl p-4 border border-amber-200/80 shadow-xs flex flex-col justify-between font-switzer"
                 >
                   <div>
                     <div className="flex items-center justify-between mb-2">
@@ -564,7 +569,7 @@ export default function KidHomePage(): JSX.Element {
           </section>
         )}
 
-        {/* Word Pocket (Divided into Practice Words vs Names & Places) */}
+        {/* Section 4: Word Pocket (Divided into Practice Words vs Names & Places) */}
         {recentWords.length > 0 && (
           <section className="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm font-switzer">
             <div className="flex items-center justify-between mb-4">
@@ -654,7 +659,7 @@ export default function KidHomePage(): JSX.Element {
         onClose={() => setGateOpen(false)}
         onSuccess={() => {
           setGateOpen(false);
-          router.push("/parent");
+          router.push(gateTarget);
         }}
       />
 
@@ -675,9 +680,10 @@ export default function KidHomePage(): JSX.Element {
                 type="button"
                 onClick={() => {
                   setLimitModalOpen(false);
+                  setGateTarget("/parent/pricing");
                   setGateOpen(true);
                 }}
-                className="w-full py-3 rounded-2xl bg-amber-500 text-white font-bold text-xs shadow-sm hover:bg-amber-600 font-switzer"
+                className="w-full py-3 rounded-2xl bg-amber-500 text-white font-bold text-xs shadow-sm hover:bg-amber-600 font-switzer active:scale-95 transition-all"
               >
                 Ask Parent to Unlock ✨
               </button>
