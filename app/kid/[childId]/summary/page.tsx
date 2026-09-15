@@ -1,11 +1,10 @@
 /**
  * @file app/kid/[childId]/summary/page.tsx
- * @description Kid Story Completion, Post-Story Comprehension Quiz, and Summary Screen.
- *              Step K.3/K.4: Age-segmented comprehension and celebration.
- *              - Pre-readers (3-4): literal-only questions, emoji-guided large buttons
- *              - Emerging (5-7): literal + vocabulary questions
- *              - Confident (8-9): full suite (literal + inferential + vocabulary)
+ * @description Kid Story Completion, Post-Story Comprehension Quiz, and Celebration Screen.
+ *              Evaluates story understanding and logs exact reading duration and quiz accuracy
+ *              to Supabase for honest, non-deceptive parent analytics.
  *
+ * @fonts Achiko (headings/logo) + Switzer (body/UI)
  * @dependencies
  * - @/context/AuthContext
  * - @/lib/sampleStories, @/lib/stumbledWords, @/lib/sessionInsights
@@ -14,7 +13,7 @@
 
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -92,7 +91,6 @@ const ALLOWED_QUESTION_TYPES: Record<AgeBand, string[]> = {
 
 /**
  * Filter comprehension questions to match the child's age band.
- * Falls back to "literal" if the question has no explicit type field.
  */
 function filterQuestionsByAgeBand(
   questions: ComprehensionQuestion[],
@@ -121,11 +119,12 @@ function SummaryContent() {
 
   const storyId = searchParams.get("storyId") || "";
   const pagesRead = Number(searchParams.get("pages") || "0");
+  const durationSeconds = Number(searchParams.get("duration") || "0");
 
   const [child, setChild] = useState<ChildProfile | null>(null);
   const [stumbledItems, setStumbledItems] = useState<ProcessedSummaryWord[]>([]);
   const [fetching, setFetching] = useState(true);
-  const [saved, setSaved] = useState(false);
+  const [sessionSaved, setSessionSaved] = useState(false);
   const [activeSpeakingWord, setActiveSpeakingWord] = useState<string | null>(null);
 
   // Comprehension Quiz States
@@ -146,7 +145,7 @@ function SummaryContent() {
     if (!loading && !user) router.replace("/parent/login");
   }, [user, loading, router]);
 
-  // Fetch Child Profile, Story Data & Stumbled Words Log
+  // Fetch Child Profile & Stumbled Words Log
   useEffect(() => {
     async function loadSummaryData() {
       if (!user || !childId) return;
@@ -175,31 +174,16 @@ function SummaryContent() {
 
       setFetching(false);
 
-      // If story has no questions (or none match age band), mark quiz completed
+      // If story has no matching questions for this age band, mark quiz completed
       const band = getAgeBand(profile.age);
       const filtered = filterQuestionsByAgeBand(allQuestions, band);
       if (filtered.length === 0) {
         setQuizCompleted(true);
       }
-
-      // Save session stats to parent analytics (run once)
-      const totalPages = story?.pages.length || pagesRead || 1;
-      const completed = pagesRead >= totalPages;
-
-      if (!saved) {
-        await saveReadingSession({
-          childId: profile.id,
-          storyId: storyId || undefined,
-          pagesRead: pagesRead || 0,
-          durationSeconds: 0,
-          completedStory: completed,
-        });
-        setSaved(true);
-      }
     }
 
     void loadSummaryData();
-  }, [user, childId, router, story, pagesRead, storyId, saved, allQuestions]);
+  }, [user, childId, router, story, allQuestions]);
 
   // Derive age band and filtered questions reactively
   const ageBand = useMemo<AgeBand>(() => {
@@ -211,6 +195,40 @@ function SummaryContent() {
   const questions = useMemo(() => {
     return filterQuestionsByAgeBand(allQuestions, ageBand);
   }, [allQuestions, ageBand]);
+
+  // Save Reading Session with Real Duration & Quiz Accuracy to Supabase
+  const persistSessionStats = useCallback(
+    async (finalCorrectCount: number) => {
+      if (!child || sessionSaved) return;
+
+      const totalPages = story?.pages.length || pagesRead || 1;
+      const completed = pagesRead >= totalPages;
+
+      let quizAccuracy: number | undefined = undefined;
+      if (questions.length > 0) {
+        quizAccuracy = Math.round((finalCorrectCount / questions.length) * 100);
+      }
+
+      await saveReadingSession({
+        childId: child.id,
+        storyId: storyId || undefined,
+        pagesRead: pagesRead || 0,
+        durationSeconds: durationSeconds || 0,
+        completedStory: completed,
+        quizAccuracy,
+      });
+
+      setSessionSaved(true);
+    },
+    [child, sessionSaved, story, pagesRead, durationSeconds, storyId, questions]
+  );
+
+  // Trigger session save when quiz is completed or if no questions exist
+  useEffect(() => {
+    if (quizCompleted && child && !sessionSaved) {
+      void persistSessionStats(correctAnswersCount);
+    }
+  }, [quizCompleted, child, sessionSaved, correctAnswersCount, persistSessionStats]);
 
   // Handle Option Selection in Quiz
   const handleSelectOption = (index: number) => {
@@ -246,10 +264,12 @@ function SummaryContent() {
 
   if (loading || fetching || !child) {
     return (
-      <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center p-6 font-sans">
+      <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center p-6 font-switzer">
         <div className="text-center space-y-3">
           <div className="text-4xl animate-bounce">🌟</div>
-          <p className="font-extrabold text-gray-700 text-lg">Counting your stars...</p>
+          <p className="font-extrabold text-gray-700 text-lg font-switzer">
+            Counting your stars...
+          </p>
         </div>
       </main>
     );
@@ -279,30 +299,30 @@ function SummaryContent() {
     const isCorrect = selectedOption === currentQuestion.correctIndex;
 
     return (
-      <main className="min-h-screen bg-gradient-to-b from-sky-50/60 via-[#FDFBF7] to-amber-50/40 flex items-center justify-center p-4 sm:p-6 font-sans">
+      <main className="min-h-screen bg-gradient-to-b from-sky-50/60 via-[#FDFBF7] to-amber-50/40 flex items-center justify-center p-4 sm:p-6 font-switzer">
         <div
-          className={`w-full bg-white rounded-3xl border border-gray-100 shadow-xl text-center ${
+          className={`w-full bg-white rounded-3xl border border-gray-100 shadow-xl text-center font-switzer ${
             isPreReader ? "max-w-xl p-8 sm:p-10" : "max-w-lg p-6 sm:p-8"
           }`}
         >
           {/* Header Pill */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-50 border border-amber-200/60 text-xs font-black text-amber-900 mb-6">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-50 border border-amber-200/60 text-xs font-black text-amber-900 mb-6 font-switzer">
             <span>{isPreReader ? "🌱" : "🤔"}</span>
-            {isPreReader ? "Story Fun" : "Story Check"} · Question {quizIndex + 1} of{" "}
+            {isPreReader ? "Story Fun" : "Story Check"} : Question {quizIndex + 1} of{" "}
             {questions.length}
           </div>
 
-          {/* Question Text — Larger for Pre-Readers */}
+          {/* Question Text */}
           <h2
-            className={`font-black text-gray-900 leading-snug mb-6 ${
+            className={`font-black text-gray-900 leading-snug mb-6 font-achiko ${
               isPreReader ? "text-2xl sm:text-3xl" : "text-xl sm:text-2xl"
             }`}
           >
             {currentQuestion.questionText}
           </h2>
 
-          {/* Multiple Choice Options — Adaptive Sizing */}
-          <div className={`space-y-3 mb-6 text-left ${isPreReader ? "space-y-4" : ""}`}>
+          {/* Multiple Choice Options */}
+          <div className={`space-y-3 mb-6 text-left font-switzer ${isPreReader ? "space-y-4" : ""}`}>
             {currentQuestion.options.map((option, index) => {
               let btnStyle =
                 "bg-gray-50 border-gray-200 text-gray-800 hover:bg-gray-100";
@@ -325,7 +345,7 @@ function SummaryContent() {
                   type="button"
                   disabled={selectedOption !== null}
                   onClick={() => handleSelectOption(index)}
-                  className={`w-full rounded-2xl border font-bold transition-all text-left flex items-center justify-between active:scale-[0.99] ${btnStyle} ${
+                  className={`w-full rounded-2xl border font-bold transition-all text-left flex items-center justify-between active:scale-[0.99] font-switzer ${btnStyle} ${
                     isPreReader
                       ? "p-5 text-base sm:text-lg gap-3"
                       : "p-4 text-sm"
@@ -352,7 +372,7 @@ function SummaryContent() {
 
           {/* Instant Feedback & Explanation */}
           {showExplanation && (
-            <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200/60 mb-6 text-left animate-fadeIn">
+            <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200/60 mb-6 text-left font-switzer animate-fadeIn">
               <p className="text-xs font-black text-amber-900 mb-1 flex items-center gap-1.5">
                 <span>
                   {isCorrect
@@ -365,7 +385,7 @@ function SummaryContent() {
                 </span>
               </p>
               <p
-                className={`text-amber-950 font-medium leading-relaxed ${
+                className={`text-amber-950 font-medium leading-relaxed font-switzer ${
                   isPreReader ? "text-sm" : "text-xs"
                 }`}
               >
@@ -379,7 +399,7 @@ function SummaryContent() {
             <button
               type="button"
               onClick={handleNextQuizStep}
-              className={`w-full rounded-2xl bg-coral text-white font-black hover:bg-coral/90 transition-all shadow-md active:scale-95 ${
+              className={`w-full rounded-2xl bg-coral text-white font-black hover:bg-coral/90 transition-all shadow-md active:scale-95 font-switzer ${
                 isPreReader ? "py-4 px-6 text-sm" : "py-3.5 px-6 text-xs"
               }`}
             >
@@ -396,9 +416,9 @@ function SummaryContent() {
   // ─── Section 4: Final Summary Celebration View ───
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-amber-50/60 via-[#FDFBF7] to-emerald-50/40 flex items-center justify-center p-4 sm:p-6 font-sans">
+    <main className="min-h-screen bg-gradient-to-b from-amber-50/60 via-[#FDFBF7] to-emerald-50/40 flex items-center justify-center p-4 sm:p-6 font-switzer">
       <div
-        className={`w-full bg-white rounded-3xl border border-gray-100 shadow-xl text-center ${
+        className={`w-full bg-white rounded-3xl border border-gray-100 shadow-xl text-center font-switzer ${
           isPreReader ? "max-w-xl p-8 sm:p-10" : "max-w-lg p-6 sm:p-8"
         }`}
       >
@@ -418,14 +438,14 @@ function SummaryContent() {
         </div>
 
         <h1
-          className={`font-black text-gray-900 tracking-tight mb-1 ${
+          className={`font-achiko font-black text-gray-900 tracking-tight mb-1 ${
             isPreReader ? "text-4xl" : "text-3xl"
           }`}
         >
           {isPreReader ? "Yay, " : "Amazing, "}
           {child.name}!
         </h1>
-        <p className="text-gray-500 text-sm font-medium mb-6">
+        <p className="text-gray-500 text-sm font-medium mb-6 font-switzer">
           {completed
             ? isPreReader
               ? "You read the whole story! So proud of you! 🌟"
@@ -457,7 +477,7 @@ function SummaryContent() {
 
         {/* Comprehension Quiz Score Pill */}
         {questions.length > 0 && (
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800 mb-4">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800 mb-4 font-switzer">
             <span>{isPreReader ? "🌱" : "🧠"}</span>
             {isPreReader ? "Story Fun" : "Comprehension"}: {correctAnswersCount} of{" "}
             {questions.length} correct
@@ -467,11 +487,11 @@ function SummaryContent() {
         {/* Age Band Mode Badge */}
         <div className="mb-4">
           {isPreReader ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[10px] font-bold text-emerald-700">
-              🌱 Pre-Reader Mode · No speed pressure, just fun!
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[10px] font-bold text-emerald-700 font-switzer">
+              🌱 Pre-Reader Mode : No speed pressure, just fun!
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 border border-sky-200 text-[10px] font-bold text-sky-700">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 border border-sky-200 text-[10px] font-bold text-sky-700 font-switzer">
               {ageBand === "emerging" ? "📖" : "🚀"}{" "}
               {ageBand === "emerging" ? "Emerging" : "Confident"} Reader Mode
             </span>
@@ -479,12 +499,12 @@ function SummaryContent() {
         </div>
 
         {/* Story Progress Pill */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-50 border border-gray-100 text-xs font-bold text-gray-700 mb-8 block max-w-xs mx-auto">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-50 border border-gray-100 text-xs font-bold text-gray-700 mb-8 block max-w-xs mx-auto font-switzer">
           <span>📖</span> {pagesRead} of {totalPages} pages read
         </div>
 
         {/* ─── Section 5: Stumbled Items Display ─── */}
-        <div className="space-y-5 text-left mb-8">
+        <div className="space-y-5 text-left mb-8 font-switzer">
           {/* Practice Words (Warm Gold - Tap to Hear) */}
           {practiceWords.length > 0 && (
             <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/50">
@@ -503,7 +523,7 @@ function SummaryContent() {
                     key={item.word}
                     type="button"
                     onClick={() => handleTapToHear(item.display)}
-                    className={`rounded-xl font-bold transition-all flex items-center gap-1.5 active:scale-95 border ${
+                    className={`rounded-xl font-bold transition-all flex items-center gap-1.5 active:scale-95 border font-switzer ${
                       isPreReader ? "px-4 py-2.5 text-sm" : "px-3.5 py-1.5 text-xs"
                     } ${
                       activeSpeakingWord === item.display
@@ -534,7 +554,7 @@ function SummaryContent() {
                 {characterNames.map((item) => (
                   <div
                     key={item.word}
-                    className={`rounded-xl font-bold bg-white text-purple-950 border border-purple-200/80 flex items-center gap-1.5 shadow-2xs ${
+                    className={`rounded-xl font-bold bg-white text-purple-950 border border-purple-200/80 flex items-center gap-1.5 shadow-2xs font-switzer ${
                       isPreReader ? "px-4 py-2.5 text-sm" : "px-3 py-1.5 text-xs"
                     }`}
                   >
@@ -550,10 +570,10 @@ function SummaryContent() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col sm:flex-row gap-3 font-switzer">
           <Link
             href={`/kid/${child.id}`}
-            className={`flex-1 rounded-2xl bg-gray-900 text-white font-black hover:bg-black transition-colors shadow-md text-center ${
+            className={`flex-1 rounded-2xl bg-gray-900 text-white font-black hover:bg-black transition-colors shadow-md text-center font-switzer ${
               isPreReader ? "py-4 px-6 text-sm" : "py-3.5 px-6 text-xs"
             }`}
           >
@@ -561,7 +581,7 @@ function SummaryContent() {
           </Link>
           <Link
             href="/who"
-            className={`rounded-2xl border border-gray-200 font-bold text-gray-600 hover:bg-gray-50 transition-colors text-center ${
+            className={`rounded-2xl border border-gray-200 font-bold text-gray-600 hover:bg-gray-50 transition-colors text-center font-switzer ${
               isPreReader ? "py-4 px-5 text-sm" : "py-3.5 px-5 text-xs"
             }`}
           >
@@ -579,8 +599,8 @@ export default function SummaryPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center">
-          <p className="text-gray-400 font-bold text-sm animate-pulse">
+        <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center font-switzer">
+          <p className="text-gray-400 font-bold text-sm animate-pulse font-switzer">
             Loading summary...
           </p>
         </div>
