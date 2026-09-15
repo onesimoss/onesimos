@@ -1,25 +1,23 @@
 /**
  * @file app/parent/child/[childId]/page.tsx
  * @description Dedicated Academic Progress Report Page for a single child profile.
- *              Step K.5: Adaptive Difficulty Bridge — auto-detects when a child's
- *              accuracy (≥85%) and comprehension (≥80%) consistently exceed thresholds
- *              and surfaces a one-tap Level Up nudge for the parent.
+ *              Provides "Before & After" growth narratives, honest metrics (WPM, Accuracy,
+ *              Comprehension, Reading Age), Living Story Book AI chapter weaving,
+ *              stumbled practice words, and 1-tap Print/Save PDF report card generation.
  *
+ * @fonts Achiko (headings/logo) + Switzer (body/UI)
  * @dependencies
- * - @/context/AuthContext (parent authentication)
- * - @/lib/children (child profiles API, PINs, age band helpers)
- * - @/lib/avatars (avatar resolution)
- * - @/lib/stumbledWords (vocabulary practice list)
- * - @/lib/sessionInsights (sessions history & report card stats engine)
- * - @/lib/sessionBudget (reset test quota helper)
- * - @/lib/livingStory (AI chapter generator, retrieval & deletion)
- * - @/lib/lifeSkills (25 virtues & life skills lookup)
- * - @/lib/sampleStories (SampleStory types)
+ * - @/context/AuthContext
+ * - @/lib/children
+ * - @/lib/avatars
+ * - @/lib/stumbledWords
+ * - @/lib/sessionInsights
+ * - @/lib/sessionBudget
+ * - @/lib/livingStory
+ * - @/lib/lifeSkills
  */
 
 "use client";
-
-// ─── IMPORTS ────────────────────────────────────────────────────────────────
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -76,9 +74,9 @@ function generateProgressNarrative(
 ): { before: string; current: string; recommendation: string } {
   if (sessions.length === 0) {
     return {
-      before: `${child.name} is just beginning their reading journey on Onesimos.`,
+      before: `${child.name} is starting their reading journey on Onesimos.`,
       current: `Current baseline level is Level ${child.reading_level || 2}. No read-aloud sessions recorded yet.`,
-      recommendation: `Start by picking a Level ${child.reading_level || 2} story together. Reading aloud for just 10 minutes a day builds confidence quickly!`,
+      recommendation: `Start by picking a Level ${child.reading_level || 2} story together. Reading aloud for 10 minutes a day builds confidence quickly!`,
     };
   }
 
@@ -90,9 +88,7 @@ function generateProgressNarrative(
 
   const currentText = `${child.name} has completed ${totalStories} story ${
     totalStories === 1 ? "session" : "sessions"
-  }, reading at an average speed of ${stats.wordsPerMinute} WPM with ${
-    stats.accuracyPercentage
-  }% pronunciation accuracy and a ${
+  }, reading with ${stats.accuracyPercentage}% pronunciation accuracy and a ${
     stats.comprehensionPercentage
   }% comprehension score.`;
 
@@ -268,10 +264,6 @@ export default function ChildReportPage(): JSX.Element {
     router.replace("/parent");
   };
 
-  /**
-   * K.5 Adaptive Difficulty Bridge — bumps reading level by 1 in Supabase.
-   * Only callable when the nudge thresholds are met.
-   */
   const handleLevelUp = async (): Promise<void> => {
     if (!child || !user) return;
     const nextLevel = (child.reading_level || 2) + 1;
@@ -298,6 +290,12 @@ export default function ChildReportPage(): JSX.Element {
     setMessage(`🎉 ${child.name} advanced to Level ${nextLevel}! Stories will adapt on next read.`);
   };
 
+  const handlePrintReport = () => {
+    if (typeof window !== "undefined") {
+      window.print();
+    }
+  };
+
   if (loading || fetching || !child || !stats) {
     return (
       <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center font-switzer">
@@ -313,7 +311,7 @@ export default function ChildReportPage(): JSX.Element {
   const ageBand = getAgeBand(child.age);
   const isPreReader = ageBand === "pre-reader";
 
-  // K.5 Nudge eligibility: accuracy ≥ 85% AND comprehension ≥ 80% AND room to grow
+  // Level Up Nudge eligibility
   const meetsLevelUpThreshold =
     stats.accuracyPercentage >= 85 &&
     stats.comprehensionPercentage >= 80 &&
@@ -324,8 +322,8 @@ export default function ChildReportPage(): JSX.Element {
     <main className="min-h-screen bg-gradient-to-b from-sky-50/50 via-[#FDFBF7] to-amber-50/30 font-switzer pb-16">
       <div className="max-w-4xl mx-auto px-6 py-8">
         
-        {/* Top Bar Navigation */}
-        <div className="flex items-center justify-between mb-8">
+        {/* Top Bar Navigation (Hidden when printing) */}
+        <div className="flex items-center justify-between mb-8 print:hidden">
           <Link
             href="/parent"
             className="text-xs font-bold text-gray-600 hover:text-gray-900 bg-white/80 px-3.5 py-1.5 rounded-full border border-gray-200 shadow-2xs font-switzer"
@@ -333,23 +331,30 @@ export default function ChildReportPage(): JSX.Element {
             ← Back to Dashboard
           </Link>
           <span className="font-achiko text-3xl text-amber-900">Onesimos</span>
-          <div className="w-24" />
+          <button
+            type="button"
+            onClick={handlePrintReport}
+            className="px-4 py-2 rounded-2xl bg-gray-900 hover:bg-black text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 font-switzer"
+          >
+            <span>🖨️</span>
+            <span>Print / Save PDF</span>
+          </button>
         </div>
 
-        {/* Feedback Banners */}
+        {/* Feedback Banners (Hidden when printing) */}
         {message && (
-          <div className="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold font-switzer">
+          <div className="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold font-switzer print:hidden">
             {message}
           </div>
         )}
         {error && (
-          <div className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold font-switzer">
+          <div className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold font-switzer print:hidden">
             {error}
           </div>
         )}
 
         {/* Hero Profile Header */}
-        <section className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200 shadow-sm mb-8 flex flex-col sm:flex-row items-center gap-6">
+        <section className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200 shadow-sm mb-8 flex flex-col sm:flex-row items-center gap-6 font-switzer">
           <div
             className="w-24 h-28 rounded-3xl overflow-hidden border-4 border-white shadow-md shrink-0 flex items-center justify-center"
             style={{ backgroundColor: `${avatar.color}33` }}
@@ -368,11 +373,11 @@ export default function ChildReportPage(): JSX.Element {
               </span>
             </div>
             <p className="text-xs text-gray-500 font-switzer">
-              Age {child.age || 6} • Curriculum: {curriculumLabel(child.curriculum || "british")}
+              Age {child.age || 6} : Curriculum: {curriculumLabel(child.curriculum || "british")}
             </p>
           </div>
 
-          <div className="flex sm:flex-col gap-2 shrink-0">
+          <div className="flex sm:flex-col gap-2 shrink-0 print:hidden">
             <button
               type="button"
               onClick={handleResetQuota}
@@ -389,7 +394,7 @@ export default function ChildReportPage(): JSX.Element {
           <h2 className="font-achiko text-2xl text-amber-900 mb-4">
             📖 Reading Growth Narrative
           </h2>
-          <div className="space-y-4 text-xs sm:text-sm text-gray-700 leading-relaxed">
+          <div className="space-y-4 text-xs sm:text-sm text-gray-700 leading-relaxed font-switzer">
             <div className="p-4 rounded-2xl bg-sky-50/60 border border-sky-100">
               <p className="font-bold text-sky-900 mb-1">Starting Baseline:</p>
               <p>{narrative.before}</p>
@@ -410,7 +415,7 @@ export default function ChildReportPage(): JSX.Element {
           <div className="bg-white rounded-3xl p-5 border border-gray-200 shadow-xs text-center">
             <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Fluency Speed</p>
             <p className="font-achiko text-3xl text-amber-900">
-              {isPreReader ? "—" : stats.wordsPerMinute}
+              {isPreReader || stats.wordsPerMinute === 0 ? "—" : stats.wordsPerMinute}
             </p>
             <p className="text-[10px] text-gray-400 font-bold mt-1">
               {isPreReader ? "Not tracked yet" : "Words / Minute"}
@@ -431,14 +436,16 @@ export default function ChildReportPage(): JSX.Element {
 
           <div className="bg-white rounded-3xl p-5 border border-gray-200 shadow-xs text-center">
             <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Reading Age</p>
-            <p className="font-achiko text-3xl text-amber-900">{stats.readingAgeEstimate}</p>
+            <p className="font-achiko text-2xl sm:text-3xl text-amber-900 leading-tight">
+              {stats.readingAgeEstimate}
+            </p>
             <p className="text-[10px] text-gray-400 font-bold mt-1">Estimated Level</p>
           </div>
         </section>
 
-        {/* K.5 Adaptive Difficulty Bridge — Level Up Nudge */}
+        {/* Adaptive Difficulty Bridge — Level Up Nudge (Hidden when printing) */}
         {meetsLevelUpThreshold && (
-          <section className="bg-gradient-to-r from-emerald-50 to-sky-50 rounded-3xl p-6 sm:p-8 border-2 border-emerald-300 shadow-sm mb-8 font-switzer">
+          <section className="bg-gradient-to-r from-emerald-50 to-sky-50 rounded-3xl p-6 sm:p-8 border-2 border-emerald-300 shadow-sm mb-8 font-switzer print:hidden">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-start gap-3">
                 <span className="text-4xl shrink-0">🚀</span>
@@ -446,7 +453,7 @@ export default function ChildReportPage(): JSX.Element {
                   <h2 className="font-achiko text-xl text-emerald-950 mb-1">
                     Ready for Level {(child.reading_level || 2) + 1}!
                   </h2>
-                  <p className="text-xs text-emerald-800 leading-relaxed">
+                  <p className="text-xs text-emerald-800 leading-relaxed font-switzer">
                     {child.name} is consistently scoring above 85% accuracy and 80% comprehension
                     across {sessions.length} sessions. {isPreReader
                       ? "Their story understanding is growing fast!"
@@ -468,8 +475,8 @@ export default function ChildReportPage(): JSX.Element {
           </section>
         )}
 
-        {/* AI Living Story Book Engine (The Product Moat) */}
-        <section className="bg-gradient-to-br from-amber-50 to-orange-50/80 rounded-3xl p-6 sm:p-8 border-2 border-amber-300 shadow-sm mb-8 font-switzer">
+        {/* AI Living Story Book Engine (Hidden when printing) */}
+        <section className="bg-gradient-to-br from-amber-50 to-orange-50/80 rounded-3xl p-6 sm:p-8 border-2 border-amber-300 shadow-sm mb-8 font-switzer print:hidden">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
               <h2 className="font-achiko text-2xl text-amber-950 flex items-center gap-2">
@@ -497,7 +504,7 @@ export default function ChildReportPage(): JSX.Element {
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 font-switzer">
               {generatedStories.map((story) => {
                 const skillId = extractSkillIdFromStory(story);
                 const skill = skillId ? getLifeSkillById(skillId) : null;
@@ -519,14 +526,14 @@ export default function ChildReportPage(): JSX.Element {
                         {/* Badges for Virtue Skill and Stumbled Words */}
                         <div className="flex flex-wrap gap-1.5 mt-2">
                           {skill && (
-                            <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold">
+                            <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold font-switzer">
                               {skill.emoji} {skill.title}
                             </span>
                           )}
                           {targetWords.map((word) => (
                             <span
                               key={word}
-                              className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold"
+                              className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold font-switzer"
                             >
                               {word}
                             </span>
@@ -536,10 +543,10 @@ export default function ChildReportPage(): JSX.Element {
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      {/* Parent Read-for-Fun Preview Button (No Mic / No Token Burn) */}
+                      {/* Parent Read-for-Fun Preview Button */}
                       <Link
                         href={`/kid/${child.id}/read/${story.id}?mode=fun`}
-                        className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all text-center"
+                        className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all text-center font-switzer"
                       >
                         Preview (No Mic) 📖
                       </Link>
@@ -575,7 +582,7 @@ export default function ChildReportPage(): JSX.Element {
               {practiceWords.map((item) => (
                 <span
                   key={item.word}
-                  className="px-3.5 py-2 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold flex items-center gap-1.5"
+                  className="px-3.5 py-2 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold flex items-center gap-1.5 font-switzer"
                 >
                   <span>{item.display}</span>
                   <span className="text-[10px] text-amber-600 font-bold">({item.count}x)</span>
@@ -585,8 +592,8 @@ export default function ChildReportPage(): JSX.Element {
           </section>
         )}
 
-        {/* Danger Zone: Child PIN & Profile Controls */}
-        <section className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200 shadow-sm font-switzer">
+        {/* Security & Profile Controls (Hidden when printing) */}
+        <section className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200 shadow-sm font-switzer print:hidden">
           <h2 className="font-achiko text-2xl text-amber-900 mb-4">
             ⚙️ Security & Profile Controls
           </h2>
@@ -605,7 +612,7 @@ export default function ChildReportPage(): JSX.Element {
                 <button
                   type="button"
                   onClick={() => setPinEdit(true)}
-                  className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-bold text-gray-800"
+                  className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-bold text-gray-800 font-switzer"
                 >
                   {child.kid_pin ? "Change PIN" : "Set Child PIN"}
                 </button>
@@ -617,19 +624,19 @@ export default function ChildReportPage(): JSX.Element {
                     value={pinValue}
                     onChange={(e) => setPinValue(e.target.value)}
                     placeholder="4 digits"
-                    className="w-24 px-3 py-2 rounded-xl border border-gray-300 text-xs font-bold text-center"
+                    className="w-24 px-3 py-2 rounded-xl border border-gray-300 text-xs font-bold text-center font-switzer"
                   />
                   <button
                     type="submit"
                     disabled={pinSaving || pinValue.length !== 4}
-                    className="px-4 py-2 rounded-xl bg-amber-500 text-white text-xs font-bold disabled:opacity-50"
+                    className="px-4 py-2 rounded-xl bg-amber-500 text-white text-xs font-bold disabled:opacity-50 font-switzer"
                   >
                     {pinSaving ? "Saving..." : "Save"}
                   </button>
                   <button
                     type="button"
                     onClick={() => setPinEdit(false)}
-                    className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-600"
+                    className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 font-switzer"
                   >
                     Cancel
                   </button>
@@ -650,7 +657,7 @@ export default function ChildReportPage(): JSX.Element {
                 <button
                   type="button"
                   onClick={() => setShowConfirmDeleteChild(true)}
-                  className="px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold"
+                  className="px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold font-switzer"
                 >
                   Delete Profile
                 </button>
@@ -659,14 +666,14 @@ export default function ChildReportPage(): JSX.Element {
                   <button
                     type="button"
                     onClick={() => void handleDeleteChildProfile()}
-                    className="px-4 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold"
+                    className="px-4 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold font-switzer"
                   >
                     Confirm Delete
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowConfirmDeleteChild(false)}
-                    className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-600"
+                    className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 font-switzer"
                   >
                     Cancel
                   </button>
@@ -675,6 +682,12 @@ export default function ChildReportPage(): JSX.Element {
             </div>
           </div>
         </section>
+
+        {/* Footer Credit (Visible when printing) */}
+        <div className="hidden print:block text-center mt-12 pt-6 border-t border-gray-200 text-xs text-gray-500 font-switzer">
+          Official Academic Progress Report generated by Onesimos Living Reading Companion.
+        </div>
+
       </div>
     </main>
   );
