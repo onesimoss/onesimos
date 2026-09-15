@@ -3,6 +3,7 @@
  * @description Parent Subscription & Pricing Plan Selection Screen.
  * Displays Free, Monthly, and Annual pricing tiers with Paystack checkout
  * integration, diaspora approximate currency guides, and active plan badges.
+ * Wrapped in Suspense to satisfy Next.js 14 client-side navigation requirements.
  *
  * @fonts Achiko (headings) + Switzer (body/UI)
  * @dependencies
@@ -12,7 +13,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -23,7 +24,7 @@ import {
   type SubscriptionPlanId,
 } from "@/lib/payments";
 
-export default function PricingPage(): JSX.Element {
+function PricingContent(): JSX.Element {
   const { user, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -328,5 +329,21 @@ export default function PricingPage(): JSX.Element {
 
       </div>
     </main>
+  );
+}
+
+export default function PricingPage(): JSX.Element {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center font-switzer">
+          <p className="font-bold text-gray-500 text-lg animate-pulse font-switzer">
+            Loading membership plans...
+          </p>
+        </div>
+      }
+    >
+      <PricingContent />
+    </Suspense>
   );
 }
