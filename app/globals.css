@@ -22,10 +22,15 @@
   }
 }
 
-/* Force Achiko on logo without synthetic bold distortion */
+/* Explicit local font utility classes matching layout.tsx CSS variables */
+.font-achiko,
 .font-logo {
-  font-family: var(--font-achiko), cursive !important;
+  font-family: var(--font-achiko), cursive, sans-serif !important;
   font-weight: 400 !important;
+}
+
+.font-switzer {
+  font-family: var(--font-switzer), sans-serif !important;
 }
 
 @layer components {
