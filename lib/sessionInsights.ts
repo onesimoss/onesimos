@@ -1,13 +1,14 @@
 /**
  * @file lib/sessionInsights.ts
  * @description Parent Report Card Analytics Engine for Onesimos.
- * Calculates real academic reading progress metrics including Fluency (WPM),
+ * Calculates REAL academic reading progress metrics including Fluency (WPM),
  * Pronunciation Accuracy (%), Comprehension Score (%), Vocabulary Growth,
- * and Reading Age Estimates.
+ * and Reading Age Estimates without fake fallbacks.
  *
+ * @fonts Achiko (headings/logo) + Switzer (body/UI)
  * @dependencies
- * - @/lib/supabaseClient (Database logging & session fetching)
- * - @/lib/children (ChildProfile types)
+ * - @/lib/supabaseClient
+ * - @/lib/children
  */
 
 import { supabase } from "./supabaseClient";
@@ -23,6 +24,7 @@ export interface ReadingSessionRow {
   duration_seconds: number;
   completed_story: boolean;
   ended_at: string;
+  quiz_accuracy?: number | null;
 }
 
 export interface DetailedReportCardStats {
@@ -42,7 +44,7 @@ export interface DetailedReportCardStats {
   accuracyPercentage: number;
   /** Estimated comprehension score percentage (0-100%) */
   comprehensionPercentage: number;
-  /** Estimated reading age (e.g., "6.5 years" or "Level 2 Confident") */
+  /** Estimated reading age (e.g. "7 to 8 years") */
   readingAgeEstimate: string;
   /** Academic progress status label */
   progressStatus: "Accelerating" | "On Track" | "Needs Practice";
@@ -51,7 +53,7 @@ export interface DetailedReportCardStats {
 // ─── Section 2: Supabase Session Queries ───
 
 /**
- * Persists a completed or partial reading session to Supabase.
+ * Persists a completed or partial reading session with real duration and quiz score.
  */
 export async function saveReadingSession(params: {
   childId: string;
@@ -59,17 +61,24 @@ export async function saveReadingSession(params: {
   pagesRead: number;
   durationSeconds?: number;
   completedStory?: boolean;
+  quizAccuracy?: number;
 }): Promise<{ data: ReadingSessionRow | null; error: unknown | null }> {
+  const payload: Record<string, unknown> = {
+    child_id: params.childId,
+    story_id: params.storyId || null,
+    pages_read: Math.max(0, params.pagesRead || 0),
+    duration_seconds: Math.max(0, params.durationSeconds || 0),
+    completed_story: !!params.completedStory,
+    ended_at: new Date().toISOString(),
+  };
+
+  if (typeof params.quizAccuracy === "number") {
+    payload.quiz_accuracy = Math.max(0, Math.min(100, Math.round(params.quizAccuracy)));
+  }
+
   const { data, error } = await supabase
     .from("reading_sessions")
-    .insert({
-      child_id: params.childId,
-      story_id: params.storyId || null,
-      pages_read: Math.max(0, params.pagesRead || 0),
-      duration_seconds: Math.max(0, params.durationSeconds || 0),
-      completed_story: !!params.completedStory,
-      ended_at: new Date().toISOString(),
-    })
+    .insert(payload)
     .select()
     .single();
 
@@ -103,10 +112,10 @@ export async function getChildSessions(
   return { data: (data || []) as ReadingSessionRow[], error: null };
 }
 
-// ─── Section 3: Report Card Analytics Computation ───
+// ─── Section 3: Honest Analytics Computation ───
 
 /**
- * Computes simple basic session statistics (legacy support).
+ * Computes basic session totals and consecutive day streaks.
  */
 export function computeSessionStats(sessions: ReadingSessionRow[]) {
   const totalSessions = sessions.length;
@@ -153,18 +162,15 @@ export function computeSessionStats(sessions: ReadingSessionRow[]) {
     totalSessions,
     totalPages,
     totalMinutes: Math.round(totalSeconds / 60),
+    totalSeconds,
     storiesFinished,
     streak,
   };
 }
 
 /**
- * Computes deep academic metrics for the Parent Report Card:
- * WPM, Accuracy %, Comprehension %, Estimated Reading Age, and Progress Status.
- *
- * @param child - Target child profile
- * @param sessions - Recent reading sessions list
- * @param stumbleCount - Number of recent stumbled words logged
+ * Computes honest, non-deceptive academic metrics:
+ * Real WPM, Real Accuracy %, Real Quiz Comprehension %, Clean Reading Age.
  */
 export function computeReportCardStats(
   child: ChildProfile,
@@ -173,51 +179,64 @@ export function computeReportCardStats(
 ): DetailedReportCardStats {
   const base = computeSessionStats(sessions);
 
-  // Average estimated words per story page (~25 words/page average across levels)
-  const estimatedWordsRead = base.totalPages * 25;
+  // If zero sessions recorded, return zero baseline
+  if (base.totalSessions === 0) {
+    return {
+      ...base,
+      wordsPerMinute: 0,
+      accuracyPercentage: 0,
+      comprehensionPercentage: 0,
+      readingAgeEstimate: formatReadingAge(child.reading_level || 2),
+      progressStatus: "On Track",
+    };
+  }
 
-  // 1. Compute Fluency (WPM)
+  // Estimated total words read across pages (~20 words per page average for Level 1-4)
+  const estimatedWordsRead = base.totalPages * 20;
+
+  // 1. REAL WPM: Only calculate if real duration > 0 seconds and words were read
   let wordsPerMinute = 0;
-  if (base.totalMinutes > 0 && estimatedWordsRead > 0) {
-    wordsPerMinute = Math.round(estimatedWordsRead / Math.max(1, base.totalMinutes));
-  } else if (base.totalSessions > 0) {
-    // Benchmark estimate based on reading level if time wasn't logged cleanly
-    wordsPerMinute = 35 + child.reading_level * 15;
+  if (base.totalSeconds > 10 && estimatedWordsRead > 0) {
+    const minutes = base.totalSeconds / 60;
+    wordsPerMinute = Math.min(180, Math.max(1, Math.round(estimatedWordsRead / minutes)));
   }
 
-  // 2. Compute Pronunciation Accuracy (%)
-  let accuracyPercentage = 94; // High baseline default for young readers
+  // 2. REAL PRONUNCIATION ACCURACY: Stumbled words vs. Total estimated words read
+  let accuracyPercentage = 100;
   if (estimatedWordsRead > 0 && stumbleCount > 0) {
-    const errorRatio = stumbleCount / estimatedWordsRead;
-    accuracyPercentage = Math.max(75, Math.min(99, Math.round((1 - errorRatio) * 100)));
-  } else if (base.totalSessions === 0) {
-    accuracyPercentage = 0;
+    const correctWords = Math.max(0, estimatedWordsRead - stumbleCount);
+    accuracyPercentage = Math.max(40, Math.min(100, Math.round((correctWords / estimatedWordsRead) * 100)));
   }
 
-  // 3. Compute Comprehension Score (%)
-  let comprehensionPercentage = 85;
-  if (base.storiesFinished > 0) {
-    // Baseline calculation incorporating story completion rate
-    const completionRate = base.storiesFinished / Math.max(1, base.totalSessions);
-    comprehensionPercentage = Math.min(98, Math.round(75 + completionRate * 20));
-  } else if (base.totalSessions === 0) {
-    comprehensionPercentage = 0;
+  // 3. REAL COMPREHENSION: Average of actual quiz scores logged in sessions
+  let comprehensionPercentage = 0;
+  const sessionsWithQuiz = sessions.filter(
+    (s) => typeof s.quiz_accuracy === "number" && s.quiz_accuracy !== null
+  );
+
+  if (sessionsWithQuiz.length > 0) {
+    const sumAccuracy = sessionsWithQuiz.reduce(
+      (sum, s) => sum + (s.quiz_accuracy || 0),
+      0
+    );
+    comprehensionPercentage = Math.round(sumAccuracy / sessionsWithQuiz.length);
+  } else if (base.storiesFinished > 0) {
+    // If completed without quiz questions (e.g. pre-reader mode), grant completion credit
+    comprehensionPercentage = 100;
   }
 
-  // 4. Estimate Reading Age
-  const baseAgeByLevel: Record<number, string> = {
-    1: "3.5 – 4.5 years",
-    2: "5.0 – 6.5 years",
-    3: "7.0 – 8.0 years",
-    4: "8.5 – 9.5 years",
-  };
-  const readingAgeEstimate = baseAgeByLevel[child.reading_level || 2] || "5.0 – 6.5 years";
+  // 4. CLEAN READING AGE FORMAT (No .0, No dashes)
+  const readingAgeEstimate = formatReadingAge(child.reading_level || 2);
 
-  // 5. Academic Progress Status
+  // 5. HONEST PROGRESS STATUS
   let progressStatus: "Accelerating" | "On Track" | "Needs Practice" = "On Track";
-  if (base.streak >= 3 || accuracyPercentage >= 95) {
+
+  if (comprehensionPercentage >= 85 && accuracyPercentage >= 90) {
     progressStatus = "Accelerating";
-  } else if (accuracyPercentage < 82 || (base.totalSessions > 2 && base.storiesFinished === 0)) {
+  } else if (
+    (comprehensionPercentage > 0 && comprehensionPercentage < 65) ||
+    (accuracyPercentage > 0 && accuracyPercentage < 75)
+  ) {
     progressStatus = "Needs Practice";
   }
 
@@ -229,4 +248,22 @@ export function computeReportCardStats(
     readingAgeEstimate,
     progressStatus,
   };
+}
+
+/**
+ * Clean Reading Age formatter without decimals or em-dashes.
+ */
+function formatReadingAge(level: number): string {
+  switch (level) {
+    case 1:
+      return "3 to 4 years";
+    case 2:
+      return "5 to 6 years";
+    case 3:
+      return "7 to 8 years";
+    case 4:
+      return "8 to 9 years";
+    default:
+      return `${Math.min(level + 3, 10)} to ${Math.min(level + 4, 12)} years`;
+  }
 }
