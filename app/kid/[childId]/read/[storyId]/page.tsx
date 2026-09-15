@@ -1,10 +1,10 @@
 /**
  * @file app/kid/[childId]/read/[storyId]/page.tsx
  * @description Kid Active Reading Screen — paginated story reader.
- *              Step K.2: Age-segmented reading view. Pre-readers (ages 3-4) get
- *              enlarged typography, visual-first layout, adaptive timer mode,
- *              and larger touch-friendly navigation controls.
+ *              Tracks real elapsed reading duration in seconds and passes it
+ *              to the summary screen for honest WPM calculations.
  *
+ * @fonts Achiko (headings/logo) + Switzer (body/UI)
  * @dependencies
  * - @/context/AuthContext
  * - @/lib/sampleStories, @/lib/avatars, @/lib/stumbledWords, @/lib/children
@@ -65,6 +65,9 @@ export default function KidReadPage() {
   const [highlightWords, setHighlightWords] = useState<string[]>([]);
   const [storyNotFound, setStoryNotFound] = useState(false);
 
+  // Real Duration Tracking (in seconds)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
   // Auth Protection
   useEffect(() => {
     if (!loading && !user) router.replace("/parent/login");
@@ -117,6 +120,17 @@ export default function KidReadPage() {
     void loadReaderData();
   }, [user, childId, storyId, router]);
 
+  // Track Real Elapsed Reading Time
+  useEffect(() => {
+    if (fetching || sessionEnded || !child || storyNotFound) return;
+
+    const timer = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [fetching, sessionEnded, child, storyNotFound]);
+
   // Reset highlights on page turn
   useEffect(() => {
     setHighlightWords([]);
@@ -127,10 +141,11 @@ export default function KidReadPage() {
   }, []);
 
   const finishReading = useCallback(() => {
+    const finalSeconds = Math.max(1, elapsedSeconds);
     router.push(
-      `/kid/${childId}/summary?storyId=${storyId}&pages=${pageIndex + 1}`
+      `/kid/${childId}/summary?storyId=${storyId}&pages=${pageIndex + 1}&duration=${finalSeconds}`
     );
-  }, [childId, storyId, pageIndex, router]);
+  }, [childId, storyId, pageIndex, elapsedSeconds, router]);
 
   const handleMicResult = useCallback(
     (result: { transcript: string; stumbled: string[] }) => {
@@ -155,8 +170,8 @@ export default function KidReadPage() {
 
   if (loading || fetching || !child) {
     return (
-      <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center font-sans">
-        <p className="font-extrabold text-gray-500 text-lg animate-pulse font-sans">
+      <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center font-switzer">
+        <p className="font-extrabold text-gray-500 text-lg animate-pulse font-switzer">
           Opening your story...
         </p>
       </main>
@@ -165,13 +180,13 @@ export default function KidReadPage() {
 
   if (storyNotFound || !story) {
     return (
-      <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center p-6 font-sans">
+      <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center p-6 font-switzer">
         <div className="bg-white rounded-3xl p-8 border border-gray-200 shadow-md text-center max-w-md">
           <p className="text-gray-600 font-bold mb-4">Story not found.</p>
           <button
             type="button"
             onClick={() => router.back()}
-            className="px-6 py-3 rounded-2xl bg-coral text-white font-bold text-xs hover:bg-coral/90 transition-colors inline-block"
+            className="px-6 py-3 rounded-2xl bg-coral text-white font-bold text-xs hover:bg-coral/90 transition-colors inline-block font-switzer"
           >
             Go Back
           </button>
@@ -192,26 +207,26 @@ export default function KidReadPage() {
 
   if (sessionEnded) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-amber-50 to-[#FDFBF7] flex items-center justify-center p-6 font-sans">
+      <main className="min-h-screen bg-gradient-to-b from-amber-50 to-[#FDFBF7] flex items-center justify-center p-6 font-switzer">
         <div className="bg-white rounded-3xl max-w-md w-full p-8 text-center border border-gray-100 shadow-2xl">
           <div className="text-6xl mb-4">🌟</div>
-          <h1 className="text-2xl font-black text-gray-900 mb-2">
-            Time&apos;s Up for Today!
+          <h1 className="font-achiko text-2xl text-gray-900 mb-2">
+            Time is Up for Today!
           </h1>
-          <p className="text-gray-500 text-sm font-medium mb-6 leading-relaxed">
+          <p className="text-gray-500 text-sm font-medium mb-6 leading-relaxed font-switzer">
             Great reading, {child.name}. Your daily reading session is complete.
             Come back tomorrow for new adventures!
           </p>
           <button
             type="button"
             onClick={finishReading}
-            className="w-full py-3.5 px-6 rounded-2xl bg-coral text-white text-xs font-black hover:bg-coral/90 transition-colors shadow-sm mb-3"
+            className="w-full py-3.5 px-6 rounded-2xl bg-coral text-white text-xs font-black hover:bg-coral/90 transition-colors shadow-sm mb-3 font-switzer"
           >
             See My Stars ⭐
           </button>
           <Link
             href={`/kid/${childId}`}
-            className="block text-xs font-bold text-gray-400 hover:text-gray-600"
+            className="block text-xs font-bold text-gray-400 hover:text-gray-600 font-switzer"
           >
             Back Home
           </Link>
@@ -221,17 +236,17 @@ export default function KidReadPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-sky-50/50 via-[#FDFBF7] to-amber-50/30 flex flex-col font-sans">
+    <main className="min-h-screen bg-gradient-to-b from-sky-50/50 via-[#FDFBF7] to-amber-50/30 flex flex-col font-switzer">
       {/* Reader Top Navigation Bar */}
       <header className="px-6 py-4 flex items-center justify-between gap-4 border-b border-gray-100 bg-white/70 backdrop-blur-sm sticky top-0 z-20">
         <Link
           href={`/kid/${childId}`}
-          className="text-xs font-bold text-gray-500 hover:text-gray-900 flex items-center gap-1"
+          className="text-xs font-bold text-gray-500 hover:text-gray-900 flex items-center gap-1 font-switzer"
         >
           <span>←</span> Back
         </Link>
         <div className="flex-1 max-w-xs text-center">
-          <p className="text-xs font-black text-gray-800 truncate mb-1">
+          <p className="text-xs font-black text-gray-800 truncate mb-1 font-switzer">
             {story.title}
           </p>
           <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden border border-gray-200/50">
@@ -272,7 +287,7 @@ export default function KidReadPage() {
 
           {/* Story Page Text — Sized Adaptively by Age Band */}
           <div
-            className={`font-bold text-gray-900 leading-relaxed tracking-wide max-w-xl mb-6 ${
+            className={`font-bold text-gray-900 leading-relaxed tracking-wide max-w-xl mb-6 font-switzer ${
               isPreReader
                 ? "text-2xl sm:text-3xl md:text-4xl leading-loose font-extrabold"
                 : "text-xl sm:text-2xl"
@@ -293,7 +308,7 @@ export default function KidReadPage() {
         </div>
 
         {/* Story Pagination Navigation Footer */}
-        <footer className="pt-4 pb-2 flex items-center justify-between gap-4">
+        <footer className="pt-4 pb-2 flex items-center justify-between gap-4 font-switzer">
           <button
             type="button"
             disabled={pageIndex === 0}
