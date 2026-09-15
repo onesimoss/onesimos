@@ -1,6 +1,6 @@
 /**
  * @file app/kid/[childId]/page.tsx
- * @description Kid Home View — 4-story active grid (2x2 layout), daily virtue affirmation,
+ * @description Kid Home View : 4-story active grid (2x2 layout), daily virtue affirmation,
  * completed stories bookshelf (Read for Fun mode without mic/token burn), personal
  * Living Story chapters with target word badges, divided Word Pocket (Vocab vs Names),
  * Paystack membership unlock flow, and Parent Gate access.
@@ -127,7 +127,7 @@ export default function KidHomePage(): JSX.Element {
       );
       setSecondsLeft(left);
 
-      // 2. Check monthly story quota (supports parent-level active subscriptions)
+      // 2. Check monthly story quota
       const usage = await checkMonthlyStoryLimit(profile.id, user.email);
       setMonthlyUsage(usage);
 
@@ -178,33 +178,54 @@ export default function KidHomePage(): JSX.Element {
     void loadKidHomeData();
   }, [user, childId, router]);
 
-  // Catalog filtered by reading level: Active 4-story grid vs Bookshelf
-  const { activeStories, bookshelfStories } = useMemo(() => {
-    if (!child) return { activeStories: [], bookshelfStories: [] };
+  // Catalog & Personal Stories divided into Active Grids vs Bookshelf
+  const { activeStories, bookshelfStories, activePersonalStories } = useMemo(() => {
+    if (!child) {
+      return {
+        activeStories: [],
+        bookshelfStories: [],
+        activePersonalStories: [],
+      };
+    }
 
-    const all = getStoriesForChild({
+    const allCatalog = getStoriesForChild({
       readingLevel: child.reading_level || 3,
       interests: child.interests || [],
     });
 
-    const active: SampleStory[] = [];
-    const completed: SampleStory[] = [];
+    const activeCatalog: SampleStory[] = [];
+    const completedStories: SampleStory[] = [];
 
-    for (const story of all) {
+    // Separate completed vs active catalog stories
+    for (const story of allCatalog) {
       if (completedStoryIds.has(story.id)) {
-        completed.push(story);
-      } else if (active.length < 4) {
-        active.push(story);
+        completedStories.push(story);
+      } else if (activeCatalog.length < 4) {
+        activeCatalog.push(story);
       }
     }
 
-    // If child finished all active stories, populate active grid with next 4 stories
-    if (active.length === 0 && all.length > 0) {
-      active.push(...all.slice(0, 4));
+    // If child finished all active catalog stories, cycle them
+    if (activeCatalog.length === 0 && allCatalog.length > 0) {
+      activeCatalog.push(...allCatalog.slice(0, 4));
     }
 
-    return { activeStories: active, bookshelfStories: completed };
-  }, [child, completedStoryIds]);
+    // Separate completed vs active personal (generated) stories
+    const activePersonal: SampleStory[] = [];
+    for (const pStory of personalStories) {
+      if (completedStoryIds.has(pStory.id)) {
+        completedStories.push(pStory);
+      } else {
+        activePersonal.push(pStory);
+      }
+    }
+
+    return {
+      activeStories: activeCatalog,
+      bookshelfStories: completedStories,
+      activePersonalStories: activePersonal,
+    };
+  }, [child, completedStoryIds, personalStories]);
 
   // Word Pocket categorization: Vocabulary vs Names & Places
   const { vocabularyWords, nameWords } = useMemo(() => {
@@ -291,7 +312,7 @@ export default function KidHomePage(): JSX.Element {
       <div className="max-w-3xl mx-auto px-6 py-8">
         
         {/* Top Navigation Bar */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-8 font-switzer">
           <button
             type="button"
             onClick={() => {
@@ -302,9 +323,12 @@ export default function KidHomePage(): JSX.Element {
           >
             🔒 Parent Portal
           </button>
-          <span className="font-achiko text-3xl text-amber-900 tracking-wide">
-            Onesimos
+          
+          {/* Logo Wordmark in ALL CAPS Achiko Font */}
+          <span className="font-achiko text-3xl text-amber-900 tracking-wider font-extrabold uppercase">
+            ONESIMOS
           </span>
+
           <Link
             href="/who"
             className="text-xs font-bold text-gray-600 hover:text-gray-900 bg-white/80 px-3.5 py-1.5 rounded-full border border-gray-200 transition-colors shadow-2xs font-switzer"
@@ -315,7 +339,7 @@ export default function KidHomePage(): JSX.Element {
 
         {/* Story-time Reminder Banner */}
         {reminderVisible && (
-          <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50/90 px-5 py-4 shadow-sm flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50/90 px-5 py-4 shadow-sm flex flex-col sm:flex-row sm:items-center gap-3 font-switzer">
             <div className="text-3xl shrink-0">📖</div>
             <div className="flex-1 text-left">
               <p className="font-achiko text-lg text-amber-900">
@@ -362,7 +386,7 @@ export default function KidHomePage(): JSX.Element {
             />
           </div>
           
-          {/* Main Greeting — Font Achiko */}
+          {/* Main Greeting in Achiko Font */}
           <h1 className="font-achiko text-4xl md:text-5xl text-amber-950 mb-2 tracking-tight">
             Hi, {child.name}!
           </h1>
@@ -387,7 +411,7 @@ export default function KidHomePage(): JSX.Element {
         </div>
 
         {/* Daily Effort & Virtue Affirmation Banner */}
-        <div className="mb-8 rounded-3xl bg-amber-100/70 border border-amber-200 p-4 text-center shadow-2xs">
+        <div className="mb-8 rounded-3xl bg-amber-100/70 border border-amber-200 p-4 text-center shadow-2xs font-switzer">
           <p className="font-switzer font-bold text-amber-900 text-xs sm:text-sm">
             {affirmation}
           </p>
@@ -416,9 +440,9 @@ export default function KidHomePage(): JSX.Element {
           </Link>
         </div>
 
-        {/* Section 1: Personal Living Stories (Generated Chapters) */}
-        {personalStories.length > 0 && !timeIsUp && (
-          <section className="mb-8">
+        {/* Section 1: Personal Living Stories (Active Generated Chapters) */}
+        {activePersonalStories.length > 0 && !timeIsUp && (
+          <section className="mb-8 font-switzer">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-achiko text-2xl text-amber-900 flex items-center gap-2">
                 <span>✨</span> Your Personal Stories
@@ -428,7 +452,7 @@ export default function KidHomePage(): JSX.Element {
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {personalStories.map((story) => (
+              {activePersonalStories.map((story) => (
                 <button
                   key={story.id}
                   type="button"
@@ -439,7 +463,7 @@ export default function KidHomePage(): JSX.Element {
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-4xl">{story.coverEmoji || "📖"}</span>
-                      <span className="px-2.5 py-1 rounded-full bg-amber-200 text-amber-900 border border-amber-300 text-[10px] font-bold uppercase tracking-wider">
+                      <span className="px-2.5 py-1 rounded-full bg-amber-200 text-amber-900 border border-amber-300 text-[10px] font-bold uppercase tracking-wider font-switzer">
                         Personal Chapter
                       </span>
                     </div>
@@ -451,7 +475,7 @@ export default function KidHomePage(): JSX.Element {
                     </p>
                   </div>
                   <div className="pt-2">
-                    <span className="inline-block py-2 px-4 rounded-xl text-xs font-bold bg-amber-500 text-white shadow-xs">
+                    <span className="inline-block py-2 px-4 rounded-xl text-xs font-bold bg-amber-500 text-white shadow-xs font-switzer">
                       Read Personal Chapter →
                     </span>
                   </div>
@@ -474,7 +498,7 @@ export default function KidHomePage(): JSX.Element {
             </p>
           </div>
         ) : (
-          <section className="mb-8">
+          <section className="mb-8 font-switzer">
             <h2 className="font-achiko text-2xl text-amber-900 mb-4">
               📚 Active Stories
             </h2>
@@ -493,7 +517,7 @@ export default function KidHomePage(): JSX.Element {
                     <div>
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-4xl">{story.coverEmoji}</span>
-                        <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold uppercase tracking-wider">
+                        <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold uppercase tracking-wider font-switzer">
                           Ready to Read
                         </span>
                       </div>
@@ -508,7 +532,7 @@ export default function KidHomePage(): JSX.Element {
                       </p>
                     </div>
                     <div className="pt-1 font-switzer">
-                      <span className="inline-block py-2 px-4 rounded-xl text-xs font-bold bg-amber-500 text-white shadow-2xs">
+                      <span className="inline-block py-2 px-4 rounded-xl text-xs font-bold bg-amber-500 text-white shadow-2xs font-switzer">
                         {isStarting ? "Opening..." : "Read now →"}
                       </span>
                     </div>
@@ -519,9 +543,9 @@ export default function KidHomePage(): JSX.Element {
           </section>
         )}
 
-        {/* Section 3: The Bookshelf (Completed Books with Read-for-Fun Mode) */}
+        {/* Section 3: The Bookshelf (Completed Catalog + Personal Stories) */}
         {bookshelfStories.length > 0 && (
-          <section className="mb-8 bg-amber-100/50 rounded-3xl p-6 border border-amber-200/80">
+          <section className="mb-8 bg-amber-100/50 rounded-3xl p-6 border border-amber-200/80 font-switzer">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="font-achiko text-2xl text-amber-900 flex items-center gap-2">
@@ -531,7 +555,7 @@ export default function KidHomePage(): JSX.Element {
                   Completed stories: read again anytime for fun!
                 </p>
               </div>
-              <span className="text-xs font-bold bg-white text-amber-800 px-3 py-1 rounded-full border border-amber-200">
+              <span className="text-xs font-bold bg-white text-amber-800 px-3 py-1 rounded-full border border-amber-200 font-switzer">
                 {bookshelfStories.length} Read
               </span>
             </div>
@@ -544,8 +568,8 @@ export default function KidHomePage(): JSX.Element {
                 >
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-3xl">{story.coverEmoji}</span>
-                      <span className="text-xs text-emerald-700 font-bold flex items-center gap-1">
+                      <span className="text-3xl">{story.coverEmoji || "📖"}</span>
+                      <span className="text-xs text-emerald-700 font-bold flex items-center gap-1 font-switzer">
                         <span>Read</span>
                         <span>✅</span>
                       </span>
@@ -558,7 +582,7 @@ export default function KidHomePage(): JSX.Element {
                   <button
                     type="button"
                     onClick={() => void handleStartStory(story.id, true)}
-                    className="mt-3 w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all text-center flex items-center justify-center gap-1.5"
+                    className="mt-3 w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all text-center flex items-center justify-center gap-1.5 font-switzer"
                   >
                     <span>Read for Fun (No Mic)</span>
                     <span>📖</span>
@@ -592,7 +616,7 @@ export default function KidHomePage(): JSX.Element {
             {/* Sub-section: Vocabulary Practice Words */}
             {vocabularyWords.length > 0 && (
               <div className="mb-4">
-                <p className="text-[11px] font-bold text-amber-800 uppercase tracking-wider mb-2">
+                <p className="text-[11px] font-bold text-amber-800 uppercase tracking-wider mb-2 font-switzer">
                   Vocabulary Words
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -603,7 +627,7 @@ export default function KidHomePage(): JSX.Element {
                         key={item.word}
                         type="button"
                         onClick={() => handleSpeakWord(item.word)}
-                        className={`px-3.5 py-2 rounded-2xl border text-xs font-bold transition-all flex items-center gap-1.5 ${
+                        className={`px-3.5 py-2 rounded-2xl border text-xs font-bold transition-all flex items-center gap-1.5 font-switzer ${
                           isSpeaking
                             ? "bg-amber-200 border-amber-400 text-amber-950 scale-95"
                             : "bg-amber-50/80 border-amber-200 text-amber-900 hover:bg-amber-100"
@@ -621,7 +645,7 @@ export default function KidHomePage(): JSX.Element {
             {/* Sub-section: Names & Places */}
             {nameWords.length > 0 && (
               <div>
-                <p className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2">
+                <p className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2 font-switzer">
                   Names & Places
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -632,7 +656,7 @@ export default function KidHomePage(): JSX.Element {
                         key={item.word}
                         type="button"
                         onClick={() => handleSpeakWord(item.word)}
-                        className={`px-3.5 py-2 rounded-2xl border text-xs font-bold transition-all flex items-center gap-1.5 ${
+                        className={`px-3.5 py-2 rounded-2xl border text-xs font-bold transition-all flex items-center gap-1.5 font-switzer ${
                           isSpeaking
                             ? "bg-slate-200 border-slate-400 text-slate-900 scale-95"
                             : "bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100"
@@ -640,7 +664,7 @@ export default function KidHomePage(): JSX.Element {
                       >
                         <span>{item.display}</span>
                         <span className="text-[10px] text-slate-400">🔊</span>
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600 font-medium">
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600 font-medium font-switzer">
                           Name
                         </span>
                       </button>
@@ -666,7 +690,7 @@ export default function KidHomePage(): JSX.Element {
       {/* Free Plan Monthly Limit Modal */}
       {limitModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 font-switzer">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl border border-gray-100">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl border border-gray-100 font-switzer">
             <div className="text-4xl mb-3">🌟</div>
             <h3 className="font-achiko text-xl text-amber-900 mb-2">
               Story Goal Reached!
@@ -675,7 +699,7 @@ export default function KidHomePage(): JSX.Element {
               You&apos;ve completed all <strong>{FREE_MONTHLY_STORY_LIMIT} free stories</strong> for this month. 
               Ask a parent to unlock unlimited adventures!
             </p>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 font-switzer">
               <button
                 type="button"
                 onClick={() => {
