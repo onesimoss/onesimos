@@ -1,3 +1,12 @@
+/**
+ * @file app/character/page.tsx
+ * @description Character Building & Social-Emotional Learning Quiz Scenarios.
+ * Corrected SSR prerender safety for Next.js 14 App Router.
+ *
+ * @dependencies
+ * - @/context/AuthContext
+ */
+
 "use client";
 
 import { useState, useRef, useEffect } from "react";
@@ -5,7 +14,13 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
 // Draw analog clock on canvas with minute ticks
-function drawClock(ctx: CanvasRenderingContext2D, width: number, height: number, hour: number, minute: number) {
+function drawClock(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  hour: number,
+  minute: number
+) {
   const centerX = width / 2;
   const centerY = height / 2;
   const radius = Math.min(width, height) / 2 - 20;
@@ -41,18 +56,30 @@ function drawClock(ctx: CanvasRenderingContext2D, width: number, height: number,
     const innerRadius = isFiveMinute ? radius - 18 : radius - 10;
     const outerRadius = radius - 6;
     ctx.beginPath();
-    ctx.moveTo(centerX + innerRadius * Math.cos(angle), centerY + innerRadius * Math.sin(angle));
-    ctx.lineTo(centerX + outerRadius * Math.cos(angle), centerY + outerRadius * Math.sin(angle));
+    ctx.moveTo(
+      centerX + innerRadius * Math.cos(angle),
+      centerY + innerRadius * Math.sin(angle)
+    );
+    ctx.lineTo(
+      centerX + outerRadius * Math.cos(angle),
+      centerY + outerRadius * Math.sin(angle)
+    );
     ctx.strokeStyle = isFiveMinute ? "#1e1916" : "#8a7e74";
     ctx.lineWidth = isFiveMinute ? 2.5 : 1;
     ctx.stroke();
   }
 
   // Hour hand
-  const hourAngle = ((hour % 12) / 12) * 2 * Math.PI - Math.PI / 2 + (minute / 60) * (Math.PI / 6);
+  const hourAngle =
+    ((hour % 12) / 12) * 2 * Math.PI -
+    Math.PI / 2 +
+    (minute / 60) * (Math.PI / 6);
   ctx.beginPath();
   ctx.moveTo(centerX, centerY);
-  ctx.lineTo(centerX + 50 * Math.cos(hourAngle), centerY + 50 * Math.sin(hourAngle));
+  ctx.lineTo(
+    centerX + 50 * Math.cos(hourAngle),
+    centerY + 50 * Math.sin(hourAngle)
+  );
   ctx.strokeStyle = "#1e1916";
   ctx.lineWidth = 4;
   ctx.stroke();
@@ -61,7 +88,10 @@ function drawClock(ctx: CanvasRenderingContext2D, width: number, height: number,
   const minuteAngle = (minute / 60) * 2 * Math.PI - Math.PI / 2;
   ctx.beginPath();
   ctx.moveTo(centerX, centerY);
-  ctx.lineTo(centerX + 70 * Math.cos(minuteAngle), centerY + 70 * Math.sin(minuteAngle));
+  ctx.lineTo(
+    centerX + 70 * Math.cos(minuteAngle),
+    centerY + 70 * Math.sin(minuteAngle)
+  );
   ctx.strokeStyle = "#b28b6a";
   ctx.lineWidth = 3;
   ctx.stroke();
@@ -73,7 +103,6 @@ function drawClock(ctx: CanvasRenderingContext2D, width: number, height: number,
   ctx.fill();
 }
 
-// 🔥 Type definitions
 type Option = {
   label: string;
   lesson: string;
@@ -89,53 +118,122 @@ type Scenario = {
 
 const SCENARIOS: Scenario[] = [
   {
-    id: 's1',
-    title: 'What If Someone Calls You Fat?',
+    id: "s1",
+    title: "What If Someone Calls You Fat?",
     description: 'A classmate says, "You\'re so fat!" How do you respond?',
     options: [
-      { label: '😤 "You\'re fat too!"', lesson: 'Fighting back with anger often makes things worse. You deserve to be treated with kindness.' },
-      { label: '😔 Cry and run away', lesson: 'It\'s okay to feel sad, but running away doesn\'t solve the problem. You are wonderful just as you are.' },
-      { label: '😊 "That hurt my feelings. Please don\'t say that."', lesson: 'This is a brave and respectful way to set a boundary. You stood up for yourself without being mean.' },
-      { label: '🤷 "I don\'t care what you think."', lesson: 'You know your worth! This shows confidence, but it might not help the other person understand how their words affect others.' },
+      {
+        label: '😤 "You\'re fat too!"',
+        lesson:
+          "Fighting back with anger often makes things worse. You deserve to be treated with kindness.",
+      },
+      {
+        label: "😔 Cry and run away",
+        lesson:
+          "It's okay to feel sad, but running away doesn't solve the problem. You are wonderful just as you are.",
+      },
+      {
+        label: '😊 "That hurt my feelings. Please don\'t say that."',
+        lesson:
+          "This is a brave and respectful way to set a boundary. You stood up for yourself without being mean.",
+      },
+      {
+        label: '🤷 "I don\'t care what you think."',
+        lesson:
+          "You know your worth! This shows confidence, but it might not help the other person understand how their words affect others.",
+      },
     ],
   },
   {
-    id: 's2',
-    title: 'What If You Break Your Friend\'s Toy?',
-    description: 'You accidentally break your friend\'s favourite toy. What do you do?',
+    id: "s2",
+    title: "What If You Break Your Friend's Toy?",
+    description:
+      "You accidentally break your friend's favourite toy. What do you do?",
     options: [
-      { label: '🤥 Hide it and say nothing', lesson: 'Hiding the truth can hurt your friendship. Honesty builds trust.' },
-      { label: '😢 Say "I\'m sorry" and offer to help fix it', lesson: 'This shows empathy and responsibility. A true friend forgives and helps you make things right.' },
-      { label: '🙄 Blame someone else', lesson: 'Blaming others when you make a mistake damages trust. It takes courage to admit when you\'re wrong.' },
-      { label: '😰 Run away', lesson: 'Running away from your problems doesn\'t make them disappear. Facing them with honesty shows strength.' },
+      {
+        label: "🤥 Hide it and say nothing",
+        lesson: "Hiding the truth can hurt your friendship. Honesty builds trust.",
+      },
+      {
+        label: '😢 Say "I\'m sorry" and offer to help fix it',
+        lesson:
+          "This shows empathy and responsibility. A true friend forgives and helps you make things right.",
+      },
+      {
+        label: "🙄 Blame someone else",
+        lesson:
+          "Blaming others when you make a mistake damages trust. It takes courage to admit when you're wrong.",
+      },
+      {
+        label: "😰 Run away",
+        lesson:
+          "Running away from your problems doesn't make them disappear. Facing them with honesty shows strength.",
+      },
     ],
   },
   {
-    id: 's3',
-    title: 'What If You See Someone Being Bullied?',
-    description: 'You see someone being teased and they look really sad. What do you do?',
+    id: "s3",
+    title: "What If You See Someone Being Bullied?",
+    description:
+      "You see someone being teased and they look really sad. What do you do?",
     options: [
-      { label: '😐 Walk away and ignore it', lesson: 'Ignoring a problem allows it to continue. As a friend, you can make a difference.' },
-      { label: '😡 Join in to fit in', lesson: 'Joining in hurts the other person and also hurts your own character. True friends stand up for what is right.' },
-      { label: '😟 Tell the bully to stop', lesson: 'This is brave and shows you care. Sometimes a simple "Stop" is all it takes.' },
-      { label: '🤗 Go to the person and ask if they\'re okay', lesson: 'This is a kind and supportive act. You don\'t have to be a superhero to make a difference. Just being there can help.' },
+      {
+        label: "😐 Walk away and ignore it",
+        lesson:
+          "Ignoring a problem allows it to continue. As a friend, you can make a difference.",
+      },
+      {
+        label: "😡 Join in to fit in",
+        lesson:
+          "Joining in hurts the other person and also hurts your own character. True friends stand up for what is right.",
+      },
+      {
+        label: "😟 Tell the bully to stop",
+        lesson:
+          "This is brave and shows you care. Sometimes a simple \"Stop\" is all it takes.",
+      },
+      {
+        label: "🤗 Go to the person and ask if they're okay",
+        lesson:
+          "This is a kind and supportive act. You don't have to be a superhero to make a difference. Just being there can help.",
+      },
     ],
   },
   {
-    id: 's4',
-    title: 'Telling Time Challenge!',
-    description: 'The clock shows 3:45. Which time is it?',
+    id: "s4",
+    title: "Telling Time Challenge!",
+    description: "The clock shows 3:45. Which time is it?",
     options: [
-      { label: '3:45', lesson: '✅ Correct! The clock shows 3:45 PM. You\'re learning to tell time!', correct: true },
-      { label: '4:45', lesson: '❌ Not quite. The minute hand is on the 9, which means 45 minutes past the hour. The hour hand is just before the 4, so the time is 3:45.', correct: false },
-      { label: '3:30', lesson: '❌ Look again. The minute hand is on the 9, not the 6. That means 45 minutes past the hour, not 30.', correct: false },
-      { label: '5:45', lesson: '❌ Not quite. The hour hand is just before 4, which means the time is in the 3 o\'clock hour, not the 5 o\'clock hour.', correct: false },
+      {
+        label: "3:45",
+        lesson:
+          "✅ Correct! The clock shows 3:45 PM. You're learning to tell time!",
+        correct: true,
+      },
+      {
+        label: "4:45",
+        lesson:
+          "❌ Not quite. The minute hand is on the 9, which means 45 minutes past the hour. The hour hand is just before the 4, so the time is 3:45.",
+        correct: false,
+      },
+      {
+        label: "3:30",
+        lesson:
+          "❌ Look again. The minute hand is on the 9, not the 6. That means 45 minutes past the hour, not 30.",
+        correct: false,
+      },
+      {
+        label: "5:45",
+        lesson:
+          "❌ Not quite. The hour hand is just before 4, which means the time is in the 3 o'clock hour, not the 5 o'clock hour.",
+        correct: false,
+      },
     ],
   },
 ];
 
 export default function CharacterBuilding() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const [currentScenario, setCurrentScenario] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
@@ -143,6 +241,13 @@ export default function CharacterBuilding() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   const clockRef = useRef<HTMLCanvasElement>(null);
+
+  // Safe client-side auth redirect
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace("/");
+    }
+  }, [user, loading, router]);
 
   useEffect(() => {
     if (clockRef.current && currentScenario === 3) {
@@ -153,9 +258,12 @@ export default function CharacterBuilding() {
     }
   }, [currentScenario]);
 
-  if (!user) {
-    router.push('/');
-    return null;
+  if (loading || !user) {
+    return (
+      <main className="min-h-screen bg-[#f7f2eb] flex items-center justify-center p-6">
+        <p className="text-gray-500 font-bold animate-pulse">Loading...</p>
+      </main>
+    );
   }
 
   const handleSelect = (optionIndex: number) => {
@@ -176,7 +284,7 @@ export default function CharacterBuilding() {
   };
 
   const goToDashboard = () => {
-    router.push('/dashboard');
+    router.push("/parent");
   };
 
   if (isComplete) {
@@ -186,15 +294,16 @@ export default function CharacterBuilding() {
           <div className="text-6xl mb-4">🌟</div>
           <h1 className="text-3xl font-bold text-[#1e1916] mb-2">Great Choices!</h1>
           <p className="text-[#4a423b] text-lg mb-6">
-            You've shown kindness, courage, and wisdom today!
+            You&apos;ve shown kindness, courage, and wisdom today!
           </p>
           <div className="bg-[#f7f2eb] p-6 rounded-xl mb-8 text-left">
             <p className="text-sm font-medium text-[#4a423b] mb-2">💡 Remember</p>
             <p className="text-[#1e1916] italic">
-              "Every choice you make is a chance to show the world who you are."
+              &quot;Every choice you make is a chance to show the world who you are.&quot;
             </p>
           </div>
           <button
+            type="button"
             onClick={goToDashboard}
             className="px-8 py-3 bg-[#b28b6a] text-white rounded-full font-medium hover:shadow-xl transition-all"
           >
@@ -206,7 +315,7 @@ export default function CharacterBuilding() {
   }
 
   const scenario = SCENARIOS[currentScenario];
-  const isClockScenario = scenario.id === 's4';
+  const isClockScenario = scenario.id === "s4";
 
   return (
     <main className="min-h-screen bg-[#f7f2eb] flex items-center justify-center p-6">
@@ -224,30 +333,35 @@ export default function CharacterBuilding() {
         {/* Show analog clock for the clock scenario */}
         {isClockScenario && (
           <div className="flex justify-center mb-6">
-            <canvas ref={clockRef} width={200} height={200} className="border border-[#dcc8b4] rounded-full" />
+            <canvas
+              ref={clockRef}
+              width={200}
+              height={200}
+              className="border border-[#dcc8b4] rounded-full"
+            />
           </div>
         )}
 
         <div className="space-y-3">
           {scenario.options.map((option, i) => {
-            // 🔥 Type-safe check for correct property
             const isCorrect = option.correct === true;
             const isIncorrect = option.correct === false;
             const hasCorrect = option.correct !== undefined;
-            
+
             return (
               <button
                 key={i}
+                type="button"
                 onClick={() => handleSelect(i)}
                 disabled={feedback !== null}
                 className={`w-full text-left px-6 py-4 rounded-xl transition-all font-medium ${
                   selectedIndex === i && feedback !== null && hasCorrect
                     ? isCorrect
-                      ? 'bg-green-100 border-2 border-green-500 text-green-700'
+                      ? "bg-green-100 border-2 border-green-500 text-green-700"
                       : isIncorrect
-                      ? 'bg-red-100 border-2 border-red-500 text-red-700'
-                      : 'bg-[#f7f2eb]'
-                    : 'bg-[#f7f2eb] hover:bg-[#dcc8b4]'
+                      ? "bg-red-100 border-2 border-red-500 text-red-700"
+                      : "bg-[#f7f2eb]"
+                    : "bg-[#f7f2eb] hover:bg-[#dcc8b4]"
                 } hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 {option.label}
@@ -258,19 +372,22 @@ export default function CharacterBuilding() {
 
         {/* Feedback with Next button */}
         {feedback && (
-          <div className={`mt-4 p-4 rounded-xl ${
-            feedback.startsWith('✅') 
-              ? 'bg-green-50 border border-green-200 text-green-700' 
-              : feedback.startsWith('❌')
-              ? 'bg-yellow-50 border border-yellow-200 text-yellow-700'
-              : 'bg-blue-50 border border-blue-200 text-blue-700'
-          }`}>
+          <div
+            className={`mt-4 p-4 rounded-xl ${
+              feedback.startsWith("✅")
+                ? "bg-green-50 border border-green-200 text-green-700"
+                : feedback.startsWith("❌")
+                ? "bg-yellow-50 border border-yellow-200 text-yellow-700"
+                : "bg-blue-50 border border-blue-200 text-blue-700"
+            }`}
+          >
             <p className="text-sm">{feedback}</p>
             <button
+              type="button"
               onClick={handleNext}
               className="mt-3 px-6 py-2 bg-[#1e1916] text-white rounded-full text-sm font-medium hover:shadow-xl transition-all"
             >
-              {currentScenario < SCENARIOS.length - 1 ? 'Next →' : 'Finish 🎉'}
+              {currentScenario < SCENARIOS.length - 1 ? "Next →" : "Finish 🎉"}
             </button>
           </div>
         )}
