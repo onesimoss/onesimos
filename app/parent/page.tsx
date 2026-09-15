@@ -1,8 +1,8 @@
 /**
  * @file app/parent/page.tsx
- * @description Parent Dashboard — multi-child summary cards with academic snapshot,
- *              Paystack membership status badges, and payment success verification.
- *              Wrapped in Suspense for safe Next.js 14 SSR prerendering.
+ * @description Parent Dashboard — multi-child summary cards with academic snapshots,
+ *              live stumbled vocabulary preview, Paystack subscription status,
+ *              and clean metric displays without fake fallbacks or dashes.
  *
  * @fonts Achiko (headings/logo) + Switzer (body/UI)
  * @dependencies
@@ -40,34 +40,31 @@ import {
   type ParentSubscriptionRow,
 } from "@/lib/payments";
 
-// ─── Section 1: Helpers ───
+// ─── Section 1: Helpers & Badges ───
 
 function renderStatusBadge(status: DetailedReportCardStats["progressStatus"]) {
   switch (status) {
     case "Accelerating":
       return (
-        <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider border border-emerald-200">
+        <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider border border-emerald-200 font-switzer">
           Accelerating
         </span>
       );
     case "Needs Practice":
       return (
-        <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-black uppercase tracking-wider border border-amber-200">
+        <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-black uppercase tracking-wider border border-amber-200 font-switzer">
           Needs Practice
         </span>
       );
     default:
       return (
-        <span className="px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-800 text-[10px] font-black uppercase tracking-wider border border-sky-200">
+        <span className="px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-800 text-[10px] font-black uppercase tracking-wider border border-sky-200 font-switzer">
           On Track
         </span>
       );
   }
 }
 
-/**
- * Visual styles for age band badges on the parent dashboard.
- */
 const AGE_BAND_STYLES: Record<
   AgeBand,
   { bg: string; border: string; text: string; icon: string }
@@ -98,7 +95,7 @@ function renderAgeBandBadge(age: number) {
 
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${style.bg} ${style.border} ${style.text}`}
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border font-switzer ${style.bg} ${style.border} ${style.text}`}
     >
       <span className="text-xs">{style.icon}</span>
       {config.label}
@@ -106,7 +103,7 @@ function renderAgeBandBadge(age: number) {
   );
 }
 
-// ─── Section 2: Dashboard Content ───
+// ─── Section 2: Dashboard Content Component ───
 
 function ParentDashboardContent() {
   const { user, loading } = useAuth();
@@ -258,7 +255,7 @@ function ParentDashboardContent() {
       wordsPerMinute: 0,
       accuracyPercentage: 0,
       comprehensionPercentage: 0,
-      readingAgeEstimate: "5.0 – 6.5 years",
+      readingAgeEstimate: "5 to 6 years",
       progressStatus: "On Track",
     };
 
@@ -269,8 +266,8 @@ function ParentDashboardContent() {
 
   if (loading || fetching || !user) {
     return (
-      <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center font-sans">
-        <p className="text-gray-500 font-bold animate-pulse">Loading Parent Dashboard...</p>
+      <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center font-switzer">
+        <p className="text-gray-500 font-bold animate-pulse font-switzer">Loading Parent Dashboard...</p>
       </main>
     );
   }
@@ -280,18 +277,17 @@ function ParentDashboardContent() {
     (subscription.plan === "premium_monthly" || subscription.plan === "premium_annual");
 
   return (
-    <main className="min-h-screen bg-[#FDFBF7] font-sans pb-16">
+    <main className="min-h-screen bg-[#FDFBF7] font-switzer pb-16">
       {/* Top Header */}
       <header className="border-b border-gray-200 bg-white/80 backdrop-blur-md sticky top-0 z-20">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-3">
-          <Link href="/parent" className="font-extrabold text-2xl text-gray-900 tracking-tight font-achiko">
+          <Link href="/parent" className="font-achiko text-2xl text-gray-900 tracking-tight">
             Onesimos
           </Link>
           <div className="flex items-center gap-2 sm:gap-4">
-            {/* Membership Status Link */}
             <Link
               href="/parent/pricing"
-              className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-all ${
+              className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-all font-switzer ${
                 isPaidSubscriber
                   ? "bg-amber-100/80 text-amber-900 border-amber-300 hover:bg-amber-200"
                   : "bg-amber-500 text-white border-amber-600 hover:bg-amber-600 shadow-2xs"
@@ -300,10 +296,10 @@ function ParentDashboardContent() {
               {isPaidSubscriber ? "⭐ Premium Active" : "✨ Upgrade to Unlimited"}
             </Link>
 
-            <Link href="/who" className="text-xs sm:text-sm font-bold text-coral hover:underline">
+            <Link href="/who" className="text-xs sm:text-sm font-bold text-coral hover:underline font-switzer">
               Who&apos;s reading?
             </Link>
-            <span className="hidden md:inline text-xs text-gray-500 font-medium">
+            <span className="hidden md:inline text-xs text-gray-500 font-medium font-switzer">
               {user.email}
             </span>
             <LogoutButton />
@@ -314,7 +310,7 @@ function ParentDashboardContent() {
       <div className="max-w-6xl mx-auto px-6 py-8">
         {/* Payment Celebration Banner */}
         {paymentSuccess && (
-          <div className="mb-6 p-4 rounded-3xl bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md flex items-center justify-between gap-4">
+          <div className="mb-6 p-4 rounded-3xl bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md flex items-center justify-between gap-4 font-switzer">
             <div className="flex items-center gap-3">
               <span className="text-3xl">🎉</span>
               <div>
@@ -327,7 +323,7 @@ function ParentDashboardContent() {
             <button
               type="button"
               onClick={() => router.replace("/parent")}
-              className="px-3.5 py-1.5 rounded-xl bg-white text-amber-900 text-xs font-bold hover:bg-amber-50 shrink-0"
+              className="px-3.5 py-1.5 rounded-xl bg-white text-amber-900 text-xs font-bold hover:bg-amber-50 shrink-0 font-switzer"
             >
               Dismiss
             </button>
@@ -336,7 +332,7 @@ function ParentDashboardContent() {
 
         {/* Set Parent PIN Notice */}
         {hasParentPin === false && (
-          <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-between flex-wrap gap-4">
+          <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-between flex-wrap gap-4 font-switzer">
             <div className="flex items-center gap-3">
               <span className="text-2xl">🔒</span>
               <div>
@@ -349,7 +345,7 @@ function ParentDashboardContent() {
             <button
               type="button"
               onClick={() => setShowParentPinModal(true)}
-              className="px-4 py-2 bg-amber-600 text-white rounded-xl text-xs font-bold hover:bg-amber-700"
+              className="px-4 py-2 bg-amber-600 text-white rounded-xl text-xs font-bold hover:bg-amber-700 font-switzer"
             >
               Set Parent PIN
             </button>
@@ -359,24 +355,24 @@ function ParentDashboardContent() {
         {/* Action Header */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl md:text-4xl font-black text-gray-900 font-achiko">
+            <h1 className="font-achiko text-3xl md:text-4xl text-gray-900">
               Family overview
             </h1>
-            <p className="text-gray-500 text-sm mt-1">
-              Snapshot per child — open a full report for growth story, history, and settings.
+            <p className="text-gray-500 text-sm mt-1 font-switzer">
+              Snapshot per child : open a full report for growth story, history, and settings.
             </p>
           </div>
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => setShowParentPinModal(true)}
-              className="px-4 py-2.5 rounded-full border border-gray-200 bg-white text-xs font-bold text-gray-700 hover:bg-gray-50 shadow-sm"
+              className="px-4 py-2.5 rounded-full border border-gray-200 bg-white text-xs font-bold text-gray-700 hover:bg-gray-50 shadow-sm font-switzer"
             >
               {hasParentPin ? "Change Parent PIN" : "Set Parent PIN"}
             </button>
             <Link
               href="/onboarding"
-              className="px-5 py-2.5 bg-coral text-white rounded-full text-xs font-bold hover:bg-coral/90 shadow-sm"
+              className="px-5 py-2.5 bg-coral text-white rounded-full text-xs font-bold hover:bg-coral/90 shadow-sm font-switzer"
             >
               + Add child
             </Link>
@@ -384,12 +380,12 @@ function ParentDashboardContent() {
         </div>
 
         {message && (
-          <div className="mb-6 bg-emerald-50 border border-emerald-200 text-emerald-800 p-3.5 rounded-2xl text-xs font-bold">
+          <div className="mb-6 bg-emerald-50 border border-emerald-200 text-emerald-800 p-3.5 rounded-2xl text-xs font-bold font-switzer">
             {message}
           </div>
         )}
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-600 p-3.5 rounded-2xl text-xs font-bold">
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-600 p-3.5 rounded-2xl text-xs font-bold font-switzer">
             {error}
           </div>
         )}
@@ -411,7 +407,7 @@ function ParentDashboardContent() {
               wordsPerMinute: 0,
               accuracyPercentage: 0,
               comprehensionPercentage: 0,
-              readingAgeEstimate: "5.0 – 6.5 years",
+              readingAgeEstimate: "5 to 6 years",
               progressStatus: "On Track" as const,
             };
             const bandConfig = getAgeBandConfig(child.age);
@@ -420,36 +416,37 @@ function ParentDashboardContent() {
             return (
               <div
                 key={child.id}
-                className="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-all flex flex-col"
+                className="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-all flex flex-col font-switzer"
               >
                 <div className="flex items-center gap-4 mb-4">
                   <div
                     className="w-14 h-14 rounded-2xl overflow-hidden border border-gray-200 shrink-0"
-                    style={{ backgroundColor: `${avatar.color}22` }}
+                    style={{ backgroundColor: `${avatar.color}33` }}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={avatar.imageUrl} alt="" className="w-full h-full object-cover" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
-                      <h2 className="text-lg font-black text-gray-900 truncate">
+                      <h2 className="text-lg font-black text-gray-900 truncate font-achiko">
                         {child.name}
                       </h2>
                       {renderStatusBadge(reportStats.progressStatus)}
                     </div>
-                    <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex items-center gap-2 mt-0.5 font-switzer">
                       <p className="text-xs text-gray-500 font-medium">
                         Age {child.age} · Level {child.reading_level}
                       </p>
                       {renderAgeBandBadge(child.age)}
                     </div>
-                    <p className="text-[11px] font-bold text-gray-600 mt-0.5">
+                    <p className="text-[11px] font-bold text-gray-600 mt-0.5 font-switzer">
                       Est. reading age:{" "}
-                      <span className="text-coral">{reportStats.readingAgeEstimate}</span>
+                      <span className="text-coral font-bold">{reportStats.readingAgeEstimate}</span>
                     </p>
                   </div>
                 </div>
 
+                {/* Stat Box Cards */}
                 <div className="grid grid-cols-3 gap-2 mb-4">
                   <div className={`rounded-2xl p-2.5 text-center ${
                     isPreReader
@@ -459,7 +456,9 @@ function ParentDashboardContent() {
                     <p className={`text-lg font-black ${
                       isPreReader ? "text-gray-400" : "text-amber-950"
                     }`}>
-                      {isPreReader ? "—" : reportStats.wordsPerMinute}
+                      {isPreReader || reportStats.wordsPerMinute === 0
+                        ? "—"
+                        : reportStats.wordsPerMinute}
                     </p>
                     <p className={`text-[9px] font-bold uppercase ${
                       isPreReader ? "text-gray-400" : "text-amber-800"
@@ -481,7 +480,11 @@ function ParentDashboardContent() {
                   </div>
                 </div>
 
-                <div className="mb-4 min-h-[3rem]">
+                {/* Stumbled Words Preview Box */}
+                <div className="mb-4 min-h-[3rem] font-switzer">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                    Tricky Words Logged:
+                  </p>
                   {practice.length === 0 ? (
                     <p className="text-[11px] text-gray-400 font-medium">
                       Practice words appear after read-aloud sessions.
@@ -491,7 +494,7 @@ function ParentDashboardContent() {
                       {practice.slice(0, 5).map((item) => (
                         <span
                           key={item.word}
-                          className="px-2 py-0.5 rounded-full bg-amber-100/70 text-gray-900 text-[11px] font-bold border border-amber-200/50"
+                          className="px-2 py-0.5 rounded-full bg-amber-100/80 text-amber-950 text-[11px] font-bold border border-amber-200"
                         >
                           {item.word}
                         </span>
@@ -505,42 +508,42 @@ function ParentDashboardContent() {
                   )}
                 </div>
 
-                <div className="mt-auto space-y-2 pt-2 border-t border-gray-100">
+                <div className="mt-auto space-y-2 pt-2 border-t border-gray-100 font-switzer">
                   {!isConfirming ? (
                     <>
                       <Link
                         href={`/parent/child/${child.id}`}
-                        className="block w-full py-2.5 rounded-2xl bg-gray-900 text-white text-xs font-black hover:bg-black text-center shadow-sm"
+                        className="block w-full py-2.5 rounded-2xl bg-gray-900 text-white text-xs font-black hover:bg-black text-center shadow-sm font-switzer"
                       >
                         View full report →
                       </Link>
                       <Link
                         href={`/kid/${child.id}`}
-                        className="block w-full py-2 rounded-2xl border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-50 text-center"
+                        className="block w-full py-2 rounded-2xl border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-50 text-center font-switzer"
                       >
                         Open kid view
                       </Link>
-                      <div className="flex justify-between items-center px-1">
+                      <div className="flex justify-between items-center px-1 font-switzer">
                         <button
                           type="button"
                           disabled={isResetting}
                           onClick={() => void handleResetTestData(child)}
-                          className="text-[11px] font-bold text-gray-400 hover:text-amber-700 disabled:opacity-50"
+                          className="text-[11px] font-bold text-gray-400 hover:text-amber-700 disabled:opacity-50 font-switzer"
                         >
                           {isResetting ? "Resetting..." : "Reset test quota"}
                         </button>
                         <button
                           type="button"
                           onClick={() => setConfirmId(child.id)}
-                          className="text-[11px] font-bold text-gray-400 hover:text-red-500"
+                          className="text-[11px] font-bold text-gray-400 hover:text-red-500 font-switzer"
                         >
                           Remove
                         </button>
                       </div>
                     </>
                   ) : (
-                    <div className="rounded-2xl border border-red-200 bg-red-50 p-3">
-                      <p className="text-xs text-gray-800 mb-3 text-center">
+                    <div className="rounded-2xl border border-red-200 bg-red-50 p-3 font-switzer">
+                      <p className="text-xs text-gray-800 mb-3 text-center font-switzer">
                         Remove <span className="font-bold">{child.name}</span>?
                       </p>
                       <div className="flex gap-2">
@@ -548,7 +551,7 @@ function ParentDashboardContent() {
                           type="button"
                           onClick={() => setConfirmId(null)}
                           disabled={isDeleting}
-                          className="flex-1 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-bold"
+                          className="flex-1 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-bold font-switzer"
                         >
                           Keep
                         </button>
@@ -556,7 +559,7 @@ function ParentDashboardContent() {
                           type="button"
                           onClick={() => void handleDeleteChild(child)}
                           disabled={isDeleting}
-                          className="flex-1 py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold disabled:opacity-50"
+                          className="flex-1 py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold disabled:opacity-50 font-switzer"
                         >
                           {isDeleting ? "..." : "Remove"}
                         </button>
@@ -571,18 +574,18 @@ function ParentDashboardContent() {
       </div>
 
       {showParentPinModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl border border-gray-100">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 font-switzer">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl border border-gray-100 font-switzer">
             <div className="text-3xl mb-2">🔒</div>
-            <h3 className="text-xl font-extrabold text-gray-900 mb-1">
+            <h3 className="font-achiko text-xl text-gray-900 mb-1">
               {hasParentPin ? "Change Parent PIN" : "Set Parent PIN"}
             </h3>
-            <p className="text-gray-500 text-xs mb-6">
+            <p className="text-gray-500 text-xs mb-6 font-switzer">
               Secret 4-digit code for parent access.
             </p>
-            <form onSubmit={handleSaveParentPin} className="space-y-4">
+            <form onSubmit={handleSaveParentPin} className="space-y-4 font-switzer">
               <div>
-                <label className="block text-xs font-bold text-gray-700 text-left mb-1">
+                <label className="block text-xs font-bold text-gray-700 text-left mb-1 font-switzer">
                   New code
                 </label>
                 <input
@@ -594,12 +597,12 @@ function ParentDashboardContent() {
                     setNewParentPin(e.target.value.replace(/\D/g, "").slice(0, 4))
                   }
                   placeholder="••••"
-                  className="w-full px-4 py-2.5 rounded-2xl border border-gray-200 bg-gray-50 text-center text-2xl tracking-[0.4em] font-bold focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  className="w-full px-4 py-2.5 rounded-2xl border border-gray-200 bg-gray-50 text-center text-2xl tracking-[0.4em] font-bold focus:outline-none focus:ring-2 focus:ring-yellow-400 font-switzer"
                   autoFocus
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-700 text-left mb-1">
+                <label className="block text-xs font-bold text-gray-700 text-left mb-1 font-switzer">
                   Confirm
                 </label>
                 <input
@@ -611,15 +614,15 @@ function ParentDashboardContent() {
                     setConfirmParentPin(e.target.value.replace(/\D/g, "").slice(0, 4))
                   }
                   placeholder="••••"
-                  className="w-full px-4 py-2.5 rounded-2xl border border-gray-200 bg-gray-50 text-center text-2xl tracking-[0.4em] font-bold focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  className="w-full px-4 py-2.5 rounded-2xl border border-gray-200 bg-gray-50 text-center text-2xl tracking-[0.4em] font-bold focus:outline-none focus:ring-2 focus:ring-yellow-400 font-switzer"
                 />
               </div>
               {parentPinError && (
-                <p className="text-xs font-bold text-red-600 bg-red-50 py-2 px-3 rounded-xl">
+                <p className="text-xs font-bold text-red-600 bg-red-50 py-2 px-3 rounded-xl font-switzer">
                   {parentPinError}
                 </p>
               )}
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-2 pt-2 font-switzer">
                 <button
                   type="button"
                   onClick={() => {
@@ -628,7 +631,7 @@ function ParentDashboardContent() {
                     setNewParentPin("");
                     setConfirmParentPin("");
                   }}
-                  className="flex-1 py-2.5 rounded-2xl border border-gray-200 text-xs font-bold text-gray-600"
+                  className="flex-1 py-2.5 rounded-2xl border border-gray-200 text-xs font-bold text-gray-600 font-switzer"
                 >
                   Cancel
                 </button>
@@ -639,7 +642,7 @@ function ParentDashboardContent() {
                     newParentPin.length !== 4 ||
                     confirmParentPin.length !== 4
                   }
-                  className="flex-1 py-2.5 rounded-2xl bg-[#FCE588] text-black text-xs font-bold disabled:opacity-50"
+                  className="flex-1 py-2.5 rounded-2xl bg-[#FCE588] text-black text-xs font-bold disabled:opacity-50 font-switzer"
                 >
                   {parentPinSaving ? "Saving..." : "Save"}
                 </button>
@@ -656,8 +659,8 @@ export default function ParentDashboard() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center font-sans">
-          <p className="text-gray-500 font-bold animate-pulse">Loading Parent Dashboard...</p>
+        <div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center font-switzer">
+          <p className="text-gray-500 font-bold animate-pulse font-switzer">Loading Parent Dashboard...</p>
         </div>
       }
     >
