@@ -1,10 +1,9 @@
 /**
  * @file app/api/transcribe/route.ts
- * @description Deepgram Speech-to-Text for Onesimos read-aloud sessions.
- * Accepts WebM / MP4 / AAC / OGG from Chrome, Safari, and Amazon Silk (Fire OS).
- * Keyword boosting is strictly restricted to long/complex vocabulary (> 4 letters)
- * so short phonics target words (like "kite", "cat", "hat") are decoded naturally
- * without Deepgram auto-correcting speech errors.
+ * @description Deepgram Speech-to-Text API endpoint for Onesimos read-aloud sessions.
+ * Accepts WebM / MP4 / AAC / OGG audio buffers and returns transcribed text.
+ * Uses verbatim word output (smart_format=false) so numbers and phonics words
+ * match children's storybook text literally without artificial formatting.
  *
  * @module app/api/transcribe/route
  */
@@ -25,15 +24,12 @@ function buildDeepgramUrl(keywords: string[]): string {
   const params = new URLSearchParams({
     model: "nova-2",
     language: "en",
-    smart_format: "true",
+    smart_format: "false",
     punctuate: "true",
     utterances: "false",
-    filler_words: "false",
+    filler_words: "true",
   });
 
-  // CRITICAL FIX: Only boost long/complex words (> 4 chars).
-  // Short phonics words (<= 4 chars like "kite", "cat") MUST NOT be boosted,
-  // allowing Deepgram to accurately transcribe "kit" when the child mispronounces "kite".
   const longVocabularyOnly = Array.from(
     new Set(
       keywords
@@ -70,7 +66,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Optional comma-separated page words for keyword boosting
     const keywordsRaw = formData.get("keywords");
     const keywords: string[] =
       typeof keywordsRaw === "string" && keywordsRaw.trim().length > 0
@@ -79,7 +74,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const buffer = Buffer.from(await audio.arrayBuffer());
 
-    // Reject only empty payloads
     if (buffer.length < 64) {
       return NextResponse.json(
         { error: "Audio too short", transcript: "" },
