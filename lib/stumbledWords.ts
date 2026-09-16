@@ -1,7 +1,8 @@
 /**
  * @file lib/stumbledWords.ts
  * @description Speech classification, strict phonics stumble extraction algorithm,
- * tap-to-hear audio synthesis for Amazon Fire OS / Silk, and resilient Supabase persistence.
+ * cloud-first tap-to-hear audio synthesis (Deepgram Aura primary, Web Speech fallback,
+ * beep as last resort), and resilient Supabase persistence.
  *
  * @dependencies
  * - @/lib/supabaseClient (Database logging)
@@ -16,13 +17,12 @@ import { isGeoName, formatGeoNameDisplay } from "./geoNames";
 export type WordClassification = "word" | "name";
 
 export interface StumbledItem {
-  word: string;        // Cleaned lowercase token (e.g. "whisper")
-  display: string;     // Formatted display token (e.g. "whisper" or "Chinedu")
+  word: string;
+  display: string;
   type: WordClassification;
   count?: number;
 }
 
-/** Strictly typed interface for items returned with a stumble frequency count */
 export interface StumbledWordCountItem extends StumbledItem {
   count: number;
 }
@@ -48,16 +48,10 @@ const COMMON_SENTENCE_STARTERS = new Set([
   "long", "look", "listen", "come", "here", "just",
 ]);
 
-/**
- * Strips leading and trailing punctuation.
- */
 export function stripPunctuation(w: string): string {
   return w.replace(/^[^\w]+|[^\w]+$/g, "");
 }
 
-/**
- * Levenshtein distance calculation for string edit distance.
- */
 function levenshteinDistance(a: string, b: string): number {
   if (a.length === 0) return b.length;
   if (b.length === 0) return a.length;
@@ -78,10 +72,10 @@ function levenshteinDistance(a: string, b: string): number {
         matrix[i][j] = matrix[i - 1][j - 1];
       } else {
         matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1, // substitution
+          matrix[i - 1][j - 1] + 1,
           Math.min(
-            matrix[i][j - 1] + 1, // insertion
-            matrix[i - 1][j] + 1  // deletion
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j] + 1
           )
         );
       }
@@ -91,11 +85,6 @@ function levenshteinDistance(a: string, b: string): number {
   return matrix[b.length][a.length];
 }
 
-/**
- * Strict phonics speech matcher for children's reading:
- * - Words <= 5 letters: MUST match 100% exactly.
- * - Words 6+ letters: Max 1 edit distance AND must share starting letter.
- */
 function isPrecisionMatch(target: string, candidate: string): boolean {
   if (target === candidate) return true;
   if (!target || !candidate) return false;
@@ -117,9 +106,6 @@ function isPrecisionMatch(target: string, candidate: string): boolean {
 
 // ─── SECTION 2: TOKEN EXTRACTION & CLASSIFICATION ─────────────────────────
 
-/**
- * Extracts tokens from story page text, classifying proper nouns/names vs vocabulary.
- */
 export function extractClassifiedTokens(pageText: string): StumbledItem[] {
   const sentences = pageText.split(/(?<=[.?!])\s+|\n+/g);
   const items: StumbledItem[] = [];
@@ -163,10 +149,6 @@ export function extractClassifiedTokens(pageText: string): StumbledItem[] {
   return items;
 }
 
-/**
- * Strict stumble detection algorithm.
- * Accurately catches misread words, silent 'e' drops, and skipped tokens.
- */
 export function findStumbledItems(pageText: string, transcript: string): StumbledItem[] {
   const expectedItems = extractClassifiedTokens(pageText);
 
@@ -198,26 +180,69 @@ export function findStumbledItems(pageText: string, transcript: string): Stumble
   return missed;
 }
 
-/**
- * Legacy string array return helper.
- */
 export function findStumbledWords(pageText: string, transcript: string): string[] {
   return findStumbledItems(pageText, transcript).map((item) => item.word);
 }
 
-// ─── SECTION 3: FIRE OS SAFE AUDIO SYNTHESIS ────────────────────────────────
+// ─── SECTION 3: CROSS-DEVICE TAP-TO-HEAR ────────────────────────────────
 
-export function isSpeechSynthesisSupported(): boolean {
-  return typeof window !== "undefined" && "speechSynthesis" in window;
-}
+/** Global audio element reference to prevent overlap */
+let activeAudio: HTMLAudioElement | null = null;
 
-export function speakWord(text: string, lang = "en-US"): void {
+/**
+ * Speaks a word out loud reliably across all devices.
+ * Priority: Deepgram Aura Cloud TTS > Web Speech API > Beep fallback.
+ */
+export async function speakWord(text: string, lang = "en-US"): Promise<void> {
   if (typeof window === "undefined" || !text) return;
-
   const cleanText = text.trim();
+  if (!cleanText) return;
 
+  // Stop any currently playing audio
+  if (activeAudio) {
+    try {
+      activeAudio.pause();
+      activeAudio.src = "";
+    } catch {
+      // ignore
+    }
+    activeAudio = null;
+  }
+
+  // Attempt 1: Cloud TTS (Deepgram Aura, works on iOS Safari + Amazon Fire OS)
   try {
-    if (isSpeechSynthesisSupported()) {
+    const response = await fetch("/api/tts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: cleanText }),
+    });
+
+    if (response.ok) {
+      const blob = await response.blob();
+      const audioUrl = URL.createObjectURL(blob);
+      const audio = new Audio(audioUrl);
+      activeAudio = audio;
+
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+        if (activeAudio === audio) activeAudio = null;
+      };
+
+      audio.onerror = () => {
+        URL.revokeObjectURL(audioUrl);
+        if (activeAudio === audio) activeAudio = null;
+      };
+
+      await audio.play();
+      return;
+    }
+  } catch (err) {
+    console.warn("[speakWord] Cloud TTS failed, falling back to Web Speech:", err);
+  }
+
+  // Attempt 2: Native Web Speech (works on Chrome/PC)
+  try {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
       const synth = window.speechSynthesis;
       synth.cancel();
 
@@ -236,10 +261,15 @@ export function speakWord(text: string, lang = "en-US"): void {
       return;
     }
   } catch {
-    // Fallback
+    // Continue to beep fallback
   }
 
+  // Attempt 3: Beep fallback (last resort)
   playWebAudioBeepFallback();
+}
+
+export function isSpeechSynthesisSupported(): boolean {
+  return typeof window !== "undefined" && "speechSynthesis" in window;
 }
 
 function playWebAudioBeepFallback(): void {
@@ -278,7 +308,7 @@ export async function saveStumbledWord(params: {
   }
 
   try {
-    // 1. Guaranteed Write to public.stumbled_words_log (Verified present in your Supabase schema)
+    // 1. Guaranteed Write to public.stumbled_words_log (Verified in schema)
     try {
       await supabase.from("stumbled_words_log").insert({
         child_id: params.childId,
