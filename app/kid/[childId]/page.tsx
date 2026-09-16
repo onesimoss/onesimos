@@ -332,8 +332,8 @@ export default function KidHomePage(): JSX.Element {
             🔒 Parent Portal
           </button>
           
-          {/* Logo Wordmark in ALL CAPS logo Font */}
-          <span className="font-logo text-3xl text-amber-900 tracking-wider font-extrabold uppercase">
+          {/* Logo Wordmark exactly matching Homepage Nav/Hero without font-weight overrides that cause fallback */}
+          <span className="font-logo text-3xl md:text-4xl tracking-tight text-amber-900">
             ONESIMOS
           </span>
 
