@@ -396,40 +396,54 @@ export default function ChildReportPage(): JSX.Element {
           </div>
         </section>
 
-        {/* Key Academic Metrics Grid : Switzer text-2xl font-black numbers, clean layout */}
-        <section className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8 font-switzer">
-          <div className="bg-white rounded-3xl p-4 sm:p-5 border border-gray-200 shadow-xs text-center flex flex-col justify-center">
-            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Fluency Speed</p>
-            <p className="font-switzer text-2xl sm:text-3xl font-black leading-none text-amber-950">
+        {/* Key Academic Metrics Grid : Equal height flex cards with Switzer font and 'yrs' abbreviation */}
+        <section className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8 font-switzer items-stretch">
+          <div className="bg-white rounded-3xl p-5 border border-gray-200 shadow-xs text-center flex flex-col justify-between h-full">
+            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider font-switzer">
+              Fluency Speed
+            </p>
+            <p className="font-switzer text-2xl sm:text-3xl font-black text-amber-950 my-3 leading-none">
               {isPreReader || stats.wordsPerMinute === 0 ? "n/a" : stats.wordsPerMinute}
             </p>
-            <p className="text-[10px] text-gray-400 font-bold mt-2">
+            <p className="text-[10px] text-gray-400 font-bold font-switzer">
               {isPreReader ? "Not tracked yet" : "Words / Minute"}
             </p>
           </div>
 
-          <div className="bg-white rounded-3xl p-4 sm:p-5 border border-gray-200 shadow-xs text-center flex flex-col justify-center">
-            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Accuracy</p>
-            <p className="font-switzer text-2xl sm:text-3xl font-black leading-none text-emerald-700">
+          <div className="bg-white rounded-3xl p-5 border border-gray-200 shadow-xs text-center flex flex-col justify-between h-full">
+            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider font-switzer">
+              Accuracy
+            </p>
+            <p className="font-switzer text-2xl sm:text-3xl font-black text-emerald-700 my-3 leading-none">
               {stats.accuracyPercentage}%
             </p>
-            <p className="text-[10px] text-gray-400 font-bold mt-2">Pronunciation</p>
+            <p className="text-[10px] text-gray-400 font-bold font-switzer">
+              Pronunciation
+            </p>
           </div>
 
-          <div className="bg-white rounded-3xl p-4 sm:p-5 border border-gray-200 shadow-xs text-center flex flex-col justify-center">
-            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Comprehension</p>
-            <p className="font-switzer text-2xl sm:text-3xl font-black leading-none text-indigo-700">
+          <div className="bg-white rounded-3xl p-5 border border-gray-200 shadow-xs text-center flex flex-col justify-between h-full">
+            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider font-switzer">
+              Comprehension
+            </p>
+            <p className="font-switzer text-2xl sm:text-3xl font-black text-indigo-700 my-3 leading-none">
               {stats.comprehensionPercentage}%
             </p>
-            <p className="text-[10px] text-gray-400 font-bold mt-2">Post-Story Quiz</p>
+            <p className="text-[10px] text-gray-400 font-bold font-switzer">
+              Post-Story Quiz
+            </p>
           </div>
 
-          <div className="bg-white rounded-3xl p-4 sm:p-5 border border-gray-200 shadow-xs text-center flex flex-col justify-center">
-            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Reading Age</p>
-            <p className="font-switzer text-lg sm:text-xl font-black leading-tight text-amber-950">
-              {stats.readingAgeEstimate}
+          <div className="bg-white rounded-3xl p-5 border border-gray-200 shadow-xs text-center flex flex-col justify-between h-full">
+            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider font-switzer">
+              Reading Age
             </p>
-            <p className="text-[10px] text-gray-400 font-bold mt-2">Estimated Level</p>
+            <p className="font-switzer text-lg sm:text-xl font-black text-amber-950 my-3 leading-snug">
+              {stats.readingAgeEstimate.replace("years", "yrs")}
+            </p>
+            <p className="text-[10px] text-gray-400 font-bold font-switzer">
+              Estimated Level
+            </p>
           </div>
         </section>
 
