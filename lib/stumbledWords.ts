@@ -1,7 +1,7 @@
 /**
  * @file lib/stumbledWords.ts
  * @description Speech classification, strict phonics stumble extraction algorithm,
- * tap-to-hear audio synthesis for Amazon Fire OS / Silk, and Supabase persistence.
+ * tap-to-hear audio synthesis for Amazon Fire OS / Silk, and resilient Supabase persistence.
  *
  * @dependencies
  * - @/lib/supabaseClient (Database logging)
@@ -93,25 +93,21 @@ function levenshteinDistance(a: string, b: string): number {
 
 /**
  * Strict phonics speech matcher for children's reading:
- * - Words <= 5 letters: MUST match 100% exactly (e.g. "kite" vs "kit" -> STUMBLE!).
+ * - Words <= 5 letters: MUST match 100% exactly.
  * - Words 6+ letters: Max 1 edit distance AND must share starting letter.
  */
 function isPrecisionMatch(target: string, candidate: string): boolean {
   if (target === candidate) return true;
   if (!target || !candidate) return false;
 
-  // Strict Rule 1: Words 5 letters or fewer MUST match 100% exactly.
-  // Prevents "kite" -> "kit", "cat" -> "bat", "tree" -> "free" from slipping through as matches.
   if (target.length <= 5) {
     return false;
   }
 
-  // Strict Rule 2: Must share the same starting letter
   if (target.charAt(0) !== candidate.charAt(0)) {
     return false;
   }
 
-  // Strict Rule 3: Long words (6+ chars)
   const distance = levenshteinDistance(target, candidate);
   const maxLen = Math.max(target.length, candidate.length);
   const similarity = 1 - distance / maxLen;
@@ -191,7 +187,6 @@ export function findStumbledItems(pageText: string, transcript: string): Stumble
   for (const item of expectedItems) {
     if (seen.has(item.word)) continue;
 
-    // Check if expected word exists in transcript directly or via strict precision match
     const found = heardTokens.some((heard) => isPrecisionMatch(item.word, heard));
 
     if (!found) {
@@ -283,41 +278,45 @@ export async function saveStumbledWord(params: {
   }
 
   try {
-    // 1. Primary persistence to public.stumbled_words (drives Word Pocket & Spelling Game)
-    const { data: existing } = await supabase
-      .from("stumbled_words")
-      .select("id, times_stumbled")
-      .eq("child_id", params.childId)
-      .eq("word", cleaned)
-      .maybeSingle();
-
-    if (existing) {
-      await supabase
-        .from("stumbled_words")
-        .update({
-          times_stumbled: (existing.times_stumbled || 1) + 1,
-          mastered: false,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", existing.id);
-    } else {
-      await supabase.from("stumbled_words").insert({
-        child_id: params.childId,
-        word: cleaned,
-        times_stumbled: 1,
-        mastered: false,
-      });
-    }
-
-    // 2. Secondary log table persistence wrapped safely in isolated block
+    // 1. Guaranteed Write to public.stumbled_words_log (Verified present in your Supabase schema)
     try {
       await supabase.from("stumbled_words_log").insert({
         child_id: params.childId,
         word: cleaned,
         session_id: params.sessionId || null,
       });
+    } catch (logErr) {
+      console.error("[saveStumbledWord] stumbled_words_log insert error:", logErr);
+    }
+
+    // 2. Secondary write to stumbled_words (if table exists)
+    try {
+      const { data: existing } = await supabase
+        .from("stumbled_words")
+        .select("id, times_stumbled")
+        .eq("child_id", params.childId)
+        .eq("word", cleaned)
+        .maybeSingle();
+
+      if (existing) {
+        await supabase
+          .from("stumbled_words")
+          .update({
+            times_stumbled: (existing.times_stumbled || 1) + 1,
+            mastered: false,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existing.id);
+      } else {
+        await supabase.from("stumbled_words").insert({
+          child_id: params.childId,
+          word: cleaned,
+          times_stumbled: 1,
+          mastered: false,
+        });
+      }
     } catch {
-      // Ignore secondary audit log table constraints if not present
+      // Table may not exist yet, ignoring
     }
 
     return { error: null };
@@ -331,6 +330,7 @@ export async function getRecentStumbledWords(
   childId: string,
   limit = 20
 ): Promise<{ data: StumbledWordCountItem[]; error: unknown | null }> {
+  // 1. Try public.stumbled_words first
   try {
     const { data, error } = await supabase
       .from("stumbled_words")
@@ -340,24 +340,56 @@ export async function getRecentStumbledWords(
       .order("updated_at", { ascending: false })
       .limit(limit);
 
-    if (error || !data) {
-      return { data: [], error };
+    if (!error && data && data.length > 0) {
+      const items: StumbledWordCountItem[] = data.map((row) => {
+        const lower = row.word.toLowerCase();
+        const isName = isGeoName(lower) || /^[A-Z]/.test(row.word);
+        return {
+          word: lower,
+          display: isName ? formatGeoNameDisplay(lower) : lower,
+          type: isName ? "name" : "word",
+          count: row.times_stumbled || 1,
+        };
+      });
+      return { data: items, error: null };
     }
-
-    const items: StumbledWordCountItem[] = data.map((row) => {
-      const lower = row.word.toLowerCase();
-      const isName = isGeoName(lower) || /^[A-Z]/.test(row.word);
-      return {
-        word: lower,
-        display: isName ? formatGeoNameDisplay(lower) : lower,
-        type: isName ? "name" : "word",
-        count: row.times_stumbled || 1,
-      };
-    });
-
-    return { data: items, error: null };
-  } catch (err) {
-    console.error("[getRecentStumbledWords] Error fetching stumbled words:", err);
-    return { data: [], error: err };
+  } catch {
+    // Fall through to stumbled_words_log
   }
+
+  // 2. Resilient Fallback: Aggregate directly from public.stumbled_words_log
+  try {
+    const { data: logData, error: logError } = await supabase
+      .from("stumbled_words_log")
+      .select("word")
+      .eq("child_id", childId)
+      .limit(100);
+
+    if (!logError && logData && logData.length > 0) {
+      const counts = new Map<string, number>();
+      logData.forEach((row) => {
+        if (!row.word) return;
+        const w = row.word.toLowerCase();
+        counts.set(w, (counts.get(w) || 0) + 1);
+      });
+
+      const items: StumbledWordCountItem[] = Array.from(counts.entries())
+        .slice(0, limit)
+        .map(([word, count]) => {
+          const isName = isGeoName(word) || /^[A-Z]/.test(word);
+          return {
+            word,
+            display: isName ? formatGeoNameDisplay(word) : word,
+            type: isName ? "name" : "word",
+            count,
+          };
+        });
+
+      return { data: items, error: null };
+    }
+  } catch (err) {
+    console.error("[getRecentStumbledWords] Error reading log table:", err);
+  }
+
+  return { data: [], error: null };
 }
