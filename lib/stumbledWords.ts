@@ -93,17 +93,16 @@ function levenshteinDistance(a: string, b: string): number {
 
 /**
  * Strict phonics speech matcher for children's reading:
- * - Words <= 4 letters: MUST match 100% exactly (e.g. "kite" vs "kit" -> STUMBLE!).
- * - Words 5-6 letters: Candidate must be at least 5 chars, same start and end letter, max 1 edit.
- * - Words 7+ letters: Max 1-2 edit distance (85%+ similarity) AND same starting letter.
+ * - Words <= 5 letters: MUST match 100% exactly (e.g. "kite" vs "kit" -> STUMBLE!).
+ * - Words 6+ letters: Max 1 edit distance AND must share starting letter.
  */
 function isPrecisionMatch(target: string, candidate: string): boolean {
   if (target === candidate) return true;
   if (!target || !candidate) return false;
 
-  // Strict Rule 1: Words 4 letters or fewer MUST match 100% exactly!
-  // Prevents "kite" -> "kit", "cat" -> "bat", "tree" -> "free" from slipping through.
-  if (target.length <= 4) {
+  // Strict Rule 1: Words 5 letters or fewer MUST match 100% exactly.
+  // Prevents "kite" -> "kit", "cat" -> "bat", "tree" -> "free" from slipping through as matches.
+  if (target.length <= 5) {
     return false;
   }
 
@@ -112,21 +111,12 @@ function isPrecisionMatch(target: string, candidate: string): boolean {
     return false;
   }
 
-  // Strict Rule 3: Medium words (5-6 chars)
-  if (target.length <= 6) {
-    if (candidate.length < 4) return false;
-    if (target.charAt(target.length - 1) !== candidate.charAt(candidate.length - 1)) {
-      return false;
-    }
-    return levenshteinDistance(target, candidate) <= 1;
-  }
-
-  // Strict Rule 4: Long words (7+ chars)
+  // Strict Rule 3: Long words (6+ chars)
   const distance = levenshteinDistance(target, candidate);
   const maxLen = Math.max(target.length, candidate.length);
   const similarity = 1 - distance / maxLen;
 
-  return similarity >= 0.85;
+  return similarity >= 0.88;
 }
 
 // ─── SECTION 2: TOKEN EXTRACTION & CLASSIFICATION ─────────────────────────
@@ -293,7 +283,7 @@ export async function saveStumbledWord(params: {
   }
 
   try {
-    // Save to public.stumbled_words for Word Pocket & Spelling Game
+    // 1. Primary persistence to public.stumbled_words (drives Word Pocket & Spelling Game)
     const { data: existing } = await supabase
       .from("stumbled_words")
       .select("id, times_stumbled")
@@ -319,16 +309,20 @@ export async function saveStumbledWord(params: {
       });
     }
 
-    // Save to public.stumbled_words_log
-    await supabase.from("stumbled_words_log").insert({
-      child_id: params.childId,
-      word: cleaned,
-      session_id: params.sessionId || null,
-    });
+    // 2. Secondary log table persistence wrapped safely in isolated block
+    try {
+      await supabase.from("stumbled_words_log").insert({
+        child_id: params.childId,
+        word: cleaned,
+        session_id: params.sessionId || null,
+      });
+    } catch {
+      // Ignore secondary audit log table constraints if not present
+    }
 
     return { error: null };
   } catch (err) {
-    console.error("Error saving stumbled word:", err);
+    console.error("[saveStumbledWord] Error saving stumbled word:", err);
     return { error: err };
   }
 }
@@ -363,7 +357,7 @@ export async function getRecentStumbledWords(
 
     return { data: items, error: null };
   } catch (err) {
-    console.error("Error fetching stumbled words:", err);
+    console.error("[getRecentStumbledWords] Error fetching stumbled words:", err);
     return { data: [], error: err };
   }
 }
