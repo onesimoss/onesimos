@@ -4,7 +4,7 @@
  *              live stumbled vocabulary preview, Paystack subscription status,
  *              and clean metric displays without fake fallbacks or dashes.
  *
- * @fonts Achiko (headings/logo) + Switzer (body/UI)
+ * @fonts Achiko (headings) + Switzer (body/UI/stat numbers)
  * @dependencies
  * - @/context/AuthContext
  * - @/lib/children, @/lib/avatars, @/lib/stumbledWords
@@ -134,7 +134,6 @@ function ParentDashboardContent() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  // Check for successful payment callback param
   const paymentSuccess = searchParams.get("payment") === "success";
 
   useEffect(() => {
@@ -446,37 +445,43 @@ function ParentDashboardContent() {
                   </div>
                 </div>
 
-                {/* Stat Box Cards */}
+                {/* Stat Box Cards : Switzer numbers, tighter padding */}
                 <div className="grid grid-cols-3 gap-2 mb-4">
-                  <div className={`rounded-2xl p-2.5 text-center ${
-                    isPreReader
-                      ? "bg-gray-50 border border-gray-100"
-                      : "bg-amber-50/80 border border-amber-100"
-                  }`}>
-                    <p className={`text-lg font-black ${
-                      isPreReader ? "text-gray-400" : "text-amber-950"
-                    }`}>
+                  <div
+                    className={`rounded-2xl px-2 py-2 text-center ${
+                      isPreReader
+                        ? "bg-gray-50 border border-gray-100"
+                        : "bg-amber-50/80 border border-amber-100"
+                    }`}
+                  >
+                    <p
+                      className={`font-switzer text-2xl font-black leading-none ${
+                        isPreReader ? "text-gray-400" : "text-amber-950"
+                      }`}
+                    >
                       {isPreReader || reportStats.wordsPerMinute === 0
-                        ? "—"
+                        ? "n/a"
                         : reportStats.wordsPerMinute}
                     </p>
-                    <p className={`text-[9px] font-bold uppercase ${
-                      isPreReader ? "text-gray-400" : "text-amber-800"
-                    }`}>
+                    <p
+                      className={`text-[9px] font-bold uppercase mt-1 ${
+                        isPreReader ? "text-gray-400" : "text-amber-800"
+                      }`}
+                    >
                       WPM
                     </p>
                   </div>
-                  <div className="rounded-2xl bg-emerald-50/80 border border-emerald-100 p-2.5 text-center">
-                    <p className="text-lg font-black text-emerald-950">
+                  <div className="rounded-2xl bg-emerald-50/80 border border-emerald-100 px-2 py-2 text-center">
+                    <p className="font-switzer text-2xl font-black leading-none text-emerald-950">
                       {reportStats.accuracyPercentage}%
                     </p>
-                    <p className="text-[9px] font-bold text-emerald-800 uppercase">Accuracy</p>
+                    <p className="text-[9px] font-bold text-emerald-800 uppercase mt-1">Accuracy</p>
                   </div>
-                  <div className="rounded-2xl bg-sky-50/80 border border-sky-100 p-2.5 text-center">
-                    <p className="text-lg font-black text-sky-950">
+                  <div className="rounded-2xl bg-sky-50/80 border border-sky-100 px-2 py-2 text-center">
+                    <p className="font-switzer text-2xl font-black leading-none text-sky-950">
                       {reportStats.comprehensionPercentage}%
                     </p>
-                    <p className="text-[9px] font-bold text-sky-800 uppercase">Comprehend</p>
+                    <p className="text-[9px] font-bold text-sky-800 uppercase mt-1">Comprehend</p>
                   </div>
                 </div>
 
