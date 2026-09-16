@@ -2,7 +2,7 @@
  * @file app/kid/[childId]/page.tsx
  * @description Kid Home View : 4-story active grid (2x2 layout), daily virtue affirmation,
  * completed stories bookshelf (Read for Fun mode without mic/token burn), personal
- * Living Story chapters with target word badges, divided Word Pocket (Vocab vs Names),
+ * Living Story chapters with target word badges, always-visible Word Pocket (Vocab vs Names),
  * Paystack membership unlock flow, and Parent Gate access.
  *
  * @fonts Logo (wordmark) + Achiko (headings/greetings) + Switzer (body/UI/stats)
@@ -332,7 +332,7 @@ export default function KidHomePage(): JSX.Element {
             🔒 Parent Portal
           </button>
           
-          {/* Logo Wordmark exactly matching Homepage Nav/Hero without font-weight overrides that cause fallback */}
+          {/* Logo Wordmark */}
           <span className="font-logo text-3xl md:text-4xl tracking-tight text-amber-900">
             Onesimos
           </span>
@@ -616,88 +616,102 @@ export default function KidHomePage(): JSX.Element {
           </section>
         )}
 
-        {/* Section 4: Word Pocket (Divided into Practice Words vs Names & Places) */}
-        {recentWords.length > 0 && (
-          <section className="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm font-switzer">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="font-achiko text-2xl text-amber-900">
-                  🎒 Word Pocket
-                </h2>
-                <p className="text-xs text-gray-500 font-switzer">
-                  Tap any word to hear how it sounds
-                </p>
-              </div>
+        {/* Section 4: Word Pocket (ALWAYS VISIBLE with Tap-to-Hear) */}
+        <section className="bg-white rounded-3xl p-6 border border-gray-200 shadow-sm font-switzer mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="font-achiko text-2xl text-amber-900">
+                🎒 Word Pocket
+              </h2>
+              <p className="text-xs text-gray-500 font-switzer">
+                Tap any word to hear how it sounds
+              </p>
+            </div>
+            {recentWords.length > 0 && (
               <Link
                 href={`/kid/${child.id}/spell`}
                 className="text-xs font-bold text-amber-700 hover:text-amber-800 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200 font-switzer"
               >
                 Spell these →
               </Link>
+            )}
+          </div>
+
+          {recentWords.length === 0 ? (
+            <div className="p-6 rounded-2xl bg-amber-50/50 border border-amber-200/60 text-center font-switzer">
+              <p className="text-2xl mb-1">🎒</p>
+              <p className="font-bold text-amber-900 text-sm mb-1 font-switzer">
+                Your Word Pocket is ready!
+              </p>
+              <p className="text-xs text-gray-600 max-w-md mx-auto font-switzer leading-relaxed">
+                Read stories out loud with the mic. Tricky words you stumble on will appear here so you can tap and hear them anytime!
+              </p>
             </div>
-
-            {/* Sub-section: Vocabulary Practice Words */}
-            {vocabularyWords.length > 0 && (
-              <div className="mb-4">
-                <p className="text-[11px] font-bold text-amber-800 uppercase tracking-wider mb-2 font-switzer">
-                  Vocabulary Words
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {vocabularyWords.map((item) => {
-                    const isSpeaking = activeSpeakingWord === item.word;
-                    return (
-                      <button
-                        key={item.word}
-                        type="button"
-                        onClick={() => handleSpeakWord(item.word)}
-                        className={`px-3.5 py-2 rounded-2xl border text-xs font-bold transition-all flex items-center gap-1.5 font-switzer ${
-                          isSpeaking
-                            ? "bg-amber-200 border-amber-400 text-amber-950 scale-95"
-                            : "bg-amber-50/80 border-amber-200 text-amber-900 hover:bg-amber-100"
-                        }`}
-                      >
-                        <span>{item.display}</span>
-                        <span className="text-[10px] text-amber-500">🔊</span>
-                      </button>
-                    );
-                  })}
+          ) : (
+            <>
+              {/* Sub-section: Vocabulary Practice Words */}
+              {vocabularyWords.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-[11px] font-bold text-amber-800 uppercase tracking-wider mb-2 font-switzer">
+                    Vocabulary Words
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {vocabularyWords.map((item) => {
+                      const isSpeaking = activeSpeakingWord === item.word;
+                      return (
+                        <button
+                          key={item.word}
+                          type="button"
+                          onClick={() => handleSpeakWord(item.word)}
+                          className={`px-3.5 py-2 rounded-2xl border text-xs font-bold transition-all flex items-center gap-1.5 font-switzer ${
+                            isSpeaking
+                              ? "bg-amber-200 border-amber-400 text-amber-950 scale-95"
+                              : "bg-amber-50/80 border-amber-200 text-amber-900 hover:bg-amber-100"
+                          }`}
+                        >
+                          <span>{item.display}</span>
+                          <span className="text-[10px] text-amber-500">🔊</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Sub-section: Names & Places */}
-            {nameWords.length > 0 && (
-              <div>
-                <p className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2 font-switzer">
-                  Names & Places
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {nameWords.map((item) => {
-                    const isSpeaking = activeSpeakingWord === item.word;
-                    return (
-                      <button
-                        key={item.word}
-                        type="button"
-                        onClick={() => handleSpeakWord(item.word)}
-                        className={`px-3.5 py-2 rounded-2xl border text-xs font-bold transition-all flex items-center gap-1.5 font-switzer ${
-                          isSpeaking
-                            ? "bg-slate-200 border-slate-400 text-slate-900 scale-95"
-                            : "bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100"
-                        }`}
-                      >
-                        <span>{item.display}</span>
-                        <span className="text-[10px] text-slate-400">🔊</span>
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600 font-medium font-switzer">
-                          Name
-                        </span>
-                      </button>
-                    );
-                  })}
+              {/* Sub-section: Names & Places */}
+              {nameWords.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2 font-switzer">
+                    Names & Places
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {nameWords.map((item) => {
+                      const isSpeaking = activeSpeakingWord === item.word;
+                      return (
+                        <button
+                          key={item.word}
+                          type="button"
+                          onClick={() => handleSpeakWord(item.word)}
+                          className={`px-3.5 py-2 rounded-2xl border text-xs font-bold transition-all flex items-center gap-1.5 font-switzer ${
+                            isSpeaking
+                              ? "bg-slate-200 border-slate-400 text-slate-900 scale-95"
+                              : "bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100"
+                          }`}
+                        >
+                          <span>{item.display}</span>
+                          <span className="text-[10px] text-slate-400">🔊</span>
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600 font-medium font-switzer">
+                            Name
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
-          </section>
-        )}
+              )}
+            </>
+          )}
+        </section>
       </div>
 
       {/* Parent PIN Lock Gate Modal */}
