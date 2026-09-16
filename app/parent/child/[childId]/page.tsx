@@ -2,19 +2,14 @@
  * @file app/parent/child/[childId]/page.tsx
  * @description Dedicated Academic Progress Report Page for a single child profile.
  *              Provides "Before & After" growth narratives, honest metrics (WPM, Accuracy,
- *              Comprehension, Reading Age), Living Story Book AI chapter weaving,
+ *              Comprehension, Reading Age), Living Story Book personal chapter weaving,
  *              stumbled practice words, and 1-tap Print/Save PDF report card generation.
  *
  * @fonts Achiko (headings/logo) + Switzer (body/UI)
  * @dependencies
  * - @/context/AuthContext
- * - @/lib/children
- * - @/lib/avatars
- * - @/lib/stumbledWords
- * - @/lib/sessionInsights
- * - @/lib/sessionBudget
- * - @/lib/livingStory
- * - @/lib/lifeSkills
+ * - @/lib/children, @/lib/avatars, @/lib/stumbledWords
+ * - @/lib/sessionInsights, @/lib/sessionBudget, @/lib/livingStory, @/lib/lifeSkills
  */
 
 "use client";
@@ -45,8 +40,6 @@ import {
 } from "@/lib/livingStory";
 import { getLifeSkillById } from "@/lib/lifeSkills";
 
-// ─── HELPERS & NARRATIVE ENGINE ─────────────────────────────────────────────
-
 function curriculumLabel(value: string): string {
   switch (value) {
     case "british":
@@ -63,9 +56,6 @@ function curriculumLabel(value: string): string {
   }
 }
 
-/**
- * Generates a plain-language "Before & After" growth narrative for parents.
- */
 function generateProgressNarrative(
   child: ChildProfile,
   stats: DetailedReportCardStats,
@@ -104,8 +94,6 @@ function generateProgressNarrative(
     recommendation: recommendationText,
   };
 }
-
-// ─── MAIN COMPONENT ─────────────────────────────────────────────────────────
 
 export default function ChildReportPage(): JSX.Element {
   const params = useParams<{ childId: string }>();
@@ -178,7 +166,6 @@ export default function ChildReportPage(): JSX.Element {
     void loadChildReport();
   }, [user, childId, router]);
 
-  // Handlers
   const handleSaveKidPin = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     if (!user || !child) return;
@@ -212,7 +199,7 @@ export default function ChildReportPage(): JSX.Element {
       setGeneratedStories((prev) => [newStory, ...prev]);
       setMessage(`✨ New personal chapter "${newStory.title}" created for ${child.name}!`);
     } catch {
-      setError("Could not generate personal chapter. Please try again.");
+      setError("Could not craft personal chapter. Please try again.");
     } finally {
       setGeneratingChapter(false);
     }
@@ -311,7 +298,6 @@ export default function ChildReportPage(): JSX.Element {
   const ageBand = getAgeBand(child.age);
   const isPreReader = ageBand === "pre-reader";
 
-  // Level Up Nudge eligibility
   const meetsLevelUpThreshold =
     stats.accuracyPercentage >= 85 &&
     stats.comprehensionPercentage >= 80 &&
@@ -322,7 +308,7 @@ export default function ChildReportPage(): JSX.Element {
     <main className="min-h-screen bg-gradient-to-b from-sky-50/50 via-[#FDFBF7] to-amber-50/30 font-switzer pb-16">
       <div className="max-w-4xl mx-auto px-6 py-8">
         
-        {/* Top Bar Navigation (Hidden when printing) */}
+        {/* Top Bar Navigation */}
         <div className="flex items-center justify-between mb-8 print:hidden">
           <Link
             href="/parent"
@@ -341,7 +327,7 @@ export default function ChildReportPage(): JSX.Element {
           </button>
         </div>
 
-        {/* Feedback Banners (Hidden when printing) */}
+        {/* Feedback Banners */}
         {message && (
           <div className="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold font-switzer print:hidden">
             {message}
@@ -443,7 +429,7 @@ export default function ChildReportPage(): JSX.Element {
           </div>
         </section>
 
-        {/* Adaptive Difficulty Bridge — Level Up Nudge (Hidden when printing) */}
+        {/* Adaptive Difficulty Bridge */}
         {meetsLevelUpThreshold && (
           <section className="bg-gradient-to-r from-emerald-50 to-sky-50 rounded-3xl p-6 sm:p-8 border-2 border-emerald-300 shadow-sm mb-8 font-switzer print:hidden">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -475,7 +461,7 @@ export default function ChildReportPage(): JSX.Element {
           </section>
         )}
 
-        {/* AI Living Story Book Engine (Hidden when printing) */}
+        {/* The Living Story Book */}
         <section className="bg-gradient-to-br from-amber-50 to-orange-50/80 rounded-3xl p-6 sm:p-8 border-2 border-amber-300 shadow-sm mb-8 font-switzer print:hidden">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
@@ -492,7 +478,7 @@ export default function ChildReportPage(): JSX.Element {
               disabled={generatingChapter}
               className="px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-md transition-all shrink-0 active:scale-95 disabled:opacity-50 font-switzer"
             >
-              {generatingChapter ? "Weaving AI Chapter..." : "✨ Generate Personal Chapter"}
+              {generatingChapter ? "Crafting Personal Chapter..." : "✨ Generate Personal Chapter"}
             </button>
           </div>
 
@@ -500,7 +486,7 @@ export default function ChildReportPage(): JSX.Element {
           {generatedStories.length === 0 ? (
             <div className="bg-white/80 rounded-2xl p-6 text-center border border-amber-200">
               <p className="text-xs font-bold text-amber-900 font-switzer">
-                No personal chapters generated yet! Tap above to create {child.name}&apos;s first custom chapter.
+                No personal chapters crafted yet! Tap above to create {child.name}&apos;s first custom chapter.
               </p>
             </div>
           ) : (
@@ -523,7 +509,6 @@ export default function ChildReportPage(): JSX.Element {
                           {story.title}
                         </h3>
                         
-                        {/* Badges for Virtue Skill and Stumbled Words */}
                         <div className="flex flex-wrap gap-1.5 mt-2">
                           {skill && (
                             <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold font-switzer">
@@ -543,7 +528,6 @@ export default function ChildReportPage(): JSX.Element {
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      {/* Parent Read-for-Fun Preview Button */}
                       <Link
                         href={`/kid/${child.id}/read/${story.id}?mode=fun`}
                         className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all text-center font-switzer"
@@ -551,7 +535,6 @@ export default function ChildReportPage(): JSX.Element {
                         Preview (No Mic) 📖
                       </Link>
 
-                      {/* Parent Delete Story Button */}
                       <button
                         type="button"
                         onClick={() => void handleDeletePersonalChapter(story.id)}
@@ -592,14 +575,13 @@ export default function ChildReportPage(): JSX.Element {
           </section>
         )}
 
-        {/* Security & Profile Controls (Hidden when printing) */}
+        {/* Security & Profile Controls */}
         <section className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200 shadow-sm font-switzer print:hidden">
           <h2 className="font-achiko text-2xl text-amber-900 mb-4">
             ⚙️ Security & Profile Controls
           </h2>
 
           <div className="space-y-6">
-            {/* Kid PIN Management */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-100">
               <div>
                 <p className="font-bold text-xs text-gray-900">Child Lock PIN</p>
@@ -644,7 +626,6 @@ export default function ChildReportPage(): JSX.Element {
               )}
             </div>
 
-            {/* Delete Child Profile */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <p className="font-bold text-xs text-rose-800">Delete Reader Profile</p>
