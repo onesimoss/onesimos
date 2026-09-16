@@ -334,7 +334,7 @@ export default function KidHomePage(): JSX.Element {
           
           {/* Logo Wordmark exactly matching Homepage Nav/Hero without font-weight overrides that cause fallback */}
           <span className="font-logo text-3xl md:text-4xl tracking-tight text-amber-900">
-            ONESIMOS
+            Onesimos
           </span>
 
           <Link
