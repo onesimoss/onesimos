@@ -5,7 +5,7 @@
  * Living Story chapters with target word badges, divided Word Pocket (Vocab vs Names),
  * Paystack membership unlock flow, and Parent Gate access.
  *
- * @fonts Achiko (headings/logo) + Switzer (body/UI)
+ * @fonts Logo (wordmark) + Achiko (headings/greetings) + Switzer (body/UI/stats)
  * @module app/kid/[childId]/page
  */
 
@@ -82,6 +82,9 @@ export default function KidHomePage(): JSX.Element {
   const [showReminder, setShowReminder] = useState(false);
   const [reminderDismissed, setReminderDismissed] = useState(false);
   const [activeSpeakingWord, setActiveSpeakingWord] = useState<string | null>(null);
+  
+  // Bookshelf Expansion Toggle State
+  const [showAllBookshelf, setShowAllBookshelf] = useState(false);
 
   // Free-plan monthly quota
   const [monthlyUsage, setMonthlyUsage] = useState<MonthlyUsageStatus | null>(null);
@@ -307,6 +310,11 @@ export default function KidHomePage(): JSX.Element {
       ? Math.max(0, monthlyUsage.limit - monthlyUsage.used)
       : null;
 
+  // Limit displayed Bookshelf stories dynamically based on expansion toggle
+  const displayedBookshelfStories = showAllBookshelf
+    ? bookshelfStories
+    : bookshelfStories.slice(0, 4);
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-sky-50/50 via-[#FDFBF7] to-amber-50/30 font-switzer pb-16">
       <div className="max-w-3xl mx-auto px-6 py-8">
@@ -324,8 +332,8 @@ export default function KidHomePage(): JSX.Element {
             🔒 Parent Portal
           </button>
           
-          {/* Logo Wordmark in ALL CAPS Achiko Font */}
-          <span className="font-achiko text-3xl text-amber-900 tracking-wider font-extrabold uppercase">
+          {/* Logo Wordmark in ALL CAPS logo Font */}
+          <span className="font-logo text-3xl text-amber-900 tracking-wider font-extrabold uppercase">
             ONESIMOS
           </span>
 
@@ -346,7 +354,7 @@ export default function KidHomePage(): JSX.Element {
                 Story time, {child.name}?
               </p>
               <p className="text-xs text-amber-800 font-switzer">
-                A cozy adventure is waiting whenever you&apos;re ready. No rush.
+                A cozy adventure is waiting whenever you are ready. No rush.
               </p>
             </div>
             <div className="flex gap-2 shrink-0">
@@ -366,7 +374,7 @@ export default function KidHomePage(): JSX.Element {
                 }}
                 className="px-4 py-2 rounded-2xl bg-amber-500 text-white text-xs font-bold hover:bg-amber-600 shadow-sm font-switzer"
               >
-                Let&apos;s read
+                Let us read
               </button>
             </div>
           </div>
@@ -561,7 +569,7 @@ export default function KidHomePage(): JSX.Element {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {bookshelfStories.map((story) => (
+              {displayedBookshelfStories.map((story) => (
                 <div
                   key={story.id}
                   className="bg-white rounded-2xl p-4 border border-amber-200/80 shadow-xs flex flex-col justify-between font-switzer"
@@ -590,6 +598,21 @@ export default function KidHomePage(): JSX.Element {
                 </div>
               ))}
             </div>
+
+            {/* Bookshelf UI Limit Expand / Collapse Button */}
+            {bookshelfStories.length > 4 && (
+              <div className="mt-4 text-center">
+                <button
+                  type="button"
+                  onClick={() => setShowAllBookshelf(!showAllBookshelf)}
+                  className="px-4 py-2 rounded-2xl bg-white border border-amber-200 text-xs font-bold text-amber-950 hover:bg-amber-50 font-switzer shadow-2xs active:scale-95 transition-all"
+                >
+                  {showAllBookshelf
+                    ? "Show Less"
+                    : `See more (+${bookshelfStories.length - 4})`}
+                </button>
+              </div>
+            )}
           </section>
         )}
 
@@ -696,7 +719,7 @@ export default function KidHomePage(): JSX.Element {
               Story Goal Reached!
             </h3>
             <p className="text-xs text-gray-600 mb-6 leading-relaxed font-switzer">
-              You&apos;ve completed all <strong>{FREE_MONTHLY_STORY_LIMIT} free stories</strong> for this month. 
+              You have completed all <strong>{FREE_MONTHLY_STORY_LIMIT} free stories</strong> for this month. 
               Ask a parent to unlock unlimited adventures!
             </p>
             <div className="flex flex-col gap-2 font-switzer">
