@@ -3,7 +3,7 @@
  * @description Real-time microphone audio capture component for read-aloud sessions.
  * Features 200ms timesliced audio chunking, multi-format MIME type resolution
  * (WebM, MP4, AAC, WAV), lowered volume threshold for Fire OS tablets & quiet mics,
- * keyword boosting pass-through, and fuzzy stumble detection.
+ * keyword boosting pass-through, and guaranteed stumble persistence.
  *
  * @dependencies
  * - @/lib/stumbledWords (fuzzy stumble detection & Supabase logging)
@@ -142,7 +142,7 @@ export default function ReadAloudMic({
         const audioBlob = new Blob(chunksRef.current, { type: finalMime });
         stopStream();
 
-        // Fire OS & Quiet Mic Fix: Lower minimum threshold from 800 bytes to 200 bytes
+        // Fire OS & Quiet Mic Fix: Lower minimum threshold to 200 bytes
         if (audioBlob.size < 200) {
           setStatus("done");
           setMessage(
@@ -168,7 +168,7 @@ export default function ReadAloudMic({
           if (!res.ok) {
             setStatus("error");
             setMessage(
-              data.error || "Could not hear clearly — try again!"
+              data.error || "Could not hear clearly. Try again!"
             );
             return;
           }
@@ -188,13 +188,17 @@ export default function ReadAloudMic({
           const missed = findStumbledItems(pageText, transcript);
           setStumbledItems(missed);
 
-          // Save stumbled items to practice list (fire-and-forget)
-          for (const item of missed.slice(0, 8)) {
-            void saveStumbledWord({
-              childId,
-              word: item.word,
-              storyId,
-            });
+          // Save stumbled items asynchronously to Supabase before updating UI
+          if (missed.length > 0) {
+            await Promise.all(
+              missed.slice(0, 8).map((item) =>
+                saveStumbledWord({
+                  childId,
+                  word: item.word,
+                  storyId,
+                })
+              )
+            );
           }
 
           const missedWordsOnly = missed.map((item) => item.word);
@@ -202,7 +206,7 @@ export default function ReadAloudMic({
           setStatus("done");
           if (missed.length === 0) {
             setMessage(
-              "Wonderful reading! You can turn the page when you're ready."
+              "Wonderful reading! You can turn the page when you are ready."
             );
           } else {
             setMessage(
@@ -217,7 +221,7 @@ export default function ReadAloudMic({
           });
         } catch {
           setStatus("error");
-          setMessage("Something went wrong. Let's try once more.");
+          setMessage("Something went wrong. Let us try once more.");
         }
       };
 
