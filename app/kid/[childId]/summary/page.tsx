@@ -505,7 +505,7 @@ function SummaryContent() {
         </div>
 
         {/* Story Progress Pill */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-50 border border-gray-100 text-xs font-bold text-gray-700 mb-8 block max-w-xs mx-auto font-switzer">
+        <div className="flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-gray-50 border border-gray-100 text-xs font-bold text-gray-700 mb-8 max-w-xs mx-auto font-switzer">
           <span>📖</span> {pagesRead} of {totalPages} pages read
         </div>
 
