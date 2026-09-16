@@ -1,8 +1,9 @@
 /**
  * @file app/api/tts/route.ts
  * @description Cloud Text-to-Speech endpoint with automatic Supabase CDN caching.
- * Bypasses native Web Speech API limitations on iOS Safari and Amazon Fire OS (Silk)
- * while preserving Deepgram API credit pool via self-populating Storage caching.
+ * Primary: ElevenLabs (hyper-realistic, crystal-clear phonics and names).
+ * Fallback: Deepgram Aura.
+ * Cache: Supabase Storage ("tts-audio" bucket) for $0 repeat cost.
  *
  * @module app/api/tts/route
  */
@@ -12,6 +13,9 @@ import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+/** ElevenLabs default voice ID (Rachel - clear, friendly tone) */
+const DEFAULT_ELEVENLABS_VOICE = "21m00Tcm4TlvDq8ikWAM";
 
 /** Initialize Supabase Server Client for Storage Uploads */
 function getSupabaseServerClient() {
@@ -63,38 +67,82 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }
       }
     } catch {
-      // Fall through to generation if CDN check fails
+      // Fall through to live generation if CDN check fails
     }
 
-    // ─── STEP 2: GENERATE VIA DEEPGRAM AURA (ONLY IF NOT IN CACHE) ───
-    const apiKey = process.env.DEEPGRAM_API_KEY;
-    if (!apiKey) {
-      console.error("[TTS] DEEPGRAM_API_KEY missing");
-      return new NextResponse("Server configuration error", { status: 500 });
-    }
+    let audioBuffer: ArrayBuffer | null = null;
+    let providerSource = "ElevenLabs";
 
-    const response = await fetch(
-      "https://api.deepgram.com/v1/speak?model=aura-asteria-en",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Token ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ text: cleanedWord }),
+    // ─── STEP 2A: GENERATE VIA ELEVENLABS (PRIMARY) ───
+    const elevenLabsKey = process.env.ELEVENLABS_API_KEY;
+
+    if (elevenLabsKey) {
+      try {
+        const elevenRes = await fetch(
+          `https://api.elevenlabs.io/v1/text-to-speech/${DEFAULT_ELEVENLABS_VOICE}`,
+          {
+            method: "POST",
+            headers: {
+              "xi-api-key": elevenLabsKey,
+              "Content-Type": "application/json",
+              Accept: "audio/mpeg",
+            },
+            body: JSON.stringify({
+              text: cleanedWord,
+              model_id: "eleven_turbo_v2_5",
+              voice_settings: {
+                stability: 0.5,
+                similarity_boost: 0.75,
+              },
+            }),
+          }
+        );
+
+        if (elevenRes.ok) {
+          audioBuffer = await elevenRes.arrayBuffer();
+          providerSource = "ElevenLabs";
+        } else {
+          const errText = await elevenRes.text();
+          console.warn(`[TTS] ElevenLabs warning (${elevenRes.status}):`, errText);
+        }
+      } catch (elevenErr) {
+        console.warn("[TTS] ElevenLabs fetch exception:", elevenErr);
       }
-    );
-
-    if (!response.ok) {
-      const err = await response.text();
-      console.error("[TTS] Deepgram error:", response.status, err);
-      return new NextResponse("TTS generation failed", { status: response.status });
     }
 
-    const audioBuffer = await response.arrayBuffer();
+    // ─── STEP 2B: FALLBACK TO DEEPGRAM AURA (IF ELEVENLABS FAILED OR UNCONFIGURED) ───
+    if (!audioBuffer) {
+      const deepgramKey = process.env.DEEPGRAM_API_KEY;
+      if (!deepgramKey) {
+        console.error("[TTS] Neither ELEVENLABS_API_KEY nor DEEPGRAM_API_KEY is configured.");
+        return new NextResponse("TTS key not configured on server", { status: 500 });
+      }
+
+      const deepgramRes = await fetch(
+        "https://api.deepgram.com/v1/speak?model=aura-asteria-en",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Token ${deepgramKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ text: cleanedWord }),
+        }
+      );
+
+      if (!deepgramRes.ok) {
+        const errText = await deepgramRes.text();
+        console.error("[TTS] Deepgram error:", deepgramRes.status, errText);
+        return new NextResponse("TTS generation failed", { status: deepgramRes.status });
+      }
+
+      audioBuffer = await deepgramRes.arrayBuffer();
+      providerSource = "Deepgram-Aura";
+    }
+
     const bufferToSave = Buffer.from(audioBuffer);
 
-    // ─── STEP 3: AWAIT SAVE TO SUPABASE STORAGE ───
+    // ─── STEP 3: AWAIT SAVE TO SUPABASE STORAGE FOR FUTURE $0 COST ───
     try {
       const { error: uploadError } = await supabase.storage
         .from("tts-audio")
@@ -106,7 +154,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       if (uploadError) {
         console.error(`[TTS Cache Upload Error for "${cleanedWord}"]:`, uploadError);
       } else {
-        console.log(`[TTS Cache] Successfully cached "${cleanedWord}" to Supabase tts-audio bucket.`);
+        console.log(`[TTS Cache] Successfully cached "${cleanedWord}" (${providerSource}) to Supabase tts-audio bucket.`);
       }
     } catch (uploadErr) {
       console.error(`[TTS Cache Exception for "${cleanedWord}"]:`, uploadErr);
@@ -117,7 +165,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       headers: {
         "Content-Type": "audio/mpeg",
         "Cache-Control": "public, max-age=31536000, immutable",
-        "X-Audio-Source": "Deepgram-Aura-Generated",
+        "X-Audio-Source": providerSource,
       },
     });
   } catch (error) {
