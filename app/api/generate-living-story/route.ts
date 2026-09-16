@@ -1,14 +1,13 @@
 /**
  * @file app/api/generate-living-story/route.ts
  * @description Server-side Living Chapter generator for Onesimos.
- * Uses free-tier LLM when configured (Groq first, then Gemini), with a
- * concrete offline fallback. Always personalises child name, weaves
- * stumbled words naturally, and anchors one virtue / life skill with
- * visible actions (not vague "wisdom").
+ * Provider chain (first success wins):
+ *   1. Groq        (GROQ_API_KEY)
+ *   2. Gemini      (GEMINI_API_KEY)
+ *   3. OpenRouter  (OPENROUTER_API_KEY)
+ *   4. Offline concrete template (no key required)
  *
- * Env (optional, any one is enough):
- *   GROQ_API_KEY
- *   GEMINI_API_KEY
+ * Never put raw API keys in source. Keys live only in env vars.
  *
  * @module app/api/generate-living-story/route
  */
@@ -17,10 +16,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
 import { getRecentStumbledWords } from "@/lib/stumbledWords";
 import { getRandomLifeSkill, type LifeSkill } from "@/lib/lifeSkills";
-import type { SampleStory, StoryPage, ComprehensionQuestion } from "@/lib/sampleStories";
+import type {
+  SampleStory,
+  StoryPage,
+  ComprehensionQuestion,
+} from "@/lib/sampleStories";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+// ─── TYPES ──────────────────────────────────────────────────────────────────
 
 interface GenerateBody {
   childId: string;
@@ -42,6 +47,10 @@ interface LlmStoryPayload {
   }>;
 }
 
+type EngineName = "groq" | "gemini" | "openrouter" | "offline";
+
+// ─── HELPERS ────────────────────────────────────────────────────────────────
+
 function capitalize(name: string): string {
   const t = name.trim();
   if (!t) return "Friend";
@@ -55,14 +64,15 @@ function buildPrompt(params: {
   skill: LifeSkill;
 }): string {
   const { childName, level, words, skill } = params;
-  const wordList = words.length > 0 ? words.join(", ") : "kindness, patience, brave";
+  const wordList =
+    words.length > 0 ? words.join(", ") : "kindness, patience, brave";
 
   return `You write short children's reading chapters for African and diaspora families (ages 3-9).
 Secular, warm, concrete. No preaching. No vague lines like "showed great wisdom" without saying WHAT the child DID.
 
 CHILD NAME (must appear often, correctly capitalised): ${childName}
 READING LEVEL 1-4 (1=very short sentences, 4=longer): ${level}
-STUMBLED WORDS to weave naturally as vocabulary practice (do not list them; use in sentences): ${wordList}
+STUMBLED WORDS to weave naturally as vocabulary practice (do not list them as a list; use inside sentences): ${wordList}
 LIFE SKILL FOCUS: ${skill.title}
 SKILL MEANING: ${skill.description}
 MORAL IN ONE LINE (show through action, do not lecture): ${skill.keyMoralLesson}
@@ -70,7 +80,7 @@ MORAL IN ONE LINE (show through action, do not lecture): ${skill.keyMoralLesson}
 RULES:
 - 5 pages for level 1-2, 6 pages for level 3-4.
 - Each page: 1-3 short sentences. Concrete setting (home, school gate, market path, courtyard, bus stop).
-- Page 1: ordinary moment. Middle: a real choice or problem tied to the skill. End: clear kind action + calm adult affirmation.
+- Page 1: ordinary moment. Middle: a real choice or problem tied to the skill. End: clear kind action and calm adult affirmation.
 - Use at least 3 of the stumbled words in natural places (not crammed).
 - Comprehension: exactly 3 questions (literal, inferential, vocabulary) with 3 options each and correctIndex 0-2.
 - Return ONLY valid JSON (no markdown) matching:
@@ -100,46 +110,47 @@ function offlineFallback(params: {
   const skill = params.skill;
   const pages: StoryPage[] = [
     {
-      text: `${name} stood by the courtyard ${w[1]} with a small ${w[0]}. Today felt ordinary, until a choice appeared.`,
-      imageEmoji: "🏡",
+      text: `${name} carried a small ${w[0]} toward the ${w[1]} after school.`,
+      imageEmoji: "🎒",
     },
     {
-      text: `A younger child dropped a bottle of ${w[2]}. People walked past. ${name} stopped and looked carefully.`,
+      text: `A younger child tripped and spilled a bottle of ${w[2]} across the path.`,
+      imageEmoji: "💧",
+    },
+    {
+      text: `Some people walked around the puddle. ${name} stopped and looked closely.`,
       imageEmoji: skill.emoji,
     },
     {
-      text: `${name} remembered: ${skill.keyMoralLesson} So ${name} knelt, picked up the bottle, and wiped the dust with clean hands.`,
+      text: `${name} knelt down, lifted the bottle, and moved it away from the walking path.`,
       imageEmoji: "🤲",
     },
     {
-      text: `"Thank you," the younger child whispered. ${name} offered a calm smile and helped place the bottle back safely.`,
+      text: `"Are you hurt?" ${name} asked quietly. The younger child shook their head and smiled.`,
       imageEmoji: "🤝",
     },
     {
-      text: `At home, Mama asked what happened. ${name} told the truth, then offered to ${w[3]} the leftover fruit after homework.`,
-      imageEmoji: "💛",
-    },
-    {
-      text: `${name} felt proud, not loud proud. Quiet proud. The kind that grows when you choose the kind action on purpose.`,
-      imageEmoji: "🌟",
+      text: `At home, ${name} told Mama exactly what happened, then offered to ${w[3]} the orange slices.`,
+      imageEmoji: "🍊",
     },
   ].slice(0, params.level <= 2 ? 5 : 6);
 
+  const ts = Date.now();
   const questions: ComprehensionQuestion[] = [
     {
-      id: `lq1-${Date.now()}`,
-      questionText: `What did ${name} do when the bottle fell?`,
+      id: `lq1-${ts}`,
+      questionText: `What did ${name} do when the bottle spilled?`,
       options: [
-        "Walked away without looking",
-        "Stopped, picked it up, and helped",
-        "Laughed and ran to play",
+        "Walked around it quickly",
+        "Knelt down and moved the bottle away",
+        "Shouted at the younger child",
       ],
       correctIndex: 1,
       type: "literal",
-      explanation: `${name} stopped, picked up the bottle, and helped.`,
+      explanation: `${name} knelt down, lifted the bottle, and moved it off the path.`,
     },
     {
-      id: `lq2-${Date.now()}`,
+      id: `lq2-${ts}`,
       questionText: `Which skill does this story practise?`,
       options: [skill.title, "Ignoring people", "Shouting louder"],
       correctIndex: 0,
@@ -147,23 +158,22 @@ function offlineFallback(params: {
       explanation: `The story centres on ${skill.title.toLowerCase()}.`,
     },
     {
-      id: `lq3-${Date.now()}`,
-      questionText: `In the story, what does it mean to feel "quiet proud"?`,
+      id: `lq3-${ts}`,
+      questionText: `Why did ${name} ask if the younger child was hurt?`,
       options: [
-        "Proud from a kind choice, without showing off",
-        "Proud from winning an argument",
-        "Proud from keeping a secret that hurts someone",
+        "To check they were safe",
+        "To win a prize",
+        "To keep a secret",
       ],
       correctIndex: 0,
       type: "vocabulary",
-      explanation: "Quiet proud means feeling good about a kind, honest action without boasting.",
+      explanation: skill.keyMoralLesson,
     },
   ];
 
-  const id = `living-offline-${Date.now()}`;
   return {
-    id,
-    title: `${name} and the Choice at the ${capitalize(w[1])}`,
+    id: `living-offline-${ts}`,
+    title: `${name} and the Spilled Bottle`,
     levelMin: params.level,
     levelMax: params.level,
     targetAgeGroup: `Ages ${params.age || 6}`,
@@ -175,77 +185,154 @@ function offlineFallback(params: {
   };
 }
 
-async function generateWithGroq(prompt: string): Promise<LlmStoryPayload | null> {
-  const key = process.env.GROQ_API_KEY;
-  if (!key) return null;
-
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",
-      temperature: 0.7,
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "system",
-          content: "You are a children's literacy author. Return only valid JSON.",
-        },
-        { role: "user", content: prompt },
-      ],
-    }),
-  });
-
-  if (!res.ok) {
-    console.error("[generate-living-story] Groq error", await res.text());
-    return null;
-  }
-
-  const data = (await res.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-  const raw = data.choices?.[0]?.message?.content || "";
+function parseJsonPayload(raw: string): LlmStoryPayload | null {
   try {
-    return JSON.parse(raw) as LlmStoryPayload;
+    const cleaned = raw
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/\s*```$/i, "")
+      .trim();
+    return JSON.parse(cleaned) as LlmStoryPayload;
   } catch {
-    console.error("[generate-living-story] Groq JSON parse failed");
     return null;
   }
 }
 
-async function generateWithGemini(prompt: string): Promise<LlmStoryPayload | null> {
+// ─── PROVIDERS ──────────────────────────────────────────────────────────────
+
+async function generateWithGroq(
+  prompt: string
+): Promise<LlmStoryPayload | null> {
+  const key = process.env.GROQ_API_KEY;
+  if (!key) return null;
+
+  try {
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        temperature: 0.7,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a children's literacy author. Return only valid JSON.",
+          },
+          { role: "user", content: prompt },
+        ],
+      }),
+    });
+
+    if (!res.ok) {
+      console.error("[living-story] Groq HTTP", res.status, await res.text());
+      return null;
+    }
+
+    const data = (await res.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+    return parseJsonPayload(data.choices?.[0]?.message?.content || "");
+  } catch (err) {
+    console.error("[living-story] Groq exception", err);
+    return null;
+  }
+}
+
+async function generateWithGemini(
+  prompt: string
+): Promise<LlmStoryPayload | null> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.7,
-        responseMimeType: "application/json",
-      },
-    }),
-  });
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(key)}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.7,
+          responseMimeType: "application/json",
+        },
+      }),
+    });
 
-  if (!res.ok) {
-    console.error("[generate-living-story] Gemini error", await res.text());
+    if (!res.ok) {
+      console.error("[living-story] Gemini HTTP", res.status, await res.text());
+      return null;
+    }
+
+    const data = (await res.json()) as {
+      candidates?: Array<{
+        content?: { parts?: Array<{ text?: string }> };
+      }>;
+    };
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    return parseJsonPayload(raw);
+  } catch (err) {
+    console.error("[living-story] Gemini exception", err);
     return null;
   }
+}
 
-  const data = (await res.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  };
-  const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+/**
+ * OpenRouter: one key, many models. Free-tier model id may change over time.
+ * Uses OpenAI-compatible chat completions.
+ */
+async function generateWithOpenRouter(
+  prompt: string
+): Promise<LlmStoryPayload | null> {
+  const key = process.env.OPENROUTER_API_KEY;
+  if (!key) return null;
+
+  // Prefer a free model; if OpenRouter renames free models, swap this string only.
+  const model =
+    process.env.OPENROUTER_MODEL || "meta-llama/llama-3.3-70b-instruct:free";
+
   try {
-    return JSON.parse(raw) as LlmStoryPayload;
-  } catch {
-    console.error("[generate-living-story] Gemini JSON parse failed");
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "https://onesimos.vercel.app",
+        "X-Title": "Onesimos Living Story",
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.7,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a children's literacy author. Return only valid JSON, no markdown.",
+          },
+          { role: "user", content: prompt },
+        ],
+      }),
+    });
+
+    if (!res.ok) {
+      console.error(
+        "[living-story] OpenRouter HTTP",
+        res.status,
+        await res.text()
+      );
+      return null;
+    }
+
+    const data = (await res.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+    return parseJsonPayload(data.choices?.[0]?.message?.content || "");
+  } catch (err) {
+    console.error("[living-story] OpenRouter exception", err);
     return null;
   }
 }
@@ -270,54 +357,88 @@ function toSampleStory(
     imageEmoji: p.imageEmoji || meta.skill.emoji,
   }));
 
-  const questions: ComprehensionQuestion[] = (payload.questions || []).map((q, i) => ({
-    id: `gen-${ts}-q${i}`,
-    questionText: q.questionText,
-    options: q.options?.slice(0, 3) || ["Yes", "No", "Maybe"],
-    correctIndex:
-      typeof q.correctIndex === "number" && q.correctIndex >= 0 && q.correctIndex <= 2
-        ? q.correctIndex
-        : 0,
-    type: q.type || "literal",
-    explanation: q.explanation || "Re-read that part of the story.",
-  }));
+  const questions: ComprehensionQuestion[] = (payload.questions || []).map(
+    (q, i) => ({
+      id: `gen-${ts}-q${i}`,
+      questionText: q.questionText,
+      options: q.options?.slice(0, 3) || ["Yes", "No", "Maybe"],
+      correctIndex:
+        typeof q.correctIndex === "number" &&
+        q.correctIndex >= 0 &&
+        q.correctIndex <= 2
+          ? q.correctIndex
+          : 0,
+      type: q.type || "literal",
+      explanation: q.explanation || "Re-read that part of the story.",
+    })
+  );
+
+  const fallback = offlineFallback({
+    childName: meta.childName,
+    level: meta.level,
+    words: meta.words,
+    skill: meta.skill,
+    age: meta.age,
+  });
 
   return {
     id,
-    title: payload.title?.includes(name) ? payload.title : `${name}: ${payload.title || meta.skill.title}`,
+    title: payload.title?.includes(name)
+      ? payload.title
+      : `${name}: ${payload.title || meta.skill.title}`,
     levelMin: meta.level,
     levelMax: meta.level,
     targetAgeGroup: `Ages ${meta.age || 6}`,
-    themes: [meta.skill.category, "character", meta.skill.title.toLowerCase()],
+    themes: [
+      meta.skill.category,
+      "character",
+      meta.skill.title.toLowerCase(),
+      `skill:${meta.skill.id}`,
+      ...meta.words.map((w) => `word:${w}`),
+    ],
     estimatedMinutes: meta.level <= 2 ? 4 : 6,
     coverEmoji: payload.coverEmoji || meta.skill.emoji,
-    pages: pages.length > 0 ? pages : offlineFallback({
-      childName: meta.childName,
-      level: meta.level,
-      words: meta.words,
-      skill: meta.skill,
-      age: meta.age,
-    }).pages,
-    questions: questions.length >= 2 ? questions : offlineFallback({
-      childName: meta.childName,
-      level: meta.level,
-      words: meta.words,
-      skill: meta.skill,
-      age: meta.age,
-    }).questions,
+    pages: pages.length > 0 ? pages : fallback.pages,
+    questions: questions.length >= 2 ? questions : fallback.questions,
   };
 }
+
+/**
+ * Try providers in order until one returns usable pages.
+ */
+async function generateWithFailover(
+  prompt: string
+): Promise<{ payload: LlmStoryPayload | null; engine: EngineName }> {
+  const groq = await generateWithGroq(prompt);
+  if (groq?.pages?.length) return { payload: groq, engine: "groq" };
+
+  const gemini = await generateWithGemini(prompt);
+  if (gemini?.pages?.length) return { payload: gemini, engine: "gemini" };
+
+  const openrouter = await generateWithOpenRouter(prompt);
+  if (openrouter?.pages?.length) {
+    return { payload: openrouter, engine: "openrouter" };
+  }
+
+  return { payload: null, engine: "offline" };
+}
+
+// ─── ROUTE ──────────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body = (await request.json()) as GenerateBody;
     if (!body?.childId || !body?.childName) {
-      return NextResponse.json({ error: "childId and childName required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "childId and childName required" },
+        { status: 400 }
+      );
     }
 
-    const level = body.readingLevel && body.readingLevel >= 1 && body.readingLevel <= 4
-      ? body.readingLevel
-      : 2;
+    const level =
+      body.readingLevel && body.readingLevel >= 1 && body.readingLevel <= 4
+        ? body.readingLevel
+        : 2;
 
     const { data: recent } = await getRecentStumbledWords(body.childId, 8);
     const words = (recent || []).map((r) => r.word).filter(Boolean);
@@ -329,11 +450,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       skill,
     });
 
-    let story: SampleStory | null = null;
+    const { payload, engine } = await generateWithFailover(prompt);
 
-    const groqPayload = await generateWithGroq(prompt);
-    if (groqPayload?.pages?.length) {
-      story = toSampleStory(groqPayload, {
+    let story: SampleStory;
+    if (payload?.pages?.length) {
+      story = toSampleStory(payload, {
         childId: body.childId,
         childName: body.childName,
         level,
@@ -341,23 +462,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         skill,
         words,
       });
-    }
-
-    if (!story) {
-      const gemPayload = await generateWithGemini(prompt);
-      if (gemPayload?.pages?.length) {
-        story = toSampleStory(gemPayload, {
-          childId: body.childId,
-          childName: body.childName,
-          level,
-          age: body.age,
-          skill,
-          words,
-        });
-      }
-    }
-
-    if (!story) {
+    } else {
       story = offlineFallback({
         childName: body.childName,
         level,
@@ -366,31 +471,33 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         age: body.age,
       });
       story.id = `living-${body.childId.slice(0, 6)}-${Date.now()}`;
+      story.themes = [
+        ...(story.themes || []),
+        `skill:${skill.id}`,
+        ...words.map((w) => `word:${w}`),
+      ];
     }
 
-    // Attach skill + target words for UI badges (non-breaking extra fields via themes)
-    const storyWithMeta = {
-      ...story,
-      themes: Array.from(new Set([...(story.themes || []), `skill:${skill.id}`, ...words.map((w) => `word:${w}`)])),
-    };
-
     const { error } = await supabase.from("generated_stories").insert({
-      id: storyWithMeta.id,
+      id: story.id,
       child_id: body.childId,
       chapter_number: 1,
-      title: storyWithMeta.title,
-      story_data: storyWithMeta,
+      title: story.title,
+      story_data: story,
       target_words: words,
       created_at: new Date().toISOString(),
     });
 
     if (error) {
-      console.error("[generate-living-story] save error", error);
-      // Still return story so parent UI can show it even if RLS blocks save
+      console.error("[living-story] save error", error);
     }
 
+    console.log(
+      `[living-story] engine=${engine} child=${body.childId.slice(0, 8)} words=${words.length}`
+    );
+
     return NextResponse.json({
-      story: storyWithMeta,
+      story,
       skill: {
         id: skill.id,
         title: skill.title,
@@ -398,14 +505,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         lesson: skill.keyMoralLesson,
       },
       targetWords: words,
-      engine: process.env.GROQ_API_KEY
-        ? "groq"
-        : process.env.GEMINI_API_KEY
-        ? "gemini"
-        : "offline",
+      engine,
     });
   } catch (err) {
-    console.error("[generate-living-story]", err);
+    console.error("[living-story] Unhandled", err);
     return NextResponse.json({ error: "Generation failed" }, { status: 500 });
   }
 }
