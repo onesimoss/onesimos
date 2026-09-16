@@ -1,8 +1,8 @@
 /**
  * @file app/kid/[childId]/summary/page.tsx
  * @description Kid Story Completion, Post-Story Comprehension Quiz, and Celebration Screen.
- *              Evaluates story understanding and logs exact reading duration and quiz accuracy
- *              to Supabase for honest, non-deceptive parent analytics.
+ *              Evaluates story understanding for BOTH static catalog stories and DB-generated
+ *              Personal Living Chapters. Logs exact reading duration and quiz accuracy.
  *
  * @fonts Achiko (headings/logo) + Switzer (body/UI)
  * @dependencies
@@ -20,7 +20,7 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 import { getAvatarById } from "@/lib/avatars";
 import { getAgeBand, type ChildProfile, type AgeBand } from "@/lib/children";
-import { getStoryById, type ComprehensionQuestion } from "@/lib/sampleStories";
+import { getStoryById, type SampleStory, type ComprehensionQuestion } from "@/lib/sampleStories";
 import { saveReadingSession } from "@/lib/sessionInsights";
 import {
   getRecentStumbledWords,
@@ -38,9 +38,6 @@ interface ProcessedSummaryWord {
   count: number;
 }
 
-/**
- * Classifies raw stumbled words by cross-referencing story text or proper noun heuristics.
- */
 function classifyStumbledList(
   rawWords: { word: string; count: number }[],
   storyText?: string
@@ -79,19 +76,12 @@ function classifyStumbledList(
   });
 }
 
-/**
- * Allowed comprehension question types per age band.
- * Questions without an explicit type default to "literal".
- */
 const ALLOWED_QUESTION_TYPES: Record<AgeBand, string[]> = {
   "pre-reader": ["literal"],
   emerging: ["literal", "vocabulary"],
   confident: ["literal", "inferential", "vocabulary"],
 };
 
-/**
- * Filter comprehension questions to match the child's age band.
- */
 function filterQuestionsByAgeBand(
   questions: ComprehensionQuestion[],
   ageBand: AgeBand
@@ -104,9 +94,6 @@ function filterQuestionsByAgeBand(
   });
 }
 
-/**
- * Emoji letter guides for pre-reader quiz options.
- */
 const OPTION_EMOJIS = ["🅰️", "🅱️", "🅲", "🅳"];
 
 // ─── Section 2: Summary Core Content ───
@@ -122,6 +109,7 @@ function SummaryContent() {
   const durationSeconds = Number(searchParams.get("duration") || "0");
 
   const [child, setChild] = useState<ChildProfile | null>(null);
+  const [dbStory, setDbStory] = useState<SampleStory | null>(null);
   const [stumbledItems, setStumbledItems] = useState<ProcessedSummaryWord[]>([]);
   const [fetching, setFetching] = useState(true);
   const [sessionSaved, setSessionSaved] = useState(false);
@@ -134,10 +122,13 @@ function SummaryContent() {
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
 
-  const story = useMemo(() => getStoryById(storyId), [storyId]);
+  // Resolve story: static catalog first, then Supabase generated_stories
+  const catalogStory = useMemo(() => getStoryById(storyId), [storyId]);
+  const activeStory = catalogStory || dbStory;
+
   const allQuestions: ComprehensionQuestion[] = useMemo(
-    () => story?.questions || [],
-    [story]
+    () => activeStory?.questions || [],
+    [activeStory]
   );
 
   // Auth Protection
@@ -145,47 +136,57 @@ function SummaryContent() {
     if (!loading && !user) router.replace("/parent/login");
   }, [user, loading, router]);
 
-  // Fetch Child Profile & Stumbled Words Log
+  // Load Child Profile, Resolve DB Living Story, & Stumbled Words Log
   useEffect(() => {
     async function loadSummaryData() {
       if (!user || !childId) return;
       setFetching(true);
 
-      const { data, error } = await supabase
+      // 1. Fetch Child
+      const { data: childData, error: childErr } = await supabase
         .from("children")
         .select("*")
         .eq("id", childId)
         .eq("parent_id", user.id)
         .single();
 
-      if (error || !data) {
+      if (childErr || !childData) {
         router.replace("/who");
         return;
       }
 
-      const profile = data as ChildProfile;
+      const profile = childData as ChildProfile;
       setChild(profile);
 
-      // Fetch recent stumbled words for this session
+      // 2. Resolve Living Story from DB if not in static catalog
+      let resolvedStoryText = catalogStory?.pages.map((p) => p.text).join(" ") || "";
+
+      if (!catalogStory && storyId) {
+        const { data: dbData } = await supabase
+          .from("generated_stories")
+          .select("story_data")
+          .eq("id", storyId)
+          .single();
+
+        if (dbData?.story_data) {
+          const parsed = dbData.story_data as SampleStory;
+          setDbStory(parsed);
+          resolvedStoryText = parsed.pages?.map((p) => p.text).join(" ") || "";
+        }
+      }
+
+      // 3. Fetch recent stumbled words for this session
       const { data: recentWords } = await getRecentStumbledWords(profile.id, 10);
-      const fullStoryText = story?.pages.map((p) => p.text).join(" ") || "";
-      const classified = classifyStumbledList(recentWords, fullStoryText);
+      const classified = classifyStumbledList(recentWords, resolvedStoryText);
       setStumbledItems(classified);
 
       setFetching(false);
-
-      // If story has no matching questions for this age band, mark quiz completed
-      const band = getAgeBand(profile.age);
-      const filtered = filterQuestionsByAgeBand(allQuestions, band);
-      if (filtered.length === 0) {
-        setQuizCompleted(true);
-      }
     }
 
     void loadSummaryData();
-  }, [user, childId, router, story, allQuestions]);
+  }, [user, childId, router, storyId, catalogStory]);
 
-  // Derive age band and filtered questions reactively
+  // Derive age band and filtered questions
   const ageBand = useMemo<AgeBand>(() => {
     return child ? getAgeBand(child.age) : "emerging";
   }, [child]);
@@ -196,12 +197,19 @@ function SummaryContent() {
     return filterQuestionsByAgeBand(allQuestions, ageBand);
   }, [allQuestions, ageBand]);
 
+  // Automatically finish quiz if no matching questions exist for this age band
+  useEffect(() => {
+    if (!fetching && questions.length === 0) {
+      setQuizCompleted(true);
+    }
+  }, [fetching, questions]);
+
   // Save Reading Session with Real Duration & Quiz Accuracy to Supabase
   const persistSessionStats = useCallback(
     async (finalCorrectCount: number) => {
       if (!child || sessionSaved) return;
 
-      const totalPages = story?.pages.length || pagesRead || 1;
+      const totalPages = activeStory?.pages.length || pagesRead || 1;
       const completed = pagesRead >= totalPages;
 
       let quizAccuracy: number | undefined = undefined;
@@ -220,10 +228,10 @@ function SummaryContent() {
 
       setSessionSaved(true);
     },
-    [child, sessionSaved, story, pagesRead, durationSeconds, storyId, questions]
+    [child, sessionSaved, activeStory, pagesRead, durationSeconds, storyId, questions]
   );
 
-  // Trigger session save when quiz is completed or if no questions exist
+  // Trigger session save when quiz is completed
   useEffect(() => {
     if (quizCompleted && child && !sessionSaved) {
       void persistSessionStats(correctAnswersCount);
@@ -260,8 +268,6 @@ function SummaryContent() {
     setTimeout(() => setActiveSpeakingWord(null), 1200);
   };
 
-  // ─── Loading State ───
-
   if (loading || fetching || !child) {
     return (
       <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center p-6 font-switzer">
@@ -276,7 +282,7 @@ function SummaryContent() {
   }
 
   const avatar = getAvatarById(child.avatar_id);
-  const totalPages = story?.pages.length || pagesRead || 1;
+  const totalPages = activeStory?.pages.length || pagesRead || 1;
   const completed = pagesRead >= totalPages;
   const currentQuestion = questions[quizIndex];
 
@@ -503,9 +509,8 @@ function SummaryContent() {
           <span>📖</span> {pagesRead} of {totalPages} pages read
         </div>
 
-        {/* ─── Section 5: Stumbled Items Display ─── */}
+        {/* Stumbled Practice Words Display */}
         <div className="space-y-5 text-left mb-8 font-switzer">
-          {/* Practice Words (Warm Gold - Tap to Hear) */}
           {practiceWords.length > 0 && (
             <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/50">
               <div className="flex items-center justify-between mb-2.5">
@@ -539,7 +544,6 @@ function SummaryContent() {
             </div>
           )}
 
-          {/* Character & Place Names Met (Soft Purple - Quiet Badges) */}
           {characterNames.length > 0 && (
             <div className="p-4 rounded-2xl bg-purple-50/60 border border-purple-200/50">
               <div className="flex items-center justify-between mb-2.5">
