@@ -41,16 +41,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const supabase = getSupabaseServerClient();
 
     // ─── STEP 1: CHECK SUPABASE STORAGE CDN CACHE ───
-    const { data: publicUrlData } = supabase.storage
-      .from("tts-audio")
-      .getPublicUrl(filename);
+    try {
+      const { data: publicUrlData } = supabase.storage
+        .from("tts-audio")
+        .getPublicUrl(filename);
 
-    if (publicUrlData?.publicUrl) {
-      // Test if file exists on Supabase CDN via quick HEAD request
-      try {
+      if (publicUrlData?.publicUrl) {
         const headRes = await fetch(publicUrlData.publicUrl, { method: "HEAD" });
         if (headRes.ok) {
-          // File exists in CDN cache! Redirect or fetch direct audio stream ($0 Deepgram Cost)
           const cachedAudioRes = await fetch(publicUrlData.publicUrl);
           if (cachedAudioRes.ok) {
             const cachedBuffer = await cachedAudioRes.arrayBuffer();
@@ -63,9 +61,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             });
           }
         }
-      } catch {
-        // Fall through to generation if CDN fetch fails
       }
+    } catch {
+      // Fall through to generation if CDN check fails
     }
 
     // ─── STEP 2: GENERATE VIA DEEPGRAM AURA (ONLY IF NOT IN CACHE) ───
@@ -96,18 +94,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const audioBuffer = await response.arrayBuffer();
     const bufferToSave = Buffer.from(audioBuffer);
 
-    // ─── STEP 3: AUTO-SAVE TO SUPABASE STORAGE FOR FUTURE $0 COST ───
-    void (async () => {
-      try {
-        await supabase.storage.from("tts-audio").upload(filename, bufferToSave, {
+    // ─── STEP 3: AWAIT SAVE TO SUPABASE STORAGE ───
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from("tts-audio")
+        .upload(filename, bufferToSave, {
           contentType: "audio/mpeg",
           upsert: true,
         });
+
+      if (uploadError) {
+        console.error(`[TTS Cache Upload Error for "${cleanedWord}"]:`, uploadError);
+      } else {
         console.log(`[TTS Cache] Successfully cached "${cleanedWord}" to Supabase tts-audio bucket.`);
-      } catch (uploadErr) {
-        console.error("[TTS Cache Upload Error]:", uploadErr);
       }
-    })();
+    } catch (uploadErr) {
+      console.error(`[TTS Cache Exception for "${cleanedWord}"]:`, uploadErr);
+    }
 
     // Return generated audio buffer immediately to the browser
     return new NextResponse(bufferToSave, {
