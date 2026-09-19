@@ -3,7 +3,8 @@
  * @description Dedicated Academic Progress Report Page for a single child profile.
  *              Provides "Before & After" growth narratives, honest metrics (WPM, Accuracy,
  *              Comprehension, Reading Age), Living Story Book personal chapter weaving,
- *              auto-archiving of completed chapters, and 1-tap Print/Save PDF report generation.
+ *              auto-archiving of completed chapters, 1-tap Print/Save PDF report generation,
+ *              and Progress Story Vocabulary Mastery Timeline.
  *
  * @fonts Achiko (headings/logo) + Switzer (body/UI/stats)
  * @dependencies
@@ -22,7 +23,11 @@ import { supabase } from "@/lib/supabaseClient";
 import { getAvatarById } from "@/lib/avatars";
 import { getAgeBand, type ChildProfile } from "@/lib/children";
 import { setChildPin, deleteChild } from "@/lib/children";
-import { getRecentStumbledWords, type StumbledWordCountItem } from "@/lib/stumbledWords";
+import {
+  getRecentStumbledWords,
+  getMasteredWordsForChild,
+  type StumbledWordCountItem,
+} from "@/lib/stumbledWords";
 import type { SampleStory } from "@/lib/sampleStories";
 import {
   getChildSessions,
@@ -34,6 +39,7 @@ import { resetChildStoryQuota } from "@/lib/sessionBudget";
 import {
   generateLivingChapterForChild,
   getGeneratedStoriesForChild,
+  getGeneratedChapterRecords,
   deleteGeneratedStory,
   extractSkillIdFromStory,
   extractTargetWordsFromStory,
@@ -105,7 +111,11 @@ export default function ChildReportPage(): JSX.Element {
   const [child, setChild] = useState<ChildProfile | null>(null);
   const [sessions, setSessions] = useState<ReadingSessionRow[]>([]);
   const [practiceWords, setPracticeWords] = useState<StumbledWordCountItem[]>([]);
+  const [masteredWords, setMasteredWords] = useState<StumbledWordCountItem[]>([]);
   const [generatedStories, setGeneratedStories] = useState<SampleStory[]>([]);
+  const [chapterRecords, setChapterRecords] = useState<
+    Array<{ story: SampleStory; createdAt: string; targetWords: string[] }>
+  >([]);
   const [stats, setStats] = useState<DetailedReportCardStats | null>(null);
   const [fetching, setFetching] = useState(true);
 
@@ -150,15 +160,25 @@ export default function ChildReportPage(): JSX.Element {
       const profile = data as ChildProfile;
       setChild(profile);
 
-      const [{ data: words }, { data: sessionData }, personalChapters] = await Promise.all([
+      const [
+        { data: words },
+        { data: mWords },
+        { data: sessionData },
+        personalChapters,
+        records,
+      ] = await Promise.all([
         getRecentStumbledWords(profile.id, 12),
+        getMasteredWordsForChild(profile.id, 50),
         getChildSessions(profile.id, 50),
         getGeneratedStoriesForChild(profile.id),
+        getGeneratedChapterRecords(profile.id),
       ]);
 
       setPracticeWords(words || []);
+      setMasteredWords(mWords || []);
       setSessions(sessionData || []);
       setGeneratedStories(personalChapters || []);
+      setChapterRecords(records || []);
       setStats(computeReportCardStats(profile, sessionData || [], (words || []).length));
 
       setFetching(false);
@@ -186,6 +206,11 @@ export default function ChildReportPage(): JSX.Element {
 
     return { freshChapters: fresh, archivedChapters: archived };
   }, [generatedStories, sessions]);
+
+  // Create lookup set for mastered words
+  const masteredSet = useMemo(() => {
+    return new Set(masteredWords.map((w) => w.word.toLowerCase()));
+  }, [masteredWords]);
 
   const handleSaveKidPin = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
@@ -218,6 +243,8 @@ export default function ChildReportPage(): JSX.Element {
     try {
       const newStory = await generateLivingChapterForChild(child);
       setGeneratedStories((prev) => [newStory, ...prev]);
+      const newRecords = await getGeneratedChapterRecords(child.id);
+      setChapterRecords(newRecords);
       setMessage(`✨ New personal chapter "${newStory.title}" created for ${child.name}!`);
     } catch {
       setError("Could not craft personal chapter. Please try again.");
@@ -241,6 +268,7 @@ export default function ChildReportPage(): JSX.Element {
     }
 
     setGeneratedStories((prev) => prev.filter((s) => s.id !== storyId));
+    setChapterRecords((prev) => prev.filter((r) => r.story.id !== storyId));
     setMessage("Personal chapter deleted.");
   };
 
@@ -468,39 +496,105 @@ export default function ChildReportPage(): JSX.Element {
           </div>
         </section>
 
-        {/* Adaptive Difficulty Bridge */}
-        {meetsLevelUpThreshold && (
-          <section className="bg-gradient-to-r from-emerald-50 to-sky-50 rounded-3xl p-6 sm:p-8 border-2 border-emerald-300 shadow-sm mb-8 font-switzer print:hidden">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <span className="text-4xl shrink-0">🚀</span>
-                <div>
-                  <h2 className="font-achiko text-xl text-emerald-950 mb-1">
-                    Ready for Level {(child.reading_level || 2) + 1}!
-                  </h2>
-                  <p className="text-xs text-emerald-800 leading-relaxed font-switzer">
-                    {child.name} is consistently scoring above 85% accuracy and 80% comprehension
-                    across {sessions.length} sessions. {isPreReader
-                      ? "Their story understanding is growing fast!"
-                      : "Their fluency and understanding are strong enough for harder stories."}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => void handleLevelUp()}
-                disabled={levelUpSaving}
-                className="px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-all shrink-0 active:scale-95 disabled:opacity-50 font-switzer"
-              >
-                {levelUpSaving
-                  ? "Updating..."
-                  : `Level Up to ${(child.reading_level || 2) + 1} →`}
-              </button>
+        {/* PROGRESS STORY: Vocabulary Mastery Timeline (NEW Parent Trust Feature) */}
+        {chapterRecords.length > 0 && (
+          <section className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200 shadow-sm mb-8 font-switzer">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-achiko text-2xl text-amber-900 flex items-center gap-2">
+                <span>📜</span> Progress Story & Vocabulary Mastery
+              </h2>
+              <span className="text-xs font-bold text-amber-800 bg-amber-50 px-3 py-1 rounded-full border border-amber-200 font-switzer">
+                {masteredWords.length} Words Mastered 🏆
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 mb-6 leading-relaxed font-switzer">
+              Track how target words woven into {child.name}&apos;s generated chapters move from stumbled to unassisted spelling mastery:
+            </p>
+
+            <div className="space-y-4 font-switzer">
+              {chapterRecords.map((record, idx) => {
+                const dateStr = new Date(record.createdAt).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                });
+                const skillId = extractSkillIdFromStory(record.story);
+                const skill = skillId ? getLifeSkillById(skillId) : null;
+                const targetWords = record.targetWords.length > 0
+                  ? record.targetWords
+                  : extractTargetWordsFromStory(record.story);
+
+                return (
+                  <div
+                    key={record.story.id || idx}
+                    className="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/60 font-switzer"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
+                      <p className="text-xs font-bold text-amber-900 font-switzer">
+                        📅 {dateStr} : Chapter: <span className="font-black text-amber-950">&quot;{record.story.title}&quot;</span>
+                      </p>
+                      {skill && (
+                        <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-200 font-switzer self-start sm:self-auto">
+                          {skill.emoji} Focus: {skill.title}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {targetWords.length === 0 ? (
+                        <span className="text-xs text-gray-400 font-medium">Standard vocabulary focus</span>
+                      ) : (
+                        targetWords.map((word) => {
+                          const lower = word.toLowerCase();
+                          const isMastered = masteredSet.has(lower);
+
+                          return (
+                            <span
+                              key={word}
+                              className={`px-3 py-1 rounded-xl text-xs font-bold border flex items-center gap-1.5 font-switzer ${
+                                isMastered
+                                  ? "bg-emerald-100 text-emerald-950 border-emerald-300 shadow-2xs"
+                                  : "bg-amber-100/80 text-amber-950 border-amber-300"
+                              }`}
+                            >
+                              <span>{word}</span>
+                              <span>{isMastered ? "🏆 Mastered" : "🟡 In Practice"}</span>
+                            </span>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </section>
         )}
 
-        {/* The Living Story Book (With Auto-Archiving for Read Chapters) */}
+        {/* Mastered Words Wall Display */}
+        {masteredWords.length > 0 && (
+          <section className="bg-gradient-to-r from-emerald-50 to-teal-50/80 rounded-3xl p-6 sm:p-8 border-2 border-emerald-300 shadow-sm mb-8 font-switzer">
+            <h2 className="font-achiko text-2xl text-emerald-950 mb-2 flex items-center gap-2">
+              <span>🏆</span> {child.name}&apos;s Mastered Words Wall
+            </h2>
+            <p className="text-xs text-emerald-800 mb-4 font-switzer">
+              Words {child.name} successfully spelled unassisted without hints:
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {masteredWords.map((item) => (
+                <span
+                  key={item.word}
+                  className="px-3.5 py-2 rounded-2xl bg-white border border-emerald-300 text-emerald-950 text-xs font-black shadow-2xs flex items-center gap-1.5 font-switzer"
+                >
+                  <span>{item.display}</span>
+                  <span className="text-[10px] text-emerald-600">✨</span>
+                </span>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* The Living Story Book */}
         <section className="bg-gradient-to-br from-amber-50 to-orange-50/80 rounded-3xl p-6 sm:p-8 border-2 border-amber-300 shadow-sm mb-8 font-switzer print:hidden">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>

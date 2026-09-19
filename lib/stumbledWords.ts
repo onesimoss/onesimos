@@ -186,19 +186,13 @@ export function findStumbledWords(pageText: string, transcript: string): string[
 
 // ─── SECTION 3: CROSS-DEVICE TAP-TO-HEAR ────────────────────────────────
 
-/** Global audio element reference to prevent overlap */
 let activeAudio: HTMLAudioElement | null = null;
 
-/**
- * Speaks a word out loud reliably across all devices.
- * Priority: Deepgram Aura Cloud TTS > Web Speech API > Beep fallback.
- */
 export async function speakWord(text: string, lang = "en-US"): Promise<void> {
   if (typeof window === "undefined" || !text) return;
   const cleanText = text.trim();
   if (!cleanText) return;
 
-  // Stop any currently playing audio
   if (activeAudio) {
     try {
       activeAudio.pause();
@@ -209,7 +203,7 @@ export async function speakWord(text: string, lang = "en-US"): Promise<void> {
     activeAudio = null;
   }
 
-  // Attempt 1: Cloud TTS (Deepgram Aura, works on iOS Safari + Amazon Fire OS)
+  // Attempt 1: Cloud TTS (Deepgram Aura / ElevenLabs via /api/tts)
   try {
     const response = await fetch("/api/tts", {
       method: "POST",
@@ -240,7 +234,7 @@ export async function speakWord(text: string, lang = "en-US"): Promise<void> {
     console.warn("[speakWord] Cloud TTS failed, falling back to Web Speech:", err);
   }
 
-  // Attempt 2: Native Web Speech (works on Chrome/PC)
+  // Attempt 2: Native Web Speech
   try {
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       const synth = window.speechSynthesis;
@@ -264,7 +258,6 @@ export async function speakWord(text: string, lang = "en-US"): Promise<void> {
     // Continue to beep fallback
   }
 
-  // Attempt 3: Beep fallback (last resort)
   playWebAudioBeepFallback();
 }
 
@@ -308,7 +301,7 @@ export async function saveStumbledWord(params: {
   }
 
   try {
-    // 1. Guaranteed Write to public.stumbled_words_log (Verified in schema)
+    // 1. Guaranteed Write to public.stumbled_words_log
     try {
       await supabase.from("stumbled_words_log").insert({
         child_id: params.childId,
@@ -419,6 +412,66 @@ export async function getRecentStumbledWords(
     }
   } catch (err) {
     console.error("[getRecentStumbledWords] Error reading log table:", err);
+  }
+
+  return { data: [], error: null };
+}
+
+/**
+ * Retrieves words that the child has successfully mastered.
+ */
+export async function getMasteredWordsForChild(
+  childId: string,
+  limit = 50
+): Promise<{ data: StumbledWordCountItem[]; error: unknown | null }> {
+  try {
+    const { data, error } = await supabase
+      .from("stumbled_words")
+      .select("word, times_stumbled")
+      .eq("child_id", childId)
+      .eq("mastered", true)
+      .order("updated_at", { ascending: false })
+      .limit(limit);
+
+    if (!error && data && data.length > 0) {
+      const items: StumbledWordCountItem[] = data.map((row) => {
+        const lower = row.word.toLowerCase();
+        const isName = isGeoName(lower) || /^[A-Z]/.test(row.word);
+        return {
+          word: lower,
+          display: isName ? formatGeoNameDisplay(lower) : lower,
+          type: isName ? "name" : "word",
+          count: row.times_stumbled || 1,
+        };
+      });
+      return { data: items, error: null };
+    }
+  } catch {
+    // Fall through
+  }
+
+  try {
+    const { data: mData, error: mError } = await supabase
+      .from("mastered_words")
+      .select("word")
+      .eq("child_id", childId)
+      .limit(limit);
+
+    if (!mError && mData && mData.length > 0) {
+      const items: StumbledWordCountItem[] = mData.map((row) => {
+        const lower = row.word.toLowerCase();
+        const isName = isGeoName(lower) || /^[A-Z]/.test(row.word);
+        return {
+          word: lower,
+          display: isName ? formatGeoNameDisplay(lower) : lower,
+          type: isName ? "name" : "word",
+          count: 1,
+        };
+      });
+      return { data: items, error: null };
+    }
+  } catch {
+    // ignore
   }
 
   return { data: [], error: null };
