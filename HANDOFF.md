@@ -1,6 +1,6 @@
 ═══════════════════════════════════════════════════════════════════
 PROJECT: Onesimos, Living Reading Companion (ages 3 to 9)
-SESSION HANDOFF, Post Priority 1 + Priority 2 + Priority 3 + Spelling Polish
+SESSION HANDOFF, Post Priority 1 + Priority 2 + Priority 3 + Spelling & Pricing Strategy
 ═══════════════════════════════════════════════════════════════════
 
 STACK: Next.js 14 App Router · TypeScript · Tailwind · Supabase · Deepgram (STT) · ElevenLabs (Aura Fallback) · Paystack · Vercel
@@ -10,18 +10,53 @@ LIVE URL: https://onesimos.vercel.app
 REPO: https://github.com/onesimoss/onesimos.git
 BRANCH: main
 
-MISSION: Teach kids to read well AND understand well (comprehension around 80% is the academic success threshold).
+MISSION: Teach kids to read well AND understand well (comprehension ~80% is the academic success threshold).
 
 MOAT (Do not dilute these three pillars):
 
-1. AI Living Story Book (labeled "Living Chapter" or "Personal Chapter" in UI)
+1. AI Living Story Book (labeled "Living Chapter" or "Personal Chapter")
 2. Speech-to-Text stumbled word capture (Deepgram)
 3. 25 Core Life Skills threaded into every generated chapter
 
 ───────────────────────────────────────────────────────────────────
+PRICING, UNIT ECONOMICS & NIGERIAN MARKET STRATEGY
+───────────────────────────────────────────────────────────────────
+
+PRICING MATRIX (PAYSTACK NGN + INT CARDS):
+
+1. Free Trial: ₦0 (5 stories/mo, 2 spelling rounds/day)
+2. Single Reader: ₦2,500 / mo OR ₦19,999 / yr (~$24/yr)
+3. Family Plan (Strictly up to 4 kids): ₦5,000 / mo OR ₦39,999 / yr (~$48/yr)
+4. Extended Family / Daycare Plan (Up to 10 kids): ₦15,000 / mo OR ₦119,999 / yr
+5. School Classroom Plan (Up to 30 students): ₦30,000 / term OR ₦85,000 / yr (~$90/yr)
+6. Whole School License (Up to 200 students): ₦150,000 / term OR ₦400,000 / yr
+
+UNIT ECONOMICS (PER ACTIVE CHILD / MONTH):
+
+- STT (Deepgram Nova-2): ~120 mins reading = ~$0.51 USD (₦800 NGN)
+- TTS (ElevenLabs + Supabase CDN Cache): ~90% cache hit rate = ~$0.10 USD (₦160 NGN)
+- LLM (Groq / Gemini / OpenRouter): ~$0.05 USD (₦80 NGN)
+- Total API Cost / Active Child: ~₦1,040 NGN / month
+- Single Child Margin @ ₦2,500 = 58% Profit Margin
+
+6-MONTH FINANCIAL PROJECTION (1,000 ACCOUNTS CONVERSION):
+
+- 600 Single Readers @ ₦2,500/mo = ₦9,000,000 NGN
+- 300 Family Accounts @ ₦5,000/mo = ₦9,000,000 NGN
+- 100 School Classrooms @ ₦30,000/term (2 terms) = ₦6,000,000 NGN
+- Gross 6-Month Revenue: ₦24,000,000 NGN (~$15,500 USD)
+- Direct API Costs: ₦13,860,000 NGN
+- Cumulative Net Profit: ₦10,140,000 NGN (~$6,500 USD)
+
+NIGERIA MARKET POTENTIAL:
+
+- 80,000+ private primary schools in Nigeria (18,000+ in Lagos State).
+- Target: 400 schools (1,200 classrooms) @ ₦30,000/term = ₦108 Million NGN / year ARR.
+
+───────────────────────────────────────────────────────────────────
 NON-NEGOTIABLE FONTS & TYPOGRAPHY (LOCKED, DO NOT VIOLATE)
 ───────────────────────────────────────────────────────────────────
-• ONESIMOS Wordmark: `font-logo` class (rendered as "Onesimos" in small caps on Kid Dashboard per founder final call).
+• ONESIMOS Wordmark: `font-logo` class (rendered as "Onesimos" in small caps on Kid Dashboard per founder call).
 • Headings AND "Hi [Child Name]!" greeting: `font-achiko`
 • Body, buttons, cards, badges, descriptions, STAT NUMBERS: `font-switzer`
 • Stat numbers style: `font-switzer text-2xl font-black leading-none` (or `text-2xl sm:text-3xl` for larger report cards). Never use `font-achiko` for numbers.
@@ -42,7 +77,7 @@ NON-NEGOTIABLE OPERATING RULES
 (Use `git add .` because PowerShell treats square brackets in paths like `app/kid/[childId]/page.tsx` as wildcards and silently ignores the file.) 3. Inspection commands (`Get-Content -LiteralPath "..." -Encoding UTF8`) BEFORE editing any unfamiliar file. Never assume. 4. Pro code standards: file header JSDoc, section dividers (`// ─── Section N ───`), strict TypeScript, zero `any`, JSDoc on public functions. 5. No AI fluff. Weigh founder ideas with Strength / Risk / Verdict framing. 6. TEST FIRST rule: always provide clear test instructions BEFORE moving to the next item. 7. Comeback / Handoff prompt at every major milestone. Robust, matching this document's depth. 8. Every response ends with a clear "What's Next" instruction. 9. Never ask founder to re-paste code you can inspect via PowerShell. 10. When founder says "stop the comeback prompt spam", respect it until next milestone. 11. Git merge conflicts: when push is rejected as non-fast-forward, use `git pull origin main --no-rebase` (if VS Code opens Vim, press Esc then type `:wq` then Enter). If uncommitted changes block the pull, commit local changes first, then pull, then push. 12. VS Code "orange folder + number" means TypeScript/Tailwind errors. Founder can share them via the Problems panel (Ctrl+Shift+M), then we fix them cleanly. 13. Supabase table verification: before assuming a table exists, ask founder for a Table Editor screenshot. Do not code against ghost tables. (Real story: `stumbled_words` table did not exist, only `stumbled_words_log` did. This blocked Word Pocket for weeks until founder shared the screenshot.)
 
 ───────────────────────────────────────────────────────────────────
-BUILD STATUS: EVERYTHING SHIPPED THIS SESSION (16 MAJOR FIXES)
+BUILD STATUS: EVERYTHING SHIPPED THIS SESSION (17 MAJOR FIXES)
 ───────────────────────────────────────────────────────────────────
 
 ✅ SHIPPED THIS SESSION:
@@ -64,6 +99,8 @@ BUILD STATUS: EVERYTHING SHIPPED THIS SESSION (16 MAJOR FIXES)
 15. **Honest Analytics Engine Repair (Bug 4):** Removed fake 100% comprehension fallback. Report card strictly reflects real quiz scores (0% failed quiz = real 0%, 50% partial = real 50%, 95% accuracy).
 16. **Living Chapter Deduplication & Quizzes (Bug 1):** Dynamic 25-virtue scenario matrix prevents duplicate titles ("Spilled Bottle" gone). Every generated chapter includes 3 comprehension questions.
 17. **Spelling Game Revamp (Bug 7):** 0.85x slower ElevenLabs audio, 50+ curriculum words per level, struggle-first priority queue, 1-hint max limit per round, unassisted word graduation to `mastered = true` (which removes word from active Word Pocket into trophy list!), and daily 2-round free quota limit.
+18. **Living Chapters Auto-Archiving (Fix E):** Completed personal chapters on Child Report auto-archive into a collapsible drawer.
+19. **Progress Story Timeline:** Child Report displays real-time chapter mastery history and Mastered Words Wall.
 
 ✅ SHIPPED IN PRIOR SESSIONS:
 
@@ -81,12 +118,8 @@ OUTSTANDING MASTER CHECKLIST (Founder's Priority Queue)
 
 🔴 PRIORITY 3 (Comprehension & Bookshelf Bugs, Remaining):
 
-**[Bug 2] Completed Living Stories do NOT move to Bookshelf.**
-→ Cause: Session save on Living Story completion may not write correct `story_id` (Supabase UUID vs static ID mismatch).
-→ File: `app/kid/[childId]/summary/page.tsx` (session save logic).
-
-**[Bug 3] Regular catalog stories also not moving to Bookshelf after completion.**
-→ Same root cause as Bug 2. Fix once, applies to both.
+**[Bug 2 & 3 Fix Verification] Completed Stories Bookshelf Move.**
+→ Summary page now immediately writes `completed_story: true` on mount. Verify catalog and Living Chapters move to My Bookshelf on Kid Home.
 
 **[Bug 9] WPM math questionable for slow readers.**
 → Current formula: `(totalPages × 20 words/page) / (totalSeconds / 60)`.
@@ -95,16 +128,8 @@ OUTSTANDING MASTER CHECKLIST (Founder's Priority Queue)
 
 🟡 PRIORITY 4 (New UX Workflows):
 
-**[Fix E] Auto-Archive Read Living Chapters on Child Report.**
-→ File: `app/parent/child/[childId]/page.tsx`
-→ Logic: filter generated stories, hide/collapse those with matching `completed_story = true` session.
-→ Founder wants read chapters archived so parents see fresh chapters to preview.
-
-**[Progress Story] Mastery Narrative Timeline on Parent Report (NEW, high impact).**
-→ This is the trust-building feature founder called out.
-→ Design: Report shows "On Sep 12 you generated a book about Self Confidence targeting words boundaries, whisper, courage. Chinedu has mastered boundaries and whisper. Courage still needs practice."
-→ Requires: (a) `generated_stories` already stores target words via `extractTargetWordsFromStory` ✅, (b) `mastered_words` table exists in Supabase ✅, (c) write to `mastered_words` on unassisted spelling graduation ✅ (SHIPPED!), (d) render narrative on Child Report (NEW WORK).
-→ Verdict: SHIP RIGHT AFTER Bugs 2 & 3 are cleared.
+**[Pricing Tier Update] Multi-Tier Paystack Checkout.**
+→ Update `app/parent/pricing/page.tsx` & `lib/payments.ts` to support Single (₦2.5k), Family (₦5k), Extended Family (₦15k), and School (₦30k/term) plans.
 
 **[Fix F] Kid-Favorited Stories.**
 → Requires: new Supabase table `favorite_stories` OR array column on `children`.
@@ -123,7 +148,7 @@ BACKLOG IDEAS (Founder-Approved Vision, DO NOT SHIP WITHOUT GO-AHEAD)
 
 **Backlog Idea 1: The Onesimos Reading Ladder + Sound Lab (Phase M)**
 
-_Scope:_ A 1000+ word curated spelling ladder across 10 progression tiers PLUS a kid-facing phonics playground.
+_Scope:_ A 1000+ word curated spelling ladder across 10 progression tiers PLUS a kid-facing phonics playground (`/kid/[childId]/phonics`).
 
 **Reading Ladder (10 Tiers, unlock as child levels up):**
 
@@ -152,38 +177,8 @@ Interactive cards for each rule. Kid taps letter combo → hears sound + sample 
 **Enhanced Tap-to-Hear Inside Word Pocket (Phonics Decoding Mode):**
 Instead of just speaking the whole word, break it visually AND audibly into syllables/phonemes. Example: "boundaries → boun · da · ries" with each chunk highlighting.
 
-**Optional Parent PDF:** Phonics Cheat Sheet printable, bundled with Report Card PDF pack. Bonus, not primary.
-
 _Strength:_ Turns Onesimos from companion into full curriculum. Justifies premium pricing.
-_Risk:_ 3 to 5 days of build work. Do not start until Priority 3 bugs are cleared.
-_Verdict:_ SHIP AS PHASE M, after Priority 3 & 4. Position as "The Reading Ladder" + "Sound Lab", unlocked as kid levels up.
-
-**Backlog Idea 2: Parent Trust Report Card Upgrade**
-
-_Scope:_ Two-part upgrade to the Child Report to make it the strongest parent-trust artifact in the product.
-
-_Part A: Auto-Archive Read Living Chapters (already scheduled as Fix E above)._
-
-_Part B: Mastery Narrative Timeline ("Progress Story"):_
-Report page shows dated entries:
-
-> "On Sep 12 you generated a book about Self Confidence targeting words boundaries, whisper, courage. Chinedu has now mastered boundaries and whisper. Courage still needs practice."
-> "On Sep 14 you generated a book about Kindness targeting words gentle, generous, empathy. Chinedu has mastered all three! Ready for the next challenge."
-
-Also show progress states:
-
-- When mastered: "Child has mastered words 1, 2, 3"
-- When still struggling: "Child still needs practice with words 1, 2, 3"
-
-_Data Pipeline Requirements:_
-
-1. `generated_stories.story_data.targetWords[]` ✅ already implemented
-2. `mastered_words` table in Supabase ✅ already exists
-3. Write to `mastered_words` when child spells word correctly without hints ✅ SHIPPED!
-4. Render "Progress Story" narrative section on `/parent/child/[childId]` (NEW WORK)
-
-_Strength:_ Converts monthly subscribers to annual subscribers. Highest trust-building feature in the product.
-_Verdict:_ SHIP AS PRIORITY 4 IMMEDIATELY AFTER Priority 3 is done.
+_Verdict:_ SHIP AS PHASE M, after Pricing Tiers & Launch Smoke Test.
 
 ───────────────────────────────────────────────────────────────────
 KEY FILE MAP (For Quick Inspection)
@@ -261,19 +256,17 @@ LESSONS LEARNED (Workflow Friction Solved This Session)
 
 3. **Non-fast-forward rejection recovery:**
 
-4. **Font weight fallback trap:** The `font-logo` custom font only has one weight. Adding `font-extrabold` or `tracking-wider` forces browser to fall back to `font-achiko`. Keep logo styling minimal: `font-logo text-3xl md:text-4xl tracking-tight` only.
+4. **Font weight fallback trap:** The `font-logo` custom font only has one weight. Keep logo styling minimal: `font-logo text-3xl md:text-4xl tracking-tight` only.
 
-5. **Supabase ghost tables:** Never assume a table exists. Ask founder for a Table Editor screenshot before writing queries. `stumbled_words` did not exist for weeks and silently broke Word Pocket until we added the `stumbled_words_log` fallback.
+5. **Supabase ghost tables:** Never assume a table exists. Ask founder for a Table Editor screenshot before writing queries.
 
 6. **VS Code Problems panel is the ground truth:** Orange folder + number badge = TypeScript or Tailwind errors. Ctrl+Shift+M opens the Problems panel. Fix these before shipping.
 
-7. **Tailwind conflict warnings matter:** `inline-flex` + `block` on the same element throws warnings and unpredictable rendering. Pick one layout mode.
+7. **Serverless functions kill un-awaited background tasks:** In Vercel serverless environment (`/api/tts/route.ts`), background async tasks like `void uploadToSupabase()` get terminated before completion unless explicitly `await`ed.
 
-8. **Serverless functions kill un-awaited background tasks:** In Vercel serverless environment (`/api/tts/route.ts`), background async tasks like `void uploadToSupabase()` get terminated before completion unless explicitly `await`ed.
+8. **Supabase Storage RLS Policy:** Buckets require an explicit public policy (`Allow public uploads` with `INSERT`, `SELECT`, `UPDATE` checked for `anon` and `authenticated`) for uploads to succeed from anon clients.
 
-9. **Supabase Storage RLS Policy:** Buckets require an explicit public policy (`Allow public uploads` with `INSERT`, `SELECT`, `UPDATE` checked for `anon` and `authenticated`) for uploads to succeed from anon clients.
-
-10. **ElevenLabs speed tuning:** `speed: 0.85` inside `voice_settings` creates a warm, slow, clear pronunciation that kids aged 3-9 love.
+9. **ElevenLabs speed tuning:** `speed: 0.85` inside `voice_settings` creates a warm, slow, clear pronunciation that kids aged 3-9 love.
 
 ───────────────────────────────────────────────────────────────────
 FRESH SESSION KICKOFF PROTOCOL
@@ -284,14 +277,6 @@ When a new session starts:
 1. Do NOT restart the project. Do NOT ask founder to re-paste code.
 2. Acknowledge you have read this document by summarizing the current state in 3 bullet points.
 3. Ask founder which item from the Outstanding Master Checklist to tackle first.
-4. Recommended attack order:
-
-- Bugs 2 & 3 (Completed stories Bookshelf migration)
-- Fix E (Auto-archive read Living Chapters on Child Report)
-- Progress Story / Mastery Narrative Timeline on Parent Report
-- Phase M (The Onesimos Reading Ladder + Sound Lab Phonics Zone)
-
-5. For each bug: inspect the file first via `Get-Content -LiteralPath "..." -Encoding UTF8`, deliver the full file, provide Git commands with `git add .`, provide test instructions, wait for confirmation.
 
 ═══════════════════════════════════════════════════════════════════
 END OF HANDOFF
