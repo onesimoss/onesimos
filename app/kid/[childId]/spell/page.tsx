@@ -28,19 +28,13 @@ import {
   type StumbledWordCountItem,
 } from "@/lib/stumbledWords";
 import { getAvatarById } from "@/lib/avatars";
+import type { ChildProfile } from "@/lib/children";
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 
 interface SpellingWordItem {
   word: string;
   times_stumbled: number;
-}
-
-interface ChildProfile {
-  id: string;
-  name: string;
-  reading_level: number;
-  avatar_id?: string;
 }
 
 interface BankTile {
@@ -208,24 +202,23 @@ export default function SpellingGamePage(): JSX.Element {
     let cancelled = false;
 
     async function load(): Promise<void> {
+      if (!childId) return;
+
       // 1. Fetch child profile
       const { data: childData, error: childErr } = await supabase
         .from("children")
-        .select("id, name, reading_level, avatar_id")
+        .select("*")
         .eq("id", childId)
         .single();
 
-      if (cancelled || childErr || !childData) {
-        if (!cancelled) router.replace("/who");
+      if (cancelled) return;
+
+      if (childErr || !childData) {
+        router.replace("/who");
         return;
       }
 
-      const profile: ChildProfile = {
-        id: childData.id,
-        name: childData.name,
-        reading_level: childData.reading_level ?? 2,
-        avatar_id: childData.avatar_id,
-      };
+      const profile = childData as ChildProfile;
       setChild(profile);
 
       // 2. Fetch stumbled words with automatic fallback support
@@ -233,7 +226,7 @@ export default function SpellingGamePage(): JSX.Element {
 
       if (cancelled) return;
 
-      const roundList = assembleRoundWords(words || [], profile.reading_level);
+      const roundList = assembleRoundWords(words || [], profile.reading_level || 2);
       setRoundWords(roundList);
       setPhase("intro");
     }
