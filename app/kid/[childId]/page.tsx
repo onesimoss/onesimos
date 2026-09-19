@@ -3,7 +3,8 @@
  * @description Kid Home View : 4-story active grid (2x2 layout), daily virtue affirmation,
  * completed stories bookshelf (Read for Fun mode without mic/token burn), personal
  * Living Story chapters with target word badges, always-visible Word Pocket (Vocab vs Names),
- * Paystack membership unlock flow, and Parent Gate access.
+ * Paystack membership unlock flow, and Parent Gate access. Includes launchers for Spelling
+ * and the Phonics Sound Lab.
  *
  * @fonts Logo (wordmark) + Achiko (headings/greetings) + Switzer (body/UI/stats)
  * @module app/kid/[childId]/page
@@ -401,7 +402,7 @@ export default function KidHomePage(): JSX.Element {
           <p className="text-amber-800 text-base font-switzer font-medium">
             {timeIsUp
               ? "You did amazing today. See you tomorrow!"
-              : "Pick a story or practise your spelling!"}
+              : "Pick a story or explore your sounds!"}
           </p>
 
           <div className="inline-flex flex-wrap items-center justify-center gap-2 mt-4 font-switzer">
@@ -425,27 +426,58 @@ export default function KidHomePage(): JSX.Element {
           </p>
         </div>
 
-        {/* Spelling Practice Quick Launcher Banner */}
-        <div className="mb-8 bg-gradient-to-r from-amber-500 to-orange-500 rounded-3xl p-6 text-white shadow-md flex flex-col sm:flex-row items-center justify-between gap-4 font-switzer">
-          <div className="flex items-center gap-4 text-left">
-            <div className="w-14 h-14 bg-white/20 backdrop-blur-xs rounded-2xl flex items-center justify-center text-3xl shrink-0">
-              ✏️
+        {/* Practice & Play Quick Launcher Grid (Spelling + Phonics Sound Lab) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 font-switzer">
+          {/* Column 1: Spelling Practice */}
+          <div className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-3xl p-5 text-white shadow-md flex flex-col justify-between gap-4 font-switzer">
+            <div className="flex items-start gap-4 text-left">
+              <div className="w-12 h-12 bg-white/20 backdrop-blur-xs rounded-2xl flex items-center justify-center text-2xl shrink-0">
+                ✏️
+              </div>
+              <div>
+                <h2 className="font-achiko text-xl text-white leading-tight">
+                  Spelling Practice
+                </h2>
+                <p className="text-amber-100 text-xs mt-1 font-switzer leading-relaxed">
+                  Spell words from your books and earn stars!
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="font-achiko text-2xl text-white">
-                Spelling Practice
-              </h2>
-              <p className="text-amber-100 text-xs font-switzer">
-                Spell words from your stories and earn stars!
-              </p>
-            </div>
+            <Link
+              href={`/kid/${child.id}/spell`}
+              className="w-full px-5 py-3 rounded-2xl bg-white text-amber-800 font-bold text-xs shadow-sm hover:bg-amber-50 active:scale-[0.98] transition-all text-center font-switzer"
+            >
+              Play Spelling Game 🚀
+            </Link>
           </div>
-          <Link
-            href={`/kid/${child.id}/spell`}
-            className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-white text-amber-800 font-bold text-sm shadow-sm hover:bg-amber-50 active:scale-95 transition-all text-center shrink-0 font-switzer"
-          >
-            Play Spelling 🚀
-          </Link>
+
+          {/* Column 2: Phonics Sound Lab */}
+          <div className="bg-gradient-to-br from-pink-500 to-rose-500 rounded-3xl p-5 text-white shadow-md flex flex-col justify-between gap-4 font-switzer">
+            <div className="flex items-start gap-4 text-left">
+              <div className="w-12 h-12 bg-white/20 backdrop-blur-xs rounded-2xl flex items-center justify-center text-2xl shrink-0">
+                🎵
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-achiko text-xl text-white leading-tight">
+                    Sound Lab
+                  </h2>
+                  <span className="px-2 py-0.5 rounded-full bg-rose-400 text-white text-[9px] font-black uppercase font-switzer tracking-wide">
+                    Free
+                  </span>
+                </div>
+                <p className="text-rose-100 text-xs mt-1 font-switzer leading-relaxed">
+                  Master letter sounds, digraphs, and tricky blends!
+                </p>
+              </div>
+            </div>
+            <Link
+              href={`/kid/${child.id}/phonics`}
+              className="w-full px-5 py-3 rounded-2xl bg-white text-rose-800 font-bold text-xs shadow-sm hover:bg-rose-50 active:scale-[0.98] transition-all text-center font-switzer"
+            >
+              Enter Sound Lab 🎵
+            </Link>
+          </div>
         </div>
 
         {/* Section 1: Personal Living Stories (Active Generated Chapters) */}
