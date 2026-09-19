@@ -2,14 +2,8 @@
  * Onesimos — Solo Spelling Game
  * =======================================
  * Encoding practice pulling from each child's real stumbled words.
- * Features automatic curated level fallback words (so new kids can always play),
- * cross-device ElevenLabs + Supabase CDN audio playback, and level-scaled difficulty.
- *
- * Difficulty scaling (by child.reading_level):
- *   Level 1 (pre-reader)  : 3-letter words, 1 distractor, auto-hint after 8s
- *   Level 2 (emerging)    : 3–4 letter words, 2 distractors
- *   Level 3 (early)       : 4–5 letter words, 3 distractors
- *   Level 4 (confident)   : 5–7 letter words, 4 distractors
+ * Features 50+ curriculum words per level (shuffled every round),
+ * 0.85x slower ElevenLabs audio, and daily 2-round quota limit for free plans.
  *
  * @fonts Achiko (headings) + Switzer (body/UI)
  * @module app/kid/[childId]/spell/page
@@ -29,6 +23,8 @@ import {
 } from "@/lib/stumbledWords";
 import { getAvatarById } from "@/lib/avatars";
 import type { ChildProfile } from "@/lib/children";
+import { checkMonthlyStoryLimit } from "@/lib/sessionBudget";
+import ParentGate from "@/components/ParentGate";
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 
@@ -59,19 +55,35 @@ type GamePhase =
 // ─── CONSTANTS ──────────────────────────────────────────────────────────────
 
 const ROUND_SIZE = 6;
+const FREE_DAILY_ROUND_LIMIT = 2;
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const CELEBRATION_MS = 1400;
 const RETRY_MS = 1200;
 
-/** Curated age-appropriate practice words when Word Pocket is empty */
-const FALLBACK_WORDS_BY_LEVEL: Record<number, string[]> = {
-  1: ["cat", "sun", "dog", "run", "big", "red", "hat", "cup", "box", "top"],
-  2: ["jump", "frog", "kind", "play", "star", "tree", "milk", "nest", "sing", "book"],
-  3: ["brave", "smile", "water", "climb", "cloud", "green", "light", "clean", "story", "sweet"],
-  4: ["courage", "whisper", "journey", "explore", "shelter", "patient", "curious", "freedom", "wisdom", "balance"],
+/** Expanded 50+ Curriculum Words Per Level (Shuffled for non-repetitive play) */
+const EXPANDED_FALLBACK_WORDS: Record<number, string[]> = {
+  1: [
+    "cat", "sun", "dog", "run", "big", "red", "hat", "cup", "box", "top",
+    "pen", "pig", "bus", "mud", "bed", "net", "map", "bug", "hop", "wet",
+    "fan", "pin", "fox", "log", "jam", "rug", "bat", "cot", "dig", "fit",
+  ],
+  2: [
+    "jump", "frog", "kind", "play", "star", "tree", "milk", "nest", "sing", "book",
+    "fish", "bird", "lamp", "hand", "fast", "slow", "duck", "park", "cold", "warm",
+    "gold", "rain", "moon", "wind", "ship", "bell", "ring", "ring", "gift", "cake",
+  ],
+  3: [
+    "brave", "smile", "water", "climb", "cloud", "green", "light", "clean", "story", "sweet",
+    "house", "plant", "bread", "earth", "fruit", "happy", "river", "train", "ocean", "grass",
+    "table", "chair", "music", "laugh", "bright", "dream", "heart", "voice", "grace", "trust",
+  ],
+  4: [
+    "courage", "whisper", "journey", "explore", "shelter", "patient", "curious", "freedom", "wisdom", "balance",
+    "harmony", "respect", "kindness", "gentle", "partner", "promise", "purpose", "treasure", "builder", "silence",
+    "creature", "together", "forgive", "comfort", "glorious", "pathway", "triumph", "caring", "honor", "inspire",
+  ],
 };
 
-/** Difficulty config per reading level */
 const LEVEL_CONFIG: Record<
   number,
   {
@@ -135,30 +147,28 @@ function buildBank(word: string, distractorCount: number): BankTile[] {
   return all.map((letter, i) => ({ id: i, letter, used: false }));
 }
 
-/**
- * Builds round word list from stumbled words + level fallbacks if empty.
- */
 function assembleRoundWords(
   stumbledItems: StumbledWordCountItem[],
   level: number
 ): SpellingWordItem[] {
   const cfg = LEVEL_CONFIG[level] ?? LEVEL_CONFIG[2];
   
-  // 1. Filter stumbled words fitting this level
-  const realStumbled: SpellingWordItem[] = stumbledItems
-    .filter((w) => w.word.length <= cfg.maxWordLen)
-    .map((w) => ({ word: w.word.toLowerCase(), times_stumbled: w.count }));
+  const realStumbled: SpellingWordItem[] = shuffle(
+    stumbledItems
+      .filter((w) => w.word.length <= cfg.maxWordLen)
+      .map((w) => ({ word: w.word.toLowerCase(), times_stumbled: w.count }))
+  );
 
-  // 2. If enough stumbled words exist, return top ones
   if (realStumbled.length >= ROUND_SIZE) {
     return realStumbled.slice(0, ROUND_SIZE);
   }
 
-  // 3. Otherwise, blend stumbled words with curated level fallback words
   const pool = [...realStumbled];
   const seen = new Set(pool.map((p) => p.word));
 
-  const fallbackList = FALLBACK_WORDS_BY_LEVEL[level] || FALLBACK_WORDS_BY_LEVEL[2];
+  const fallbackList = shuffle(
+    EXPANDED_FALLBACK_WORDS[level] || EXPANDED_FALLBACK_WORDS[2]
+  );
   for (const fallbackWord of fallbackList) {
     if (pool.length >= ROUND_SIZE) break;
     const lower = fallbackWord.toLowerCase();
@@ -168,7 +178,20 @@ function assembleRoundWords(
     }
   }
 
-  return pool.slice(0, ROUND_SIZE);
+  return shuffle(pool.slice(0, ROUND_SIZE));
+}
+
+function getDailySpellingRoundsCount(childId: string): number {
+  if (typeof window === "undefined") return 0;
+  const todayKey = `spelling_rounds_${childId}_${new Date().toISOString().slice(0, 10)}`;
+  return Number(localStorage.getItem(todayKey) || "0");
+}
+
+function incrementDailySpellingRounds(childId: string): void {
+  if (typeof window === "undefined") return;
+  const todayKey = `spelling_rounds_${childId}_${new Date().toISOString().slice(0, 10)}`;
+  const current = getDailySpellingRoundsCount(childId);
+  localStorage.setItem(todayKey, String(current + 1));
 }
 
 // ─── MAIN COMPONENT ─────────────────────────────────────────────────────────
@@ -185,6 +208,11 @@ export default function SpellingGamePage(): JSX.Element {
   const [wordIndex, setWordIndex] = useState(0);
   const [stars, setStars] = useState(0);
 
+  // Free Tier Lock States
+  const [isPaidPlan, setIsPaidPlan] = useState(false);
+  const [limitModalOpen, setLimitModalOpen] = useState(false);
+  const [gateOpen, setGateOpen] = useState(false);
+
   // ── Per-word state ──
   const [bank, setBank] = useState<BankTile[]>([]);
   const [slots, setSlots] = useState<SlotTile[]>([]);
@@ -196,7 +224,7 @@ export default function SpellingGamePage(): JSX.Element {
   const level = child?.reading_level ?? 2;
   const cfg = LEVEL_CONFIG[level] ?? LEVEL_CONFIG[2];
 
-  // ─── DATA FETCH ──────────────────────────────────────────────────────────
+  // ─── DATA FETCH & SUBSCRIPTION CHECK ─────────────────────────────────────
 
   useEffect(() => {
     let cancelled = false;
@@ -204,7 +232,6 @@ export default function SpellingGamePage(): JSX.Element {
     async function load(): Promise<void> {
       if (!childId) return;
 
-      // 1. Fetch child profile
       const { data: childData, error: childErr } = await supabase
         .from("children")
         .select("*")
@@ -221,7 +248,10 @@ export default function SpellingGamePage(): JSX.Element {
       const profile = childData as ChildProfile;
       setChild(profile);
 
-      // 2. Fetch stumbled words with automatic fallback support
+      // Check user subscription status for free vs paid plan
+      const usage = await checkMonthlyStoryLimit(profile.id);
+      setIsPaidPlan(usage.isPaidPlan);
+
       const { data: words } = await getRecentStumbledWords(childId, 30);
 
       if (cancelled) return;
@@ -251,7 +281,7 @@ export default function SpellingGamePage(): JSX.Element {
       setSlots(newSlots);
       setHintSlotIndex(null);
 
-      // Cross-device ElevenLabs + Supabase CDN Tap-to-Hear
+      // ElevenLabs 0.85x slower audio
       setTimeout(() => void speakWord(word), 300);
 
       if (autoHintRef.current) clearTimeout(autoHintRef.current);
@@ -275,6 +305,25 @@ export default function SpellingGamePage(): JSX.Element {
       if (autoHintRef.current) clearTimeout(autoHintRef.current);
     };
   }, []);
+
+  // ─── START GAME WITH FREE TIER CHECK ──────────────────────────────────────
+
+  const handleStartGame = () => {
+    if (!child) return;
+
+    if (!isPaidPlan) {
+      const roundsToday = getDailySpellingRoundsCount(child.id);
+      if (roundsToday >= FREE_DAILY_ROUND_LIMIT) {
+        setLimitModalOpen(true);
+        return;
+      }
+    }
+
+    incrementDailySpellingRounds(child.id);
+    setWordIndex(0);
+    setStars(0);
+    setPhase("playing");
+  };
 
   // ─── INTERACTIONS ────────────────────────────────────────────────────────
 
@@ -376,8 +425,6 @@ export default function SpellingGamePage(): JSX.Element {
     advanceWord();
   }
 
-  // ─── RENDER: LOADING ─────────────────────────────────────────────────────
-
   if (phase === "loading") {
     return (
       <main className="flex min-h-screen items-center justify-center bg-amber-50/60 font-switzer">
@@ -424,15 +471,55 @@ export default function SpellingGamePage(): JSX.Element {
         </p>
         <button
           type="button"
-          onClick={() => {
-            setWordIndex(0);
-            setStars(0);
-            setPhase("playing");
-          }}
+          onClick={handleStartGame}
           className="mt-2 rounded-2xl bg-amber-500 hover:bg-amber-600 px-10 py-4 font-achiko text-xl text-white shadow-md active:scale-95 transition-all font-switzer"
         >
           Start Spelling 🚀
         </button>
+
+        {/* Free Plan Lock Modal */}
+        {limitModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 font-switzer">
+            <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl border border-gray-100 font-switzer">
+              <div className="text-4xl mb-3">🌟</div>
+              <h3 className="font-achiko text-xl text-amber-900 mb-2">
+                Spelling Goal Reached!
+              </h3>
+              <p className="text-xs text-gray-600 mb-6 leading-relaxed font-switzer">
+                You completed today&apos;s <strong>{FREE_DAILY_ROUND_LIMIT} free spelling rounds</strong>! 
+                Ask a parent to unlock unlimited daily spelling!
+              </p>
+              <div className="flex flex-col gap-2 font-switzer">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLimitModalOpen(false);
+                    setGateOpen(true);
+                  }}
+                  className="w-full py-3 rounded-2xl bg-amber-500 text-white font-bold text-xs shadow-sm hover:bg-amber-600 font-switzer active:scale-95 transition-all"
+                >
+                  Ask Parent to Unlock ✨
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLimitModalOpen(false)}
+                  className="w-full py-2.5 rounded-2xl border border-gray-200 text-gray-600 font-bold text-xs hover:bg-gray-50 font-switzer"
+                >
+                  Maybe Later
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <ParentGate
+          open={gateOpen}
+          onClose={() => setGateOpen(false)}
+          onSuccess={() => {
+            setGateOpen(false);
+            router.push("/parent/pricing");
+          }}
+        />
       </main>
     );
   }
@@ -464,8 +551,9 @@ export default function SpellingGamePage(): JSX.Element {
           <button
             type="button"
             onClick={() => {
-              setWordIndex(0);
-              setStars(0);
+              // Prepare next round with fresh shuffled words
+              const nextWords = assembleRoundWords([], child?.reading_level || 2);
+              setRoundWords(nextWords);
               setPhase("intro");
             }}
             className="rounded-2xl bg-amber-500 hover:bg-amber-600 px-8 py-3.5 font-achiko text-base text-white shadow-md active:scale-95 transition-all"
@@ -538,7 +626,7 @@ export default function SpellingGamePage(): JSX.Element {
 
       {/* ── Game area ── */}
       <section className="flex flex-1 flex-col items-center justify-center gap-8 px-6 max-w-2xl mx-auto w-full font-switzer">
-        {/* Audio prompt with ElevenLabs / Deepgram Aura Cloud TTS */}
+        {/* Audio prompt with ElevenLabs 0.85x speed */}
         <button
           type="button"
           onClick={() => currentWord && void speakWord(currentWord.word)}

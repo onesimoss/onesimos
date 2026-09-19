@@ -1,7 +1,7 @@
 /**
  * @file app/api/tts/route.ts
  * @description Cloud Text-to-Speech endpoint with automatic Supabase CDN caching.
- * Primary: ElevenLabs (hyper-realistic, crystal-clear phonics and names).
+ * Primary: ElevenLabs (Multilingual v2, 0.85x speed for young readers).
  * Fallback: Deepgram Aura.
  * Cache: Supabase Storage ("tts-audio" bucket) for $0 repeat cost.
  *
@@ -89,10 +89,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             },
             body: JSON.stringify({
               text: cleanedWord,
-              model_id: "eleven_turbo_v2_5",
+              model_id: "eleven_multilingual_v2",
               voice_settings: {
-                stability: 0.5,
-                similarity_boost: 0.75,
+                stability: 0.6,
+                similarity_boost: 0.8,
+                speed: 0.85,
               },
             }),
           }
@@ -110,7 +111,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
     }
 
-    // ─── STEP 2B: FALLBACK TO DEEPGRAM AURA (IF ELEVENLABS FAILED OR UNCONFIGURED) ───
+    // ─── STEP 2B: FALLBACK TO DEEPGRAM AURA ───
     if (!audioBuffer) {
       const deepgramKey = process.env.DEEPGRAM_API_KEY;
       if (!deepgramKey) {
@@ -160,7 +161,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       console.error(`[TTS Cache Exception for "${cleanedWord}"]:`, uploadErr);
     }
 
-    // Return generated audio buffer immediately to the browser
+    // Return generated audio buffer
     return new NextResponse(bufferToSave, {
       headers: {
         "Content-Type": "audio/mpeg",
