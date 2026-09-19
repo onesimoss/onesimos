@@ -3,9 +3,9 @@
  * @description Dedicated Academic Progress Report Page for a single child profile.
  *              Provides "Before & After" growth narratives, honest metrics (WPM, Accuracy,
  *              Comprehension, Reading Age), Living Story Book personal chapter weaving,
- *              stumbled practice words, and 1-tap Print/Save PDF report card generation.
+ *              auto-archiving of completed chapters, and 1-tap Print/Save PDF report generation.
  *
- * @fonts Achiko (headings/logo) + Switzer (body/UI)
+ * @fonts Achiko (headings/logo) + Switzer (body/UI/stats)
  * @dependencies
  * - @/context/AuthContext
  * - @/lib/children, @/lib/avatars, @/lib/stumbledWords
@@ -14,7 +14,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -118,6 +118,7 @@ export default function ChildReportPage(): JSX.Element {
   const [deletingStoryId, setDeletingStoryId] = useState<string | null>(null);
   const [showConfirmDeleteChild, setShowConfirmDeleteChild] = useState(false);
   const [levelUpSaving, setLevelUpSaving] = useState(false);
+  const [showArchivedChapters, setShowArchivedChapters] = useState(false);
 
   // Feedback Messages
   const [message, setMessage] = useState("");
@@ -165,6 +166,26 @@ export default function ChildReportPage(): JSX.Element {
 
     void loadChildReport();
   }, [user, childId, router]);
+
+  // Divide generated stories into Fresh vs Read (Archived) Chapters
+  const { freshChapters, archivedChapters } = useMemo(() => {
+    const completedSet = new Set(
+      sessions.filter((s) => s.completed_story && s.story_id).map((s) => s.story_id)
+    );
+
+    const fresh: SampleStory[] = [];
+    const archived: SampleStory[] = [];
+
+    generatedStories.forEach((story) => {
+      if (completedSet.has(story.id)) {
+        archived.push(story);
+      } else {
+        fresh.push(story);
+      }
+    });
+
+    return { freshChapters: fresh, archivedChapters: archived };
+  }, [generatedStories, sessions]);
 
   const handleSaveKidPin = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
@@ -397,35 +418,53 @@ export default function ChildReportPage(): JSX.Element {
         </section>
 
         {/* Key Academic Metrics Grid */}
-        <section className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8 font-switzer">
-          <div className="bg-white rounded-3xl p-5 border border-gray-200 shadow-xs text-center">
-            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Fluency Speed</p>
-            <p className="font-achiko text-3xl text-amber-900">
-              {isPreReader || stats.wordsPerMinute === 0 ? "—" : stats.wordsPerMinute}
+        <section className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8 font-switzer items-stretch">
+          <div className="bg-white rounded-3xl p-5 border border-gray-200 shadow-xs text-center flex flex-col justify-between h-full">
+            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider font-switzer">
+              Fluency Speed
             </p>
-            <p className="text-[10px] text-gray-400 font-bold mt-1">
+            <p className="font-switzer text-2xl sm:text-3xl font-black text-amber-950 my-3 leading-none">
+              {isPreReader || stats.wordsPerMinute === 0 ? "n/a" : stats.wordsPerMinute}
+            </p>
+            <p className="text-[10px] text-gray-400 font-bold font-switzer">
               {isPreReader ? "Not tracked yet" : "Words / Minute"}
             </p>
           </div>
 
-          <div className="bg-white rounded-3xl p-5 border border-gray-200 shadow-xs text-center">
-            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Accuracy</p>
-            <p className="font-achiko text-3xl text-emerald-700">{stats.accuracyPercentage}%</p>
-            <p className="text-[10px] text-gray-400 font-bold mt-1">Pronunciation</p>
-          </div>
-
-          <div className="bg-white rounded-3xl p-5 border border-gray-200 shadow-xs text-center">
-            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Comprehension</p>
-            <p className="font-achiko text-3xl text-indigo-700">{stats.comprehensionPercentage}%</p>
-            <p className="text-[10px] text-gray-400 font-bold mt-1">Post-Story Quiz</p>
-          </div>
-
-          <div className="bg-white rounded-3xl p-5 border border-gray-200 shadow-xs text-center">
-            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Reading Age</p>
-            <p className="font-achiko text-2xl sm:text-3xl text-amber-900 leading-tight">
-              {stats.readingAgeEstimate}
+          <div className="bg-white rounded-3xl p-5 border border-gray-200 shadow-xs text-center flex flex-col justify-between h-full">
+            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider font-switzer">
+              Accuracy
             </p>
-            <p className="text-[10px] text-gray-400 font-bold mt-1">Estimated Level</p>
+            <p className="font-switzer text-2xl sm:text-3xl font-black text-emerald-700 my-3 leading-none">
+              {stats.accuracyPercentage}%
+            </p>
+            <p className="text-[10px] text-gray-400 font-bold font-switzer">
+              Pronunciation
+            </p>
+          </div>
+
+          <div className="bg-white rounded-3xl p-5 border border-gray-200 shadow-xs text-center flex flex-col justify-between h-full">
+            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider font-switzer">
+              Comprehension
+            </p>
+            <p className="font-switzer text-2xl sm:text-3xl font-black text-indigo-700 my-3 leading-none">
+              {stats.comprehensionPercentage}%
+            </p>
+            <p className="text-[10px] text-gray-400 font-bold font-switzer">
+              Post-Story Quiz
+            </p>
+          </div>
+
+          <div className="bg-white rounded-3xl p-5 border border-gray-200 shadow-xs text-center flex flex-col justify-between h-full">
+            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider font-switzer">
+              Reading Age
+            </p>
+            <p className="font-switzer text-lg sm:text-xl font-black text-amber-950 my-3 leading-snug">
+              {stats.readingAgeEstimate.replace("years", "yrs")}
+            </p>
+            <p className="text-[10px] text-gray-400 font-bold font-switzer">
+              Estimated Level
+            </p>
           </div>
         </section>
 
@@ -461,7 +500,7 @@ export default function ChildReportPage(): JSX.Element {
           </section>
         )}
 
-        {/* The Living Story Book */}
+        {/* The Living Story Book (With Auto-Archiving for Read Chapters) */}
         <section className="bg-gradient-to-br from-amber-50 to-orange-50/80 rounded-3xl p-6 sm:p-8 border-2 border-amber-300 shadow-sm mb-8 font-switzer print:hidden">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
@@ -482,16 +521,13 @@ export default function ChildReportPage(): JSX.Element {
             </button>
           </div>
 
-          {/* Generated Chapters List */}
-          {generatedStories.length === 0 ? (
-            <div className="bg-white/80 rounded-2xl p-6 text-center border border-amber-200">
-              <p className="text-xs font-bold text-amber-900 font-switzer">
-                No personal chapters crafted yet! Tap above to create {child.name}&apos;s first custom chapter.
+          {/* Section A: Fresh Personal Chapters Ready to Preview */}
+          {freshChapters.length > 0 && (
+            <div className="space-y-3 font-switzer mb-6">
+              <p className="text-xs font-bold text-amber-900 uppercase tracking-wider mb-2 font-switzer flex items-center gap-1.5">
+                <span>🌟</span> Fresh Chapters Ready to Read ({freshChapters.length})
               </p>
-            </div>
-          ) : (
-            <div className="space-y-3 font-switzer">
-              {generatedStories.map((story) => {
+              {freshChapters.map((story) => {
                 const skillId = extractSkillIdFromStory(story);
                 const skill = skillId ? getLifeSkillById(skillId) : null;
                 const targetWords = extractTargetWordsFromStory(story);
@@ -548,6 +584,88 @@ export default function ChildReportPage(): JSX.Element {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Empty State when no fresh chapters exist */}
+          {freshChapters.length === 0 && archivedChapters.length === 0 && (
+            <div className="bg-white/80 rounded-2xl p-6 text-center border border-amber-200">
+              <p className="text-xs font-bold text-amber-900 font-switzer">
+                No personal chapters crafted yet! Tap above to create {child.name}&apos;s first custom chapter.
+              </p>
+            </div>
+          )}
+
+          {/* Section B: Archived Read Chapters Drawer */}
+          {archivedChapters.length > 0 && (
+            <div className="pt-2 border-t border-amber-200/80 font-switzer">
+              <button
+                type="button"
+                onClick={() => setShowArchivedChapters(!showArchivedChapters)}
+                className="w-full py-2.5 px-4 rounded-xl bg-amber-100/60 hover:bg-amber-100 border border-amber-200 text-xs font-bold text-amber-950 flex items-center justify-between transition-all font-switzer"
+              >
+                <span className="flex items-center gap-1.5">
+                  <span>📦</span>
+                  <span>Completed & Archived Chapters ({archivedChapters.length})</span>
+                </span>
+                <span>{showArchivedChapters ? "Hide ▲" : "Show ▼"}</span>
+              </button>
+
+              {showArchivedChapters && (
+                <div className="space-y-3 mt-3 animate-fadeIn font-switzer">
+                  {archivedChapters.map((story) => {
+                    const skillId = extractSkillIdFromStory(story);
+                    const skill = skillId ? getLifeSkillById(skillId) : null;
+                    const isDeleting = deletingStoryId === story.id;
+
+                    return (
+                      <div
+                        key={story.id}
+                        className="bg-white/80 rounded-2xl p-4 border border-gray-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 opacity-90"
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="text-2xl shrink-0">{story.coverEmoji || "📖"}</span>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-switzer font-bold text-sm text-gray-800">
+                                {story.title}
+                              </h3>
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-bold uppercase font-switzer">
+                                Read ✅
+                              </span>
+                            </div>
+                            
+                            {skill && (
+                              <p className="text-[11px] text-gray-500 font-switzer mt-0.5">
+                                {skill.emoji} Practised {skill.title}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Link
+                            href={`/kid/${child.id}/read/${story.id}?mode=fun`}
+                            className="px-3.5 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold transition-all text-center font-switzer"
+                          >
+                            Re-read 📖
+                          </Link>
+
+                          <button
+                            type="button"
+                            onClick={() => void handleDeletePersonalChapter(story.id)}
+                            disabled={isDeleting}
+                            className="p-1.5 rounded-xl text-rose-500 hover:bg-rose-50 transition-all text-xs disabled:opacity-50"
+                            title="Delete Chapter"
+                          >
+                            {isDeleting ? "…" : "🗑️"}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </section>
