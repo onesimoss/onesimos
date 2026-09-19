@@ -1,14 +1,10 @@
 ﻿/**
  * @file app/page.tsx
  * @description Landing Page for Onesimos.
- * Updated to adhere to strict design rules:
- * - Achiko for logo/brand headings (`font-logo`)
- * - Switzer for body and UI copy
- * - Zero em dashes (`—`)
- * - Removed scroll mouse graphic
- * - Expanded spacing on bottom CTA subtext
+ * Updated with compliant footer containing links to About Us, Terms of Service, Privacy Policy, and Refund Policy.
  *
  * @fonts Achiko (headings/logo) + Switzer (body/UI)
+ * @module app/page
  */
 
 "use client";
@@ -51,7 +47,7 @@ const STEPS = [
   { num: "4", emoji: "🎉", title: "Celebrate!", desc: "Earn badges, unlock new stories, and watch confidence soar." },
 ];
 
-export default function LandingPage() {
+export default function LandingPage(): JSX.Element {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -64,7 +60,7 @@ export default function LandingPage() {
     <main className="min-h-screen w-full overflow-x-hidden font-switzer">
 
       {/* ============================================ */}
-      {/* HERO SECTION                                  */}
+      {/* HERO SECTION                                 */}
       {/* ============================================ */}
       <section className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-berry via-purple-600 to-indigo-700">
 
@@ -242,23 +238,53 @@ export default function LandingPage() {
               🎉 Create Free Account
             </Link>
             <p className="text-white/70 text-xs sm:text-sm mt-8 tracking-wide font-medium">
-              No credit card required · Set up in 60 seconds
+              No credit card required, set up in 60 seconds
             </p>
           </div>
         </div>
       </section>
 
       {/* FOOTER */}
-      <footer className="bg-bark text-white/60 py-12 px-6">
+      <footer className="bg-bark text-white/60 py-12 px-6 border-t border-white/10 font-switzer">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="font-logo text-3xl text-white">
-            Onesimos
+          
+          {/* Logo & Legal Entity */}
+          <div className="text-center md:text-left">
+            <div className="font-logo text-3xl text-white mb-1">
+              Onesimos
+            </div>
+            <p className="text-xs text-white/50 font-switzer">
+              A product of Example Mirror Ltd
+            </p>
           </div>
-          <div className="flex gap-8 text-sm font-medium">
-            <Link href="/signup" className="hover:text-white transition-colors">Sign Up</Link>
-            <Link href="/login" className="hover:text-white transition-colors">Log In</Link>
+
+          {/* Compliance & Legal Navigation Links */}
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs font-semibold text-white/80 font-switzer">
+            <Link href="/about" className="hover:text-white transition-colors">
+              About Us
+            </Link>
+            <Link href="/terms" className="hover:text-white transition-colors">
+              Terms of Service
+            </Link>
+            <Link href="/privacy" className="hover:text-white transition-colors">
+              Privacy Policy
+            </Link>
+            <Link href="/refunds" className="hover:text-white transition-colors">
+              Refund Policy
+            </Link>
+            <Link href="/signup" className="hover:text-white transition-colors">
+              Sign Up
+            </Link>
+            <Link href="/login" className="hover:text-white transition-colors">
+              Log In
+            </Link>
           </div>
-          <p className="text-sm">© {new Date().getFullYear()} Onesimos. Made with ❤️ for little readers.</p>
+
+          {/* Copyright */}
+          <p className="text-xs text-white/50 text-center md:text-right font-switzer">
+            © {new Date().getFullYear()} Example Mirror Ltd. All rights reserved.
+          </p>
+
         </div>
       </footer>
     </main>
