@@ -35,7 +35,7 @@ export default function AboutPage(): JSX.Element {
           About Onesimos
         </h1>
         <p className="text-xs text-gray-500 mb-8 font-switzer">
-          Engineered with love by Example Mirror Ltd
+          Onesimos is a product of Example Mirror Ltd
         </p>
 
         <div className="space-y-8 text-sm leading-relaxed text-gray-700 font-switzer">
@@ -69,7 +69,7 @@ export default function AboutPage(): JSX.Element {
                   🎙️ 2. Real-Time Speech Recognition
                 </h3>
                 <p className="text-xs text-gray-600">
-                  Powered by verbatim speech-to-text intelligence, Onesimos listens quietly as your child reads out loud, giving immediate, encouraging feedback without judgment or pressure.
+                  Powered by verbatim speech recognition, Onesimos listens quietly as your child reads out loud, giving immediate, encouraging feedback without judgment or pressure.
                 </p>
               </div>
 
@@ -84,13 +84,13 @@ export default function AboutPage(): JSX.Element {
             </div>
           </section>
 
-          {/* Section 3: Built for Families & Schools */}
+          {/* Section 3: Built for Families & Schools Worldwide */}
           <section>
             <h2 className="font-achiko text-xl text-amber-900 mb-2">
-              Built for Families, Schools & Diaspora
+              Built for Families & Schools Worldwide
             </h2>
             <p>
-              Whether used by a parent at bedtime or deployed across 30 tablets in a primary school classroom in Lagos, Abuja, London, or Atlanta, Onesimos brings culturally rich stories, diverse characters, and world-class literacy technology to every child.
+              Whether used by a parent at bedtime or deployed across 30 tablets in a primary school classroom from Accra to Nairobi, Windhoek to London, Toronto to Abuja, and across the worldwide diaspora, Onesimos brings culturally rich stories, diverse characters, and world-class literacy technology to every child.
             </p>
           </section>
 
@@ -104,17 +104,17 @@ export default function AboutPage(): JSX.Element {
             </p>
             <div className="space-y-2 text-xs font-switzer">
               <p>
-                <strong>General Support & Feedback:</strong> support@onesimos.app
+                <strong>General Support & Feedback:</strong> crux@onesimos.app
               </p>
               <p>
                 <strong>School Partnership Enquiries:</strong> schools@onesimos.app
               </p>
               <p>
-                <strong>Parent & Media Inquiries:</strong> hello@onesimos.app
+                <strong>Parent & Media Inquiries:</strong> media@onesimos.app
               </p>
               <p className="pt-2 text-gray-600">
                 <strong>Company:</strong> Example Mirror Ltd <br />
-                <strong>Headquarters:</strong> Lagos, Nigeria
+                <strong>Headquarters:</strong> Abuja, Nigeria
               </p>
             </div>
           </section>
