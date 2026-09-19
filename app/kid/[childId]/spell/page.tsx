@@ -391,7 +391,7 @@ export default function SpellingGamePage(): JSX.Element {
     );
   }
 
-  const avatar = getAvatarById(child?.avatar_id);
+  const avatar = getAvatarById(child?.avatar_id || "avatar-1");
 
   // ─── RENDER: INTRO ───────────────────────────────────────────────────────
 
