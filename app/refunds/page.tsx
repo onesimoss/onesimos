@@ -46,7 +46,7 @@ export default function RefundPolicyPage(): JSX.Element {
               1. 7-Day Money-Back Guarantee
             </h2>
             <p>
-              We want every family and school to love reading with Onesimos. If you subscribe to any of our paid plans (Single Reader, Family Plan, or Classroom Term) and feel the platform is not the right fit for your child, you are eligible for a 100 percent full refund within 7 days of your initial purchase date.
+              We want every family and school to love reading with Onesimos. If you subscribe to any of our paid plans (Single Reader, Family Plan, Daycare, or Classroom Term) and feel the platform is not the right fit for your child, you are eligible for a 100 percent full refund within 7 days of your initial purchase date.
             </p>
           </section>
 
@@ -56,21 +56,21 @@ export default function RefundPolicyPage(): JSX.Element {
               2. Free Trial Tier
             </h2>
             <p>
-              Every new user starts on our Free Tier (5 free stories per month per child, plus unlimited Phonics Sound Lab access). Because the Free Tier costs ₦0 and requires no card authorization, no refunds apply to free accounts.
+              Every new user starts on our Free Tier (5 free stories per month per child, plus free access to the foundational Letter Sounds room). Because the Free Tier costs ₦0 and requires no card authorization, no refunds apply to free accounts.
             </p>
           </section>
 
           {/* Section 3 */}
           <section>
             <h2 className="font-achiko text-xl text-amber-900 mb-2">
-              3. Subscription Cancellations
+              3. Automated Subscription Cancellations
             </h2>
             <p className="mb-2">
               You can cancel your recurring subscription at any time directly through the Parent Portal or by emailing our support team.
             </p>
             <ul className="list-disc pl-5 space-y-1 text-gray-600">
               <li>
-                <strong>Monthly Plans:</strong> When you cancel a monthly subscription, auto-renewal stops immediately. You will retain full premium access for the remaining paid days of your current billing cycle.
+                <strong>Monthly Plans:</strong> When you cancel a monthly subscription, auto-renewal stops immediately via our automated billing engine. You will retain full premium access for the remaining paid days of your current billing cycle.
               </li>
               <li>
                 <strong>Annual & Term Plans:</strong> Annual or Classroom Term plans cancelled after the initial 7-day guarantee period will remain active through the end of the term, with no further recurring charges.
@@ -84,7 +84,7 @@ export default function RefundPolicyPage(): JSX.Element {
               4. How to Request a Refund
             </h2>
             <p>
-              To request a refund under our 7-Day Money-Back Guarantee, please send an email to support@onesimos.app with the subject line &quot;Refund Request&quot;. Include:
+              To request a refund under our 7-Day Money-Back Guarantee, please send an email to refund@onesimos.app with the subject line &quot;Refund Request&quot;. Include:
             </p>
             <ul className="list-disc pl-5 space-y-1 text-gray-600 mt-2">
               <li>Your registered parent email address</li>
@@ -112,8 +112,8 @@ export default function RefundPolicyPage(): JSX.Element {
               For billing inquiries, subscription adjustments, or school purchase orders, contact Example Mirror Ltd at:
             </p>
             <p className="mt-2 font-bold text-amber-950">
-              Email: support@onesimos.app <br />
-              Billing Department: Example Mirror Ltd, Lagos, Nigeria
+              Email: crux@onesimos.app / refund@onesimos.app <br />
+              Billing Department: Example Mirror Ltd, Abuja, Nigeria
             </p>
           </section>
         </div>
