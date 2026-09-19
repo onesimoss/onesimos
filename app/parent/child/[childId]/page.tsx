@@ -4,7 +4,7 @@
  *              Provides "Before & After" growth narratives, honest metrics (WPM, Accuracy,
  *              Comprehension, Reading Age), Living Story Book personal chapter weaving,
  *              auto-archiving of completed chapters, 1-tap Print/Save PDF report generation,
- *              and Progress Story Vocabulary Mastery Timeline.
+ *              and compact Progress Story Vocabulary Mastery Timeline.
  *
  * @fonts Achiko (headings/logo) + Switzer (body/UI/stats)
  * @dependencies
@@ -129,6 +129,7 @@ export default function ChildReportPage(): JSX.Element {
   const [showConfirmDeleteChild, setShowConfirmDeleteChild] = useState(false);
   const [levelUpSaving, setLevelUpSaving] = useState(false);
   const [showArchivedChapters, setShowArchivedChapters] = useState(false);
+  const [showAllTimeline, setShowAllTimeline] = useState(false);
 
   // Feedback Messages
   const [message, setMessage] = useState("");
@@ -211,6 +212,11 @@ export default function ChildReportPage(): JSX.Element {
   const masteredSet = useMemo(() => {
     return new Set(masteredWords.map((w) => w.word.toLowerCase()));
   }, [masteredWords]);
+
+  // Display top 3 timeline items by default unless expanded
+  const displayedRecords = useMemo(() => {
+    return showAllTimeline ? chapterRecords : chapterRecords.slice(0, 3);
+  }, [chapterRecords, showAllTimeline]);
 
   const handleSaveKidPin = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
@@ -496,27 +502,23 @@ export default function ChildReportPage(): JSX.Element {
           </div>
         </section>
 
-        {/* PROGRESS STORY: Vocabulary Mastery Timeline (NEW Parent Trust Feature) */}
+        {/* PROGRESS STORY: Compact Vocabulary Mastery Timeline */}
         {chapterRecords.length > 0 && (
           <section className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200 shadow-sm mb-8 font-switzer">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
               <h2 className="font-achiko text-2xl text-amber-900 flex items-center gap-2">
-                <span>📜</span> Progress Story & Vocabulary Mastery
+                <span>📜</span> Progress Story & Mastery
               </h2>
               <span className="text-xs font-bold text-amber-800 bg-amber-50 px-3 py-1 rounded-full border border-amber-200 font-switzer">
                 {masteredWords.length} Words Mastered 🏆
               </span>
             </div>
-            <p className="text-xs text-gray-500 mb-6 leading-relaxed font-switzer">
-              Track how target words woven into {child.name}&apos;s generated chapters move from stumbled to unassisted spelling mastery:
-            </p>
 
-            <div className="space-y-4 font-switzer">
-              {chapterRecords.map((record, idx) => {
+            <div className="space-y-2.5 font-switzer">
+              {displayedRecords.map((record, idx) => {
                 const dateStr = new Date(record.createdAt).toLocaleDateString("en-US", {
                   month: "short",
                   day: "numeric",
-                  year: "numeric",
                 });
                 const skillId = extractSkillIdFromStory(record.story);
                 const skill = skillId ? getLifeSkillById(skillId) : null;
@@ -527,47 +529,66 @@ export default function ChildReportPage(): JSX.Element {
                 return (
                   <div
                     key={record.story.id || idx}
-                    className="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/60 font-switzer"
+                    className="p-3 sm:p-3.5 rounded-2xl bg-amber-50/50 border border-amber-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 font-switzer"
                   >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
-                      <p className="text-xs font-bold text-amber-900 font-switzer">
-                        📅 {dateStr} : Chapter: <span className="font-black text-amber-950">&quot;{record.story.title}&quot;</span>
-                      </p>
-                      {skill && (
-                        <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-200 font-switzer self-start sm:self-auto">
-                          {skill.emoji} Focus: {skill.title}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[11px] font-bold text-amber-700 font-switzer shrink-0">
+                          {dateStr}
                         </span>
-                      )}
+                        <h3 className="text-xs font-black text-amber-950 truncate font-switzer">
+                          &quot;{record.story.title}&quot;
+                        </h3>
+                        {skill && (
+                          <span className="text-[10px] font-bold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-full border border-amber-200 font-switzer shrink-0">
+                            {skill.emoji} {skill.title}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {targetWords.length === 0 ? (
-                        <span className="text-xs text-gray-400 font-medium">Standard vocabulary focus</span>
-                      ) : (
-                        targetWords.map((word) => {
+                    {/* Compact Target Word Pills */}
+                    {targetWords.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 shrink-0">
+                        {targetWords.map((word) => {
                           const lower = word.toLowerCase();
                           const isMastered = masteredSet.has(lower);
 
                           return (
                             <span
                               key={word}
-                              className={`px-3 py-1 rounded-xl text-xs font-bold border flex items-center gap-1.5 font-switzer ${
+                              className={`px-2.5 py-0.5 rounded-lg text-[11px] font-bold border flex items-center gap-1 font-switzer ${
                                 isMastered
-                                  ? "bg-emerald-100 text-emerald-950 border-emerald-300 shadow-2xs"
-                                  : "bg-amber-100/80 text-amber-950 border-amber-300"
+                                  ? "bg-emerald-100 text-emerald-950 border-emerald-300"
+                                  : "bg-white text-amber-900 border-amber-200"
                               }`}
                             >
                               <span>{word}</span>
-                              <span>{isMastered ? "🏆 Mastered" : "🟡 In Practice"}</span>
+                              <span className="text-[9px]">{isMastered ? "🏆" : "🟡"}</span>
                             </span>
                           );
-                        })
-                      )}
-                    </div>
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
+
+            {/* Expander Button if more than 3 chapters exist */}
+            {chapterRecords.length > 3 && (
+              <div className="mt-3 text-center">
+                <button
+                  type="button"
+                  onClick={() => setShowAllTimeline(!showAllTimeline)}
+                  className="px-4 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-xs font-bold text-amber-950 hover:bg-amber-100 font-switzer active:scale-95 transition-all"
+                >
+                  {showAllTimeline
+                    ? "Show Less"
+                    : `View Full Progress Timeline (+${chapterRecords.length - 3})`}
+                </button>
+              </div>
+            )}
           </section>
         )}
 
