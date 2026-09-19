@@ -1,8 +1,8 @@
 /**
  * @file app/kid/[childId]/phonics/page.tsx
  * @description Phonics Sound Lab : Interactive phonics curriculum covering 7 essential groups
- * with interactive sound tiles, physiological mouth guidelines, animated sample word cascades,
- * and browser-cached discovery tracking for gamified engagement.
+ * with interactive sound tiles, phonetic pronunciation mappings (phonemes over letter names),
+ * physiological mouth guidelines, animated sample word cascades, and browser-cached discovery tracking.
  *
  * @module app/kid/[childId]/phonics/page
  * @fonts Logo (wordmark) + Achiko (headings) + Switzer (body/UI/stats)
@@ -19,7 +19,85 @@ import { getAvatarById } from "@/lib/avatars";
 import type { ChildProfile } from "@/lib/children";
 import { speakWord } from "@/lib/stumbledWords";
 
-// ─── Section 1: Curriculum Data Structure ───
+// ─── Section 1: Phonetic Speech Synthesis Mapping ───
+
+/**
+ * Phonetic spelling overrides so Text-to-Speech engines pronounce true phonemes
+ * instead of spelling out letter names or reading acronyms.
+ */
+const PHONETIC_AUDIO_MAP: Record<string, string> = {
+  // Single Letter Short Vowels & Consonants
+  a: "ah",
+  b: "buh",
+  c: "cuh",
+  d: "duh",
+  e: "eh",
+  f: "fff",
+  g: "guh",
+  h: "huh",
+  i: "ih",
+  j: "juh",
+  k: "kuh",
+  l: "lll",
+  m: "mmm",
+  n: "nnn",
+  o: "aw",
+  p: "puh",
+  q: "kwah",
+  r: "rrr",
+  s: "sss",
+  t: "tuh",
+  u: "uh",
+  v: "vvv",
+  w: "wuh",
+  x: "ks",
+  y: "yuh",
+  z: "zzz",
+
+  // Digraphs & Blends
+  sh: "shhh",
+  ch: "chuh",
+  th: "thhh",
+  wh: "wuh",
+  ph: "fff",
+  ng: "ngg",
+  nk: "nnk",
+
+  // Long Vowels
+  a_e: "ay",
+  ee: "eee",
+  i_e: "eye",
+  o_e: "oh",
+  u_e: "ooo",
+
+  // R-Controlled
+  ar: "ahr",
+  er: "err",
+  ir: "err",
+  or: "or",
+  ur: "err",
+
+  // Diphthongs
+  oi: "oy",
+  oy: "oy",
+  ou: "ow",
+  ow: "ow",
+  au: "aw",
+  aw: "aw",
+
+  // Wild Old Rules
+  old: "ohld",
+  ost: "ohst",
+  ild: "eyeld",
+  ind: "ined",
+  olt: "ohlt",
+
+  // Soft Consonants
+  "soft c": "sss",
+  "soft g": "juh",
+};
+
+// ─── Section 2: Curriculum Data Structure ───
 
 interface SoundTile {
   sound: string;
@@ -48,9 +126,9 @@ const PHONICS_CURRICULUM: PhonicsCategory[] = [
     border: "border-amber-200 hover:border-amber-300",
     badgeBg: "bg-amber-100",
     badgeText: "text-amber-800",
-    description: "The basic build blocks of reading from A to Z",
+    description: "The basic building blocks of reading from A to Z",
     sounds: [
-      { sound: "a", mouthHint: "Open your mouth wide like a big bite", examples: ["apple", "ant", "cat"] },
+      { sound: "a", mouthHint: "Open your mouth wide like taking a bite", examples: ["apple", "ant", "cat"] },
       { sound: "b", mouthHint: "Put your lips together and make a quick pop", examples: ["ball", "bat", "tub"] },
       { sound: "c", mouthHint: "Make a cool click at the back of your throat", examples: ["cat", "cup", "cap"] },
       { sound: "d", mouthHint: "Tap your tongue behind your front teeth", examples: ["dog", "dad", "bed"] },
@@ -89,9 +167,9 @@ const PHONICS_CURRICULUM: PhonicsCategory[] = [
     description: "Short vowels capped by locking consonants",
     sounds: [
       { sound: "sh", mouthHint: "Put your finger to your lips: hush sound", examples: ["ship", "shell", "fish"] },
-      { sound: "ch", mouthHint: "Make a sharp choo-choo train sneeze", examples: ["chin", "chip", "rich"] },
+      { sound: "ch", mouthHint: "Make a sharp choo choo train sneeze", examples: ["chin", "chip", "rich"] },
       { sound: "th", mouthHint: "Bite your tongue tip gently and blow soft air", examples: ["thin", "this", "with"] },
-      { sound: "wh", mouthHint: "Blow out air like you are whistling at a cloud", examples: ["whip", "when", "wheel"] },
+      { sound: "wh", mouthHint: "Blow out air like whistling at a cloud", examples: ["whip", "when", "wheel"] },
       { sound: "ph", mouthHint: "Touch top teeth to bottom lip just like F", examples: ["phone", "photo", "graph"] },
       { sound: "ng", mouthHint: "Keep tongue back and hum through your nose", examples: ["sing", "ring", "song"] },
       { sound: "nk", mouthHint: "Make the nose hum then add a tiny click", examples: ["pink", "bank", "sunk"] },
@@ -108,7 +186,7 @@ const PHONICS_CURRICULUM: PhonicsCategory[] = [
     description: "Vowels that proudly shout out their own name",
     sounds: [
       { sound: "a_e", mouthHint: "Smile wide then relax your jaw down", examples: ["make", "lake", "gate"] },
-      { sound: "ee", mouthHint: "Stretch your lips wide like you are cheering", examples: ["see", "tree", "feet"] },
+      { sound: "ee", mouthHint: "Stretch your lips wide like cheering", examples: ["see", "tree", "feet"] },
       { sound: "i_e", mouthHint: "Open wide then slide your jaw shut flat", examples: ["bike", "kite", "five"] },
       { sound: "o_e", mouthHint: "Pucker into a circle then make it tighter", examples: ["bone", "rope", "home"] },
       { sound: "u_e", mouthHint: "Make a small circle and say ooh", examples: ["cute", "tube", "mule"] },
@@ -182,10 +260,9 @@ const PHONICS_CURRICULUM: PhonicsCategory[] = [
   },
 ];
 
-// Calculate total sound inventory for metrics
 const TOTAL_SOUND_INVENTORY = PHONICS_CURRICULUM.reduce((acc, cat) => acc + cat.sounds.length, 0);
 
-// ─── Section 2: Main Component ───
+// ─── Section 3: Main Component ───
 
 export default function PhonicsSoundLabPage(): JSX.Element {
   const params = useParams<{ childId: string }>();
@@ -230,7 +307,6 @@ export default function PhonicsSoundLabPage(): JSX.Element {
 
       setChild(data as ChildProfile);
 
-      // Load child specific discoveries from local storage to avoid write limits
       try {
         const stored = localStorage.getItem(`onesimos_phonics_progress_${childId}`);
         if (stored) {
@@ -246,7 +322,6 @@ export default function PhonicsSoundLabPage(): JSX.Element {
     void loadLabData();
   }, [user, childId, router]);
 
-  // Update progress list in local storage
   const handleSaveDiscovery = (sound: string): void => {
     const cleanSound = sound.toLowerCase();
     if (discoveredSounds.includes(cleanSound)) return;
@@ -261,32 +336,23 @@ export default function PhonicsSoundLabPage(): JSX.Element {
     }
   };
 
-  // Play Sound pronunciation audio loop
+  // Play Sound pronunciation using Phonetic Audio Map Override
   const handlePlaySound = async (soundItem: SoundTile): Promise<void> => {
-    // Format sound helper text for clear synthesis representation
-    let spokenText = soundItem.sound;
-    if (soundItem.sound === "a_e") spokenText = "long a";
-    if (soundItem.sound === "i_e") spokenText = "long i";
-    if (soundItem.sound === "o_e") spokenText = "long o";
-    if (soundItem.sound === "u_e") spokenText = "long u";
-    if (soundItem.sound === "soft c") spokenText = "soft c";
-    if (soundItem.sound === "soft g") spokenText = "soft g";
+    const key = soundItem.sound.toLowerCase();
+    const spokenText = PHONETIC_AUDIO_MAP[key] || soundItem.sound;
 
     setCurrentlyPlayingSound(soundItem.sound);
     setCurrentlyPlayingWord(null);
 
-    // Save local progress check
     handleSaveDiscovery(soundItem.sound);
 
     await speakWord(spokenText);
     
-    // Auto clear visual indicator after slight delay
     setTimeout(() => {
       setCurrentlyPlayingSound(null);
     }, 1800);
   };
 
-  // Play specific example words in slower voice speed
   const handlePlayExampleWord = async (word: string): Promise<void> => {
     setCurrentlyPlayingWord(word);
     await speakWord(word);
@@ -296,7 +362,6 @@ export default function PhonicsSoundLabPage(): JSX.Element {
     }, 1200);
   };
 
-  // Progress metrics map inside current view
   const categoryProgressMap = useMemo(() => {
     const results: Record<string, { count: number; percentage: number }> = {};
     
@@ -390,13 +455,13 @@ export default function PhonicsSoundLabPage(): JSX.Element {
             />
           </div>
           {totalDiscoveredCount === TOTAL_SOUND_INVENTORY && (
-            <p className="text-center text-xs font-bold text-emerald-700 mt-3 animate-bounce">
+            <p className="text-center text-xs font-bold text-emerald-700 mt-3 animate-bounce font-switzer">
               🌟 Stellar achievement, you completed the entire Sound Lab! 🌟
             </p>
           )}
         </div>
 
-        {/* Conditionally Render Category View vs Grid */}
+        {/* Categories Grid or Selected Category */}
         {!activeCategory ? (
           <section className="font-switzer">
             <div className="flex items-center justify-between mb-4">
@@ -432,13 +497,12 @@ export default function PhonicsSoundLabPage(): JSX.Element {
                         <p className="text-xs text-gray-500 mt-1 mr-2 leading-relaxed font-switzer">
                           {category.description}
                         </p>
-                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold ${category.badgeBg} ${category.badgeText} mt-2`}>
+                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold ${category.badgeBg} ${category.badgeText} mt-2 font-switzer`}>
                           {category.sounds.length} lessons
                         </span>
                       </div>
                     </div>
 
-                    {/* Circular visual progress widget */}
                     <div className="relative w-12 h-12 flex items-center justify-center shrink-0">
                       <svg className="w-full h-full transform -rotate-90">
                         <circle
@@ -452,7 +516,7 @@ export default function PhonicsSoundLabPage(): JSX.Element {
                           cx="24"
                           cy="24"
                           r="18"
-                          className={`stroke-amber-500 fill-none transition-all duration-500`}
+                          className="stroke-amber-500 fill-none transition-all duration-500"
                           strokeWidth="3.5"
                           strokeDasharray={2 * Math.PI * 18}
                           strokeDashoffset={2 * Math.PI * 18 * (1 - stats.percentage / 100)}
@@ -468,10 +532,7 @@ export default function PhonicsSoundLabPage(): JSX.Element {
             </div>
           </section>
         ) : (
-          /* Detailed Drill Down Room */
           <section className="bg-white rounded-3xl border border-amber-200 shadow-sm p-6 sm:p-8 font-switzer">
-            
-            {/* Inner Back to grid header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-gray-100 pb-5 mb-6 gap-3">
               <div className="flex items-center gap-3">
                 <button
@@ -499,7 +560,6 @@ export default function PhonicsSoundLabPage(): JSX.Element {
                 </div>
               </div>
 
-              {/* Progress report stats badge */}
               <div className="bg-gray-50 border border-gray-200 px-3.5 py-1.5 rounded-2xl flex items-center gap-2 font-switzer">
                 <span className="text-xs font-bold text-gray-700 font-switzer">
                   Progress:
@@ -510,12 +570,10 @@ export default function PhonicsSoundLabPage(): JSX.Element {
               </div>
             </div>
 
-            {/* Instruction Callout Card */}
             <div className="mb-6 p-4 rounded-2xl bg-amber-50/50 border border-amber-200/50 text-center text-xs text-amber-900 font-switzer">
-              👈 Tap any button to hear its phonics sound and see sample word cards pop up!
+              👈 Tap any sound tile to hear its phonics sound and see sample word cards pop up!
             </div>
 
-            {/* Sound Lab Sound Cards Shelf */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {activeCategory.sounds.map((item) => {
                 const isPlayingSound = currentlyPlayingSound === item.sound;
@@ -545,7 +603,6 @@ export default function PhonicsSoundLabPage(): JSX.Element {
                         </button>
                       </div>
                       
-                      {/* Explored dynamic stamp */}
                       {isDiscovered && (
                         <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-800 font-bold uppercase font-switzer">
                           Explored ✔
@@ -553,7 +610,6 @@ export default function PhonicsSoundLabPage(): JSX.Element {
                       )}
                     </div>
 
-                    {/* Physiological physical guides */}
                     <div className="mb-3 text-left">
                       <p className="text-[10px] uppercase font-bold text-gray-400 font-switzer">
                         Mouth Shape Guide
@@ -563,7 +619,6 @@ export default function PhonicsSoundLabPage(): JSX.Element {
                       </p>
                     </div>
 
-                    {/* Micro cascades interactive words */}
                     <div className="border-t border-gray-100/70 pt-3">
                       <p className="text-[9px] uppercase font-bold text-gray-400 mb-1.5 text-left font-switzer">
                         Tap To Speak Words
@@ -594,7 +649,6 @@ export default function PhonicsSoundLabPage(): JSX.Element {
               })}
             </div>
 
-            {/* Empty view exit link */}
             <div className="mt-8 text-center">
               <button
                 type="button"
