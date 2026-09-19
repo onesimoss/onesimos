@@ -1,222 +1,347 @@
 ═══════════════════════════════════════════════════════════════════
 PROJECT: Onesimos, Living Reading Companion (ages 3 to 9)
-SESSION HANDOFF, Post Priority 1 + Priority 2 + Priority 3 + Spelling & Pricing Strategy
+SESSION HANDOFF (ULTIMATE TIME CAPSULE — v3.0)
+Last Updated: End of pre-launch pricing tier session, before Phonics Sound Lab build.
 ═══════════════════════════════════════════════════════════════════
 
-STACK: Next.js 14 App Router · TypeScript · Tailwind · Supabase · Deepgram (STT) · ElevenLabs (Aura Fallback) · Paystack · Vercel
+STACK: Next.js 14 App Router · TypeScript · Tailwind · Supabase · Deepgram (STT) · ElevenLabs (Primary TTS) · Deepgram Aura (Fallback TTS) · Paystack · Vercel · Sentry
 
 FOUNDER: Mitchel · Windows · VS Code · PowerShell · GitHub · Vercel · Supabase
 LIVE URL: https://onesimos.vercel.app
 REPO: https://github.com/onesimoss/onesimos.git
 BRANCH: main
+COMPANY: Example Mirror Ltd
 
-MISSION: Teach kids to read well AND understand well (comprehension ~80% is the academic success threshold).
+MISSION: Teach kids ages 3 to 9 to read well AND understand well. Comprehension at approximately 80 percent is the academic success threshold this product optimizes for.
 
-MOAT (Do not dilute these three pillars):
+MOAT (three pillars, never dilute):
 
-1. AI Living Story Book (labeled "Living Chapter" or "Personal Chapter")
-2. Speech-to-Text stumbled word capture (Deepgram)
-3. 25 Core Life Skills threaded into every generated chapter
+1. AI Living Story Book (labeled "Living Chapter" or "Personal Chapter" in UI). Personalized chapters woven from each child's stumbled words and one of 25 life skills.
+2. Speech-to-Text stumbled word capture powered by Deepgram Nova-2.
+3. 25 Core Life Skills & Virtues curriculum threaded into every generated chapter.
 
-───────────────────────────────────────────────────────────────────
-PRICING, UNIT ECONOMICS & NIGERIAN MARKET STRATEGY
-───────────────────────────────────────────────────────────────────
+═══════════════════════════════════════════════════════════════════
+SECTION 1: NON-NEGOTIABLE FONTS & TYPOGRAPHY (LOCKED)
+═══════════════════════════════════════════════════════════════════
 
-PRICING MATRIX (PAYSTACK NGN + INT CARDS):
+- ONESIMOS Wordmark: `font-logo` class. Rendered as "Onesimos" in small caps on Kid Dashboard per founder final call. Never apply `font-extrabold` or `tracking-wider` to `font-logo` — the custom font has only one weight, and extra weights force fallback to `font-achiko`.
+- Headings AND "Hi [Child Name]!" greeting: `font-achiko`.
+- Body, buttons, cards, badges, descriptions, STAT NUMBERS: `font-switzer`.
+- Stat numbers style: `font-switzer text-2xl font-black leading-none` (or `text-2xl sm:text-3xl` for larger report cards). Never use `font-achiko` for numbers.
+- Reading Age format on Child Report cards: use `.replace("years", "yrs")` so "7 to 8 yrs" fits cleanly inside boxed cards.
+- Reading Age format on Parent Dashboard cards: "7 to 8 years" is fine.
+- Reading Age format everywhere else: "7 to 8 years". Never "7.0 - 8.0 years". Never use hyphen ranges.
+- NEVER use em dashes (—) or en dashes (–) anywhere in the codebase, UI copy, or comments. Use commas, colons, periods, or rewrite the sentence.
+- NO stray mouse/cursor icons or accidental decorative junk on any page.
+- Avatar always uses `.color` and `.imageUrl`. NEVER `bgColor` or `src`.
+- Print-only screens hide navigation with `print:hidden` Tailwind utility.
+- Kids' brand voice: warm, calm, celebratory, never rushed, never preachy.
 
-1. Free Trial: ₦0 (5 stories/mo, 2 spelling rounds/day)
-2. Single Reader: ₦2,500 / mo OR ₦19,999 / yr (~$24/yr)
-3. Family Plan (Strictly up to 4 kids): ₦5,000 / mo OR ₦39,999 / yr (~$48/yr)
-4. Extended Family / Daycare Plan (Up to 10 kids): ₦15,000 / mo OR ₦119,999 / yr
-5. School Classroom Plan (Up to 30 students): ₦30,000 / term OR ₦85,000 / yr (~$90/yr)
-6. Whole School License (Up to 200 students): ₦150,000 / term OR ₦400,000 / yr
+═══════════════════════════════════════════════════════════════════
+SECTION 2: NON-NEGOTIABLE OPERATING RULES (13 LAWS)
+═══════════════════════════════════════════════════════════════════
 
-UNIT ECONOMICS (PER ACTIVE CHILD / MONTH):
+1. ONE FULL FILE AT A TIME. Never partial edits, never "add this line". Deliver the complete file every time.
+2. Exact Git push commands after EVERY file delivery:
 
-- STT (Deepgram Nova-2): ~120 mins reading = ~$0.51 USD (₦800 NGN)
-- TTS (ElevenLabs + Supabase CDN Cache): ~90% cache hit rate = ~$0.10 USD (₦160 NGN)
-- LLM (Groq / Gemini / OpenRouter): ~$0.05 USD (₦80 NGN)
-- Total API Cost / Active Child: ~₦1,040 NGN / month
-- Single Child Margin @ ₦2,500 = 58% Profit Margin
+Always use `git add .` because PowerShell treats square brackets in paths like `app/kid/[childId]/page.tsx` as wildcards and silently ignores the file. 3. Inspection commands (`Get-Content -LiteralPath "..." -Encoding UTF8`) BEFORE editing any unfamiliar file. Never assume. 4. Pro code standards: file header JSDoc, section dividers (`// ─── Section N ───`), strict TypeScript, zero `any`, JSDoc on public functions. 5. No AI fluff. Weigh founder ideas with Strength / Risk / Verdict framing. 6. TEST FIRST rule: always provide clear test instructions BEFORE moving to the next item. 7. Update HANDOFF.md at every major milestone. It is the single source of truth. 8. Every response ends with a clear "What's Next" instruction. 9. Never ask founder to re-paste code you can inspect via PowerShell. 10. When founder says "stop the comeback prompt spam", respect it until next milestone. 11. Git merge conflicts: when push is rejected as non-fast-forward, use `git pull origin main --no-rebase`. If VS Code opens Vim, press Esc, type `:wq`, press Enter. If uncommitted changes block the pull, commit local changes first, then pull, then push. 12. VS Code "orange folder + number" means TypeScript or Tailwind errors. Founder can share them via the Problems panel (Ctrl+Shift+M). Fix before shipping. 13. Supabase table verification: before assuming a table exists, ask founder for a Table Editor screenshot. Do not code against ghost tables. Real story: `stumbled_words` table did not exist for weeks, only `stumbled_words_log`. That silently broke Word Pocket until the founder screenshot revealed it.
 
-6-MONTH FINANCIAL PROJECTION (1,000 ACCOUNTS CONVERSION):
+═══════════════════════════════════════════════════════════════════
+SECTION 3: PRICING, UNIT ECONOMICS & MARKET STRATEGY
+═══════════════════════════════════════════════════════════════════
+
+PRICING MATRIX (Paystack, NGN + International Cards):
+
+1. Free Trial: ₦0 (5 stories/month for 1 child, 2 spelling rounds/day). Not shown on the pricing upgrade page. Only communicated at signup and onboarding.
+2. Single Reader Monthly: ₦2,500 / month
+3. Single Reader Annual: ₦19,999 / year (~$13/yr, saves 33 percent)
+4. Family Plan Monthly: ₦5,000 / month (up to 4 children)
+5. Family Plan Annual: ₦39,999 / year (up to 4 children, ~$26/yr)
+6. Extended Family / Daycare: ₦15,000 / month (up to 10 children)
+7. School Classroom Term: ₦30,000 / term (up to 30 students)
+8. School Classroom Annual: ₦85,000 / year (up to 30 students, 3 terms, saves ₦5,000)
+
+CURRENCY HANDLING FOR DIASPORA:
+Paystack charges everyone in NGN. Diaspora banks (Chase, Barclays, Wise, etc.) auto-convert to USD, GBP, EUR, CAD at their live exchange rate. The pricing page shows approximate USD and GBP figures next to each price so parents in the diaspora see what to expect on their bank statement (e.g., "₦5,000 (~$3.20)"). Never take payment in any currency other than NGN through Paystack.
+
+UNIT ECONOMICS (per active child per month):
+
+- STT (Deepgram Nova-2 at $0.0043/min, ~120 mins/month): ~$0.51 USD (~₦800 NGN)
+- TTS (ElevenLabs primary + Supabase `tts-audio` CDN cache with ~90 percent cache hit): ~$0.10 USD (~₦160 NGN)
+- LLM (Groq Llama-3.3-70b, Gemini 2.0 Flash, OpenRouter fallback, mostly free tiers): ~$0.05 USD (~₦80 NGN)
+- Total API cost per active child per month: ~₦1,040 NGN
+- Single Reader margin @ ₦2,500 = ~58 percent net margin
+- Family Plan (3 avg kids) @ ₦5,000 = ~₦1,880 NGN net profit / family / month
+- Classroom (30 kids, ~2 sessions/week) @ ₦30,000/term = ~₦16,000 NGN net profit / class / term
+
+6-MONTH REVENUE PROJECTION (1,000 total accounts):
 
 - 600 Single Readers @ ₦2,500/mo = ₦9,000,000 NGN
 - 300 Family Accounts @ ₦5,000/mo = ₦9,000,000 NGN
-- 100 School Classrooms @ ₦30,000/term (2 terms) = ₦6,000,000 NGN
-- Gross 6-Month Revenue: ₦24,000,000 NGN (~$15,500 USD)
-- Direct API Costs: ₦13,860,000 NGN
-- Cumulative Net Profit: ₦10,140,000 NGN (~$6,500 USD)
+- 100 School Classrooms @ ₦30,000/term × 2 terms = ₦6,000,000 NGN
+- Gross Revenue: ₦24,000,000 NGN (~$15,500 USD)
+- Direct API Costs: ~₦13,860,000 NGN
+- Net Profit: ~₦10,140,000 NGN (~$6,500 USD)
 
-NIGERIA MARKET POTENTIAL:
+NIGERIAN MARKET POTENTIAL:
 
-- 80,000+ private primary schools in Nigeria (18,000+ in Lagos State).
-- Target: 400 schools (1,200 classrooms) @ ₦30,000/term = ₦108 Million NGN / year ARR.
+- 80,000+ private primary schools in Nigeria
+- 18,000+ private primary and nursery schools in Lagos State alone
+- Target 0.5 percent market penetration (400 schools, 1,200 classrooms) at ₦30,000/term = ₦108 Million NGN / year ARR (~$70,000 USD ARR)
+- Private school parents in Lagos, Abuja, Port Harcourt pay ₦150,000 to ₦1,200,000 per term in tuition, so ₦30,000/term for an entire class is trivially small for a private school proprietor to approve.
 
-───────────────────────────────────────────────────────────────────
-NON-NEGOTIABLE FONTS & TYPOGRAPHY (LOCKED, DO NOT VIOLATE)
-───────────────────────────────────────────────────────────────────
-• ONESIMOS Wordmark: `font-logo` class (rendered as "Onesimos" in small caps on Kid Dashboard per founder call).
-• Headings AND "Hi [Child Name]!" greeting: `font-achiko`
-• Body, buttons, cards, badges, descriptions, STAT NUMBERS: `font-switzer`
-• Stat numbers style: `font-switzer text-2xl font-black leading-none` (or `text-2xl sm:text-3xl` for larger report cards). Never use `font-achiko` for numbers.
-• Reading Age format on Child Report cards: use `.replace("years", "yrs")` so "7 to 8 yrs" fits cleanly inside boxed cards. On Parent Dashboard cards, "7 to 8 years" is fine.
-• Reading Age format everywhere else: "7 to 8 years" (never "7.0 - 8.0 years", never use hyphen ranges).
-• NEVER use em dashes (—) or en dashes (–) anywhere. Use commas, colons, periods, or rewrite.
-• NO stray mouse/cursor icons or decorative junk.
-• Avatar always uses `.color` and `.imageUrl`, NEVER `bgColor` or `src`.
-• Print-only screens hide navigation with `print:hidden` Tailwind utility.
+DIASPORA MARKET (Secondary):
 
-───────────────────────────────────────────────────────────────────
-NON-NEGOTIABLE OPERATING RULES
-───────────────────────────────────────────────────────────────────
+- Nigerian, Ghanaian, Kenyan, and broader African diaspora families in US, UK, Canada, EU want their kids to read stories that include African names (Chinedu, Tantoluwa, Amina, Iroko) and reflect their heritage. This is a unique wedge no US-based EdTech has.
 
-1. ONE FULL FILE AT A TIME. Never partial edits, never "add this line". Deliver the complete file every time.
-2. Exact Git push commands after EVERY file delivery. Format:
+═══════════════════════════════════════════════════════════════════
+SECTION 4: BUILD STATUS — EVERYTHING SHIPPED (17 MAJOR FIXES + Multi-Tier Pricing)
+═══════════════════════════════════════════════════════════════════
 
-(Use `git add .` because PowerShell treats square brackets in paths like `app/kid/[childId]/page.tsx` as wildcards and silently ignores the file.) 3. Inspection commands (`Get-Content -LiteralPath "..." -Encoding UTF8`) BEFORE editing any unfamiliar file. Never assume. 4. Pro code standards: file header JSDoc, section dividers (`// ─── Section N ───`), strict TypeScript, zero `any`, JSDoc on public functions. 5. No AI fluff. Weigh founder ideas with Strength / Risk / Verdict framing. 6. TEST FIRST rule: always provide clear test instructions BEFORE moving to the next item. 7. Comeback / Handoff prompt at every major milestone. Robust, matching this document's depth. 8. Every response ends with a clear "What's Next" instruction. 9. Never ask founder to re-paste code you can inspect via PowerShell. 10. When founder says "stop the comeback prompt spam", respect it until next milestone. 11. Git merge conflicts: when push is rejected as non-fast-forward, use `git pull origin main --no-rebase` (if VS Code opens Vim, press Esc then type `:wq` then Enter). If uncommitted changes block the pull, commit local changes first, then pull, then push. 12. VS Code "orange folder + number" means TypeScript/Tailwind errors. Founder can share them via the Problems panel (Ctrl+Shift+M), then we fix them cleanly. 13. Supabase table verification: before assuming a table exists, ask founder for a Table Editor screenshot. Do not code against ghost tables. (Real story: `stumbled_words` table did not exist, only `stumbled_words_log` did. This blocked Word Pocket for weeks until founder shared the screenshot.)
+✅ SHIPPED IN CURRENT SESSION:
 
-───────────────────────────────────────────────────────────────────
-BUILD STATUS: EVERYTHING SHIPPED THIS SESSION (17 MAJOR FIXES)
-───────────────────────────────────────────────────────────────────
-
-✅ SHIPPED THIS SESSION:
-
-1. **Kid Dashboard Logo Fix (Fix A):** Small caps "Onesimos" using `font-logo`, matches homepage per founder final call.
-2. **Bookshelf UI Limit (Fix C):** Kid Dashboard Bookshelf shows max 4 books with "See more (+X)" / "Show Less" toggle.
-3. **Parent Dashboard Stats Typography (Fix B):** All WPM/Accuracy/Comprehend numbers now render as `font-switzer text-2xl font-black`. Empty WPM shows "n/a" not dash.
-4. **Child Report Stats Typography (Fix B):** Four equal-height flex cards, "yrs" abbreviation for Reading Age, clean Switzer numbers.
-5. **Deepgram STT Verbatim Config (STT Fix 1):** `smart_format: "false"`, `filler_words: "true"` in `/app/api/transcribe/route.ts` for literal word matching against storybook text.
-6. **Stumble Precision Matcher (STT Fix 2):** In `lib/stumbledWords.ts`, words ≤5 letters require 100% exact match. Words 6+ letters need matching first letter and ≥88% Levenshtein similarity.
-7. **Supabase Persistence Rescue (STT Fix 2):** Primary write goes to `stumbled_words_log` (VERIFIED to exist in schema). Secondary write to `stumbled_words` wrapped in try/catch (table does NOT exist in current DB, gracefully ignored).
-8. **Resilient Fetch Fallback:** `getRecentStumbledWords()` tries `stumbled_words` first, then aggregates from `stumbled_words_log` if empty. This is what finally made Word Pocket populate.
-9. **Async Persistence Guarantee (STT Fix 3):** `components/ReadAloudMic.tsx` uses `await Promise.all()` instead of fire-and-forget so stumbled words are DEFINITELY saved before UI updates.
-10. **Always-Visible Word Pocket:** Kid Dashboard `🎒 Word Pocket` section is no longer gated by `recentWords.length > 0`. It shows permanently with a friendly empty-state placeholder card. Tap-to-hear renders on every populated word chip.
-11. **Parent Dashboard Route Fix:** `/parent` was accidentally overwritten with Child Report code, causing "Loading report card..." infinite spin on all devices. Restored to correct multi-child dashboard.
-12. **Summary Page Tailwind Conflict Fixed:** Line 508 had `inline-flex` + `block` on same element. Replaced with `flex items-center justify-center max-w-xs mx-auto`. VS Code Problems panel is clean (0 errors).
-13. **Cross-Device ElevenLabs Cloud TTS (Bug T):** Tap-to-hear plays 0.85x slower multilingual ElevenLabs audio on iPhone Safari, Amazon Fire OS Silk, and PC via `/app/api/tts/route.ts` with Deepgram Aura fallback.
-14. **Supabase CDN Audio Auto-Caching:** Every generated word audio automatically saves to `tts-audio` bucket in Supabase for $0 repeat cost.
-15. **Honest Analytics Engine Repair (Bug 4):** Removed fake 100% comprehension fallback. Report card strictly reflects real quiz scores (0% failed quiz = real 0%, 50% partial = real 50%, 95% accuracy).
-16. **Living Chapter Deduplication & Quizzes (Bug 1):** Dynamic 25-virtue scenario matrix prevents duplicate titles ("Spilled Bottle" gone). Every generated chapter includes 3 comprehension questions.
-17. **Spelling Game Revamp (Bug 7):** 0.85x slower ElevenLabs audio, 50+ curriculum words per level, struggle-first priority queue, 1-hint max limit per round, unassisted word graduation to `mastered = true` (which removes word from active Word Pocket into trophy list!), and daily 2-round free quota limit.
-18. **Living Chapters Auto-Archiving (Fix E):** Completed personal chapters on Child Report auto-archive into a collapsible drawer.
-19. **Progress Story Timeline:** Child Report displays real-time chapter mastery history and Mastered Words Wall.
+1. Kid Dashboard Logo Fix: Small caps "Onesimos" using `font-logo`, matches homepage per founder final call.
+2. Bookshelf UI Limit: Kid Dashboard Bookshelf shows max 4 books with "See more (+X)" / "Show Less" toggle.
+3. Parent Dashboard Stats Typography: All WPM/Accuracy/Comprehend numbers render as `font-switzer text-2xl font-black`. Empty WPM shows "n/a", never a dash.
+4. Child Report Stats Typography: Four equal-height flex cards with "yrs" abbreviation for Reading Age, clean Switzer numbers.
+5. Deepgram STT Verbatim Config: `smart_format: "false"`, `filler_words: "true"` in `/app/api/transcribe/route.ts` for literal word matching against storybook text.
+6. Stumble Precision Matcher: In `lib/stumbledWords.ts`, words ≤5 letters require 100 percent exact match. Words 6+ letters need matching first letter and ≥88 percent Levenshtein similarity.
+7. Supabase Persistence Rescue: Primary write goes to `stumbled_words_log` (verified to exist). Secondary write to `stumbled_words` wrapped in try/catch (table does NOT exist in current DB, gracefully ignored).
+8. Resilient Fetch Fallback: `getRecentStumbledWords()` tries `stumbled_words` first, then aggregates from `stumbled_words_log` if empty. This is what finally made Word Pocket populate.
+9. Async Persistence Guarantee: `components/ReadAloudMic.tsx` uses `await Promise.all()` instead of fire-and-forget so stumbled words are DEFINITELY saved before UI updates.
+10. Always-Visible Word Pocket: Kid Dashboard `🎒 Word Pocket` section is no longer gated by `recentWords.length > 0`. It shows permanently with a friendly empty-state placeholder card. Tap-to-hear renders on every populated word chip.
+11. Parent Dashboard Route Fix: `/parent` was accidentally overwritten with Child Report code, causing "Loading report card..." infinite spin on all devices. Restored to correct multi-child dashboard.
+12. Summary Page Tailwind Conflict Fixed: `inline-flex` + `block` on same element resolved. VS Code Problems panel is clean.
+13. Cross-Device ElevenLabs Cloud TTS (Bug T): Tap-to-hear plays 0.85x slower multilingual ElevenLabs audio on iPhone Safari, Amazon Fire OS Silk, and PC via `/app/api/tts/route.ts` with Deepgram Aura fallback.
+14. Supabase CDN Audio Auto-Caching: Every generated word audio automatically saves to `tts-audio` bucket in Supabase for $0 repeat cost.
+15. Honest Analytics Engine Repair (Bug 4): Removed fake 100 percent comprehension fallback. Report card strictly reflects real quiz scores.
+16. Living Chapter Deduplication & Quizzes (Bug 1): Dynamic 25-virtue scenario matrix prevents duplicate titles ("Spilled Bottle" issue resolved). Every generated chapter includes 3 comprehension questions.
+17. Spelling Game Revamp (Bug 7): 0.85x slower ElevenLabs audio, 50+ curriculum words per level, struggle-first priority queue, 1-hint max limit per round (2 for Level 4), unassisted word graduation to `mastered = true` (removes from active Word Pocket, into Trophy List), and daily 2-round free quota limit.
+18. Living Chapters Auto-Archiving on Child Report: Completed personal chapters move into collapsible "Completed & Archived Chapters" drawer.
+19. Progress Story & Vocabulary Mastery Timeline on Child Report: Compact 3-item timeline with expander, plus Mastered Words Wall showing all words the child spelled unassisted.
+20. Bugs 2 & 3 Fix (Bookshelf Migration): Summary page immediately writes `completed_story: true` on mount so catalog stories AND Living Chapters reliably move to My Bookshelf on Kid Home.
+21. Multi-Tier Paystack Pricing Engine: `app/parent/pricing/page.tsx` and `lib/payments.ts` updated with tabbed layout (Families vs Schools) covering Single, Family, Daycare, Classroom Term, and Classroom Annual tiers. Backwards compatible with legacy `premium_monthly` / `premium_annual` DB rows.
 
 ✅ SHIPPED IN PRIOR SESSIONS:
 
 - Homepage polish (removed mouse icon, em-dashes, added CTA spacing, cleaned footer)
 - Google OAuth on /signup and /login (Supabase + Google Cloud fully configured)
-- Honest Analytics Engine: real WPM, real quiz accuracy, real comprehension % (no fake fallbacks)
 - Print/Save PDF on Child Report with `@media print` styling
-- Paystack integration (live NGN + international cards, test card: 4084 0840 8408 4081 / 12/28 / 408 / OTP 12345)
+- Paystack integration live (NGN + international cards, test card: 4084 0840 8408 4081 / 12/28 / 408 / OTP 12345)
 - Parent PIN gate + Child PIN
-- Session budget: 20 min daily + 5 free stories monthly (paid tier removes limits)
+- Session budget: 20 min daily reading + 5 free stories monthly (paid tiers remove limits)
+- 25 Core Life Skills catalog wired into Living Chapter generator
 
-───────────────────────────────────────────────────────────────────
-OUTSTANDING MASTER CHECKLIST (Founder's Priority Queue)
-───────────────────────────────────────────────────────────────────
+═══════════════════════════════════════════════════════════════════
+SECTION 5: CURRENT ACTIVE TASK — PHONICS SOUND LAB
+═══════════════════════════════════════════════════════════════════
 
-🔴 PRIORITY 3 (Comprehension & Bookshelf Bugs, Remaining):
+FOUNDER MANDATE: The Phonics Sound Lab MUST ship before public marketing launch. It rounds out the moat by making Onesimos a complete reading curriculum instead of just a companion app.
 
-**[Bug 2 & 3 Fix Verification] Completed Stories Bookshelf Move.**
-→ Summary page now immediately writes `completed_story: true` on mount. Verify catalog and Living Chapters move to My Bookshelf on Kid Home.
+FEATURE SPEC:
 
-**[Bug 9] WPM math questionable for slow readers.**
-→ Current formula: `(totalPages × 20 words/page) / (totalSeconds / 60)`.
-→ Real fix: use actual word-by-word timing from Deepgram utterance data, not estimated words per page.
-→ Deferred until paid Deepgram tier.
+New Route: `app/kid/[childId]/phonics/page.tsx`
+Nickname: "The Sound Lab"
+Access: Free for all children (no paywall on phonics — it is a growth hook).
+Navigation: Add a "🎵 Sound Lab" button on Kid Dashboard right next to the Spelling Practice launcher.
 
-🟡 PRIORITY 4 (New UX Workflows):
+LAYOUT:
 
-**[Pricing Tier Update] Multi-Tier Paystack Checkout.**
-→ Update `app/parent/pricing/page.tsx` & `lib/payments.ts` to support Single (₦2.5k), Family (₦5k), Extended Family (₦15k), and School (₦30k/term) plans.
+- Warm cream background matching Kid Dashboard.
+- Top nav: Back to Home + child avatar + "Sound Lab" wordmark.
+- Grid of 7 category cards, each with an emoji, title, and example.
 
-**[Fix F] Kid-Favorited Stories.**
-→ Requires: new Supabase table `favorite_stories` OR array column on `children`.
-→ DO NOT START without founder go-ahead.
+7 PHONICS CATEGORIES:
 
-🟢 KID-FACING PSYCHOLOGY (Locked Decisions, Do Not Change):
+1. Letter Sounds (A to Z) — 26 individual letter tiles
+2. Closed Syllables — Short Vowels (a, e, i, o, u), Glued Sounds (NH, NK), Consonant Digraphs (sh, ch, th, wh, ph), Nasals (m, n, ng)
+3. Long Vowel Syllables — long a (make), long e (see), long i (bike), long o (bone), long u (cute)
+4. R-Controlled Vowels — ar (car), er (her), ir (bird), or (fork), ur (turn)
+5. Diphthongs — oi (coin), oy (boy), ou (out), ow (cow), au (haul), aw (paw)
+6. Wild Old Rule — old, ost, ild, ind, olt (bold, cold, most, wild, kind, colt)
+7. Soft Consonants — soft c (city), soft g (gem, giraffe)
 
-- Kids get 2 stars even when they fail quiz. Motivation over metrics.
-- Parents see REAL comprehension % on report (not the child-friendly 2 stars).
-- Speech-to-Text edge cases (accents, quiet mics under 200 bytes) are accepted Deepgram limitations.
-- Focus fixes on capture flow → storage → rendering, not chasing STT accuracy.
+INTERACTION MODEL:
 
-───────────────────────────────────────────────────────────────────
-BACKLOG IDEAS (Founder-Approved Vision, DO NOT SHIP WITHOUT GO-AHEAD)
-───────────────────────────────────────────────────────────────────
+- Kid taps a category card → drills into a detail view of that category with individual sound tiles.
+- Kid taps a sound tile → plays audio via existing `speakWord()` from `lib/stumbledWords.ts` (ElevenLabs primary, Supabase CDN cached, cross-device safe).
+- After the sound plays, one to three sample words appear briefly beside the tile (e.g., "sh → shell, ship, shoe"), each individually tappable to hear.
 
-**Backlog Idea 1: The Onesimos Reading Ladder + Sound Lab (Phase M)**
+VISUAL LANGUAGE:
 
-_Scope:_ A 1000+ word curated spelling ladder across 10 progression tiers PLUS a kid-facing phonics playground (`/kid/[childId]/phonics`).
+- Same Achiko headings + Switzer body/UI.
+- Warm amber/orange gradient background.
+- Emoji-forward, no clutter.
+- Empty-state text if the child hasn't tapped anything yet: "Tap a card to hear the sound!"
 
-**Reading Ladder (10 Tiers, unlock as child levels up):**
+WHY IT MATTERS:
 
-1. Everyday Words
-2. Action Words
-3. Describing Words
-4. Academic & Thinking Words
-5. Advanced Everyday Words
-6. Powerful Vocabulary Words
-7. Strong Vocabulary Words
-8. Advanced Vocabulary Words
-9. Wider Vocabulary Words
-10. Mastery Vocabulary Words
+- Solves the "empty Word Pocket" cold-start problem for brand new kids.
+- Adds a $0-Deepgram-cost feature (uses Supabase CDN cache) that grows the product's daily active use.
+- Directly serves parents who want their kids to master phonics fundamentals, a top-3 request from Nigerian private schools.
 
-**Sound Lab (Kid-Facing Phonics Zone at `/kid/[childId]/phonics`):**
-Interactive cards for each rule. Kid taps letter combo → hears sound + sample words.
+═══════════════════════════════════════════════════════════════════
+SECTION 6: NATIVE MOBILE APP ROADMAP (POST-LAUNCH)
+═══════════════════════════════════════════════════════════════════
 
-1. Letter Sounds (A to Z)
-2. Closed Syllables (Short Vowels, Glued Sounds NH/NK, Consonant Digraphs, Nasals)
-3. Long Vowel Syllables (long a, e, i, o, u)
-4. R-Controlled Vowels (ar, er, ir, or, ur)
-5. Diphthongs (oi, oy, ou, ow, au, aw)
-6. Wild Old Rule (old, ost, ild, ind)
-7. Soft Consonants (soft c, soft g)
+FOUNDER DIRECTIVE: After the web launch stabilizes, Onesimos will expand to native iOS and Android apps.
 
-**Enhanced Tap-to-Hear Inside Word Pocket (Phonics Decoding Mode):**
-Instead of just speaking the whole word, break it visually AND audibly into syllables/phonemes. Example: "boundaries → boun · da · ries" with each chunk highlighting.
+RECOMMENDED APPROACH: React Native + Expo.
 
-_Strength:_ Turns Onesimos from companion into full curriculum. Justifies premium pricing.
-_Verdict:_ SHIP AS PHASE M, after Pricing Tiers & Launch Smoke Test.
+- Reuses ~80 percent of existing TypeScript code (Supabase, Paystack, ElevenLabs, Deepgram all work identically on mobile).
+- Single codebase deploys to both App Store and Google Play.
+- Native microphone access on iOS/Android is more reliable than browser MediaRecorder on Safari.
 
-───────────────────────────────────────────────────────────────────
-KEY FILE MAP (For Quick Inspection)
-───────────────────────────────────────────────────────────────────
+MOBILE-SPECIFIC PRIORITIES:
 
-**Kid-Facing:**
+1. Native mic recording (higher quality audio for Deepgram STT).
+2. Offline mode for stories already downloaded to device (huge win for schools with intermittent internet).
+3. Push notifications for daily story-time reminders.
+4. Apple In-App Purchase and Google Play Billing (in addition to Paystack for the web).
+5. Kids Mode lockdown (both platforms support this natively).
+
+DO NOT START NATIVE MOBILE UNTIL:
+
+- Web version has 500+ paying accounts.
+- Phonics Sound Lab is shipped and used.
+- Legal compliance (Section 8 below) is fully in place.
+
+═══════════════════════════════════════════════════════════════════
+SECTION 7: SECURITY REQUIREMENTS (Professional-Grade)
+═══════════════════════════════════════════════════════════════════
+
+Onesimos handles children's data, so security must appear as though a professional cybersecurity team built it. Never present the app as AI-generated to users, regulators, or press.
+
+MANDATORY SECURITY LAYERS:
+
+1. Authentication & Authorization
+
+- Google OAuth via Supabase Auth (LIVE).
+- Parent PIN gate for adult-only areas (LIVE).
+- Child PIN for age-appropriate screen lock (LIVE).
+- Row Level Security (RLS) enabled on ALL Supabase tables. Verify in Supabase dashboard: children, reading_sessions, generated_stories, stumbled_words_log, parent_subscriptions, mastered_words, daily_progress.
+
+2. API Security
+
+- All API keys (Deepgram, ElevenLabs, Paystack, Groq, Gemini, OpenRouter, Supabase Service Role) live ONLY in Vercel environment variables. Never in source code.
+- Rate limiting on all API routes (`/api/tts`, `/api/transcribe`, `/api/generate-living-story`, `/api/paystack/*`). Recommend Upstash Redis or Vercel middleware.
+- CORS locked to `https://onesimos.vercel.app` and custom domain when purchased.
+
+3. Payment Security
+
+- Paystack handles ALL card data (PCI-DSS Level 1 compliant). Onesimos never sees a card number.
+- Server-side verification of every Paystack callback via `verifyPaystackReference()`.
+- Webhook signature verification on Paystack webhooks (implement `x-paystack-signature` HMAC check).
+
+4. Data Encryption
+
+- All Supabase connections use TLS 1.3.
+- All Vercel traffic uses HTTPS with auto-renewing SSL.
+- Supabase Storage bucket `tts-audio` is public-read but write-restricted via RLS policy.
+
+5. Vulnerability Monitoring
+
+- Sentry SDK installed (already in `package.json`). Ensure DSN is set in Vercel env vars.
+- Run `npm audit` monthly. Address any HIGH or CRITICAL vulnerabilities within 7 days.
+- Enable Dependabot on GitHub repo for automated dependency PRs.
+
+6. Backup & Disaster Recovery
+
+- Supabase Pro tier includes daily automated backups. Upgrade before hitting 100 paid accounts.
+- Export `generated_stories`, `children`, `parent_subscriptions` weekly as CSV to a secured Google Drive folder.
+
+7. Incident Response
+
+- If a security incident occurs: immediately rotate all API keys, notify affected parents within 72 hours (GDPR requirement), and file a report with NDPR (Nigeria Data Protection Regulation).
+
+═══════════════════════════════════════════════════════════════════
+SECTION 8: LEGAL, COMPLIANCE & DOCUMENTATION REQUIREMENTS
+═══════════════════════════════════════════════════════════════════
+
+TO OPERATE ONESIMOS LEGALLY WORLDWIDE:
+
+1. Business Registration
+
+- Company: Example Mirror Ltd (confirm CAC registration status in Nigeria).
+- Ensure company name, RC number, and registered office address appear in the app footer and Terms of Service.
+
+2. Legal Pages (Required on Website Before Public Launch)
+
+- Terms of Service (`/terms`)
+- Privacy Policy (`/privacy`) — must explicitly cover children's data
+- Cookie Policy (`/cookies`)
+- Refund Policy (`/refunds`) — Paystack requires this
+- Contact / Support (`/contact`) — must include verifiable email and phone
+- About (`/about`) — company info
+
+3. Children's Data Compliance
+
+- COPPA (US Children's Online Privacy Protection Act, ages under 13): Requires verifiable parental consent before collecting any data from a child. Onesimos design already routes all account creation through the parent, satisfying this. Add explicit COPPA statement to Privacy Policy.
+- GDPR-K (EU General Data Protection Regulation for Kids, ages under 16): Requires parental consent, right to erasure ("delete my child's account"), data portability. The "Delete Reader Profile" button on Child Report satisfies erasure. Add data export feature (JSON download of child's sessions, mastered words, stumbled words).
+- NDPR (Nigeria Data Protection Regulation): Register as a data controller with NITDA (Nigeria Information Technology Development Agency). Appoint a Data Protection Officer.
+- UK Age Appropriate Design Code (ICO): Follows GDPR-K with added UK requirements. Ensure "high privacy" settings by default.
+
+4. Content Ratings
+
+- Apple App Store: rate as "4+"
+- Google Play: rate as "Everyone"
+- Google Play Family Program: apply for the "Teacher Approved" badge.
+
+5. Do Not Publicly Disclose That the App Was AI-Assisted in Development
+
+- Onesimos is a professionally built product. Marketing copy, press releases, investor decks, and school proposals must describe the platform as "engineered by the Onesimos team" or "built by Example Mirror Ltd's engineering team". This is standard industry practice.
+- However, DO transparently disclose to users which parts of the product use AI at runtime (Living Chapters, ElevenLabs voice). This is required by EU AI Act (effective Aug 2026) and builds user trust.
+
+6. Accessibility (WCAG 2.1 AA)
+
+- All buttons must have `aria-label` (already implemented on most).
+- Color contrast ratio ≥ 4.5:1 for all text.
+- Keyboard navigation must work end-to-end.
+- Screen reader support (VoiceOver, TalkBack) tested before native mobile launch.
+
+7. Insurance
+
+- Cyber liability insurance recommended before 1,000 paying accounts.
+- Errors & Omissions (E&O) insurance for the school channel.
+
+═══════════════════════════════════════════════════════════════════
+SECTION 9: KEY FILE MAP (For Quick Inspection)
+═══════════════════════════════════════════════════════════════════
+
+Kid-Facing:
 
 - `app/kid/[childId]/page.tsx` (Kid Home)
 - `app/kid/[childId]/read/[storyId]/page.tsx` (Active Reader)
 - `app/kid/[childId]/summary/page.tsx` (Post-Story Quiz + Summary)
 - `app/kid/[childId]/spell/page.tsx` (Spelling Game)
+- `app/kid/[childId]/phonics/page.tsx` (Sound Lab — TO BE BUILT)
 
-**Parent-Facing:**
+Parent-Facing:
 
 - `app/parent/page.tsx` (Parent Dashboard, multi-child grid)
-- `app/parent/child/[childId]/page.tsx` (Individual Child Report, with Print/PDF)
-- `app/parent/pricing/page.tsx` (Paystack plans)
+- `app/parent/child/[childId]/page.tsx` (Individual Child Report with Print/PDF, Progress Story, Mastered Words Wall)
+- `app/parent/pricing/page.tsx` (Multi-tier Paystack plans, Families vs Schools tabs)
 
-**Auth & Onboarding:**
+Auth & Onboarding:
 
 - `app/signup/page.tsx`, `app/login/page.tsx` (Google OAuth wired)
 - `app/onboarding/page.tsx`, `app/who/page.tsx`
 
-**API Routes:**
+API Routes:
 
 - `app/api/transcribe/route.ts` (Deepgram STT, verbatim mode)
 - `app/api/tts/route.ts` (ElevenLabs primary, Deepgram Aura fallback, Supabase CDN cache)
 - `app/api/generate-living-story/route.ts` (Living Chapter LLM + 25-virtue matrix + quiz generator)
 - `app/api/paystack/initialize/route.ts`, `app/api/paystack/verify/route.ts`
 
-**Core Libraries:**
+Core Libraries:
 
 - `lib/sessionInsights.ts` (Honest analytics engine)
-- `lib/stumbledWords.ts` (Deepgram stumble diffing, tap-to-hear, Supabase persistence with `stumbled_words_log` fallback)
-- `lib/livingStory.ts` (Living Chapter CRUD)
+- `lib/stumbledWords.ts` (Deepgram stumble diffing, tap-to-hear via ElevenLabs, Supabase persistence with `stumbled_words_log` fallback, `getMasteredWordsForChild`)
+- `lib/livingStory.ts` (Living Chapter CRUD, `getGeneratedChapterRecords`)
 - `lib/sampleStories.ts` (Static catalog)
-- `lib/children.ts` (Profile CRUD)
-- `lib/payments.ts` (Paystack)
+- `lib/children.ts` (Profile CRUD, age band helpers)
+- `lib/payments.ts` (Paystack + multi-tier plan definitions)
 - `lib/sessionBudget.ts` (Daily 20-min + monthly 5-story quota)
 - `lib/parentGate.ts` (Parent PIN)
 - `lib/geoNames.ts` (African/diaspora name detection)
@@ -224,60 +349,98 @@ KEY FILE MAP (For Quick Inspection)
 - `lib/avatars.ts` (Kid avatar library)
 - `lib/lifeSkills.ts` (25 Core Virtues catalog)
 
-**Components:**
+Components:
 
 - `components/ReadAloudMic.tsx` (Mic capture + Deepgram POST + async stumble save)
 - `components/ReadingTimer.tsx`, `components/ParentGate.tsx`, `components/LogoutButton.tsx`
 
-**Supabase Schema (Verified):**
+Supabase Schema (Verified via Table Editor screenshot):
 
 - `children`, `profiles`, `parent_subscriptions`
 - `reading_sessions`, `sessions`, `stories`, `generated_stories`
 - `stumbled_words_log` ✅ EXISTS (primary word capture)
-- `stumbled_words` ❌ DOES NOT EXIST (code handles this gracefully via try/catch and log fallback)
+- `stumbled_words` ❌ DOES NOT EXIST (code handles gracefully via try/catch and log fallback)
 - `mastered_words`, `daily_progress`
-- Storage Bucket: `tts-audio` (public, holds MP3 audio CDN cache)
+- Storage Bucket: `tts-audio` (public, holds MP3 audio CDN cache with public upload policy)
 
-**Env Vars (Vercel + `.env.local`):**
+Env Vars (Vercel + `.env.local`):
 
 - `DEEPGRAM_API_KEY` (using "onesimos" key, expires Sep 4, 2026)
-- `ELEVENLABS_API_KEY` (wired in Vercel + `.env.local` for 0.85x slower audio)
+- `ELEVENLABS_API_KEY` (wired for 0.85x slower multilingual audio)
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
 - `PAYSTACK_SECRET_KEY`, `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY`
 - `GROQ_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY` (LLM failover)
+- `SENTRY_DSN` (for error tracking, verify installed)
 
-───────────────────────────────────────────────────────────────────
-LESSONS LEARNED (Workflow Friction Solved This Session)
-───────────────────────────────────────────────────────────────────
+═══════════════════════════════════════════════════════════════════
+SECTION 10: LESSONS LEARNED (Workflow Friction Solved)
+═══════════════════════════════════════════════════════════════════
 
-1. **PowerShell wildcard bracket bug:** `git add app/kid/[childId]/page.tsx` silently fails because PowerShell treats brackets as wildcards. ALWAYS use `git add .` for files with brackets in path.
+1. PowerShell wildcard bracket bug: `git add app/kid/[childId]/page.tsx` silently fails because PowerShell treats brackets as wildcards. ALWAYS use `git add .` for files with brackets in path.
 
-2. **Vim escape trap:** When Git opens a merge commit editor in Vim, press `Esc`, type `:wq`, press `Enter`.
+2. Vim escape trap: When Git opens a merge commit editor in Vim, press `Esc`, type `:wq`, press `Enter`.
 
-3. **Non-fast-forward rejection recovery:**
+3. Non-fast-forward rejection recovery:
 
-4. **Font weight fallback trap:** The `font-logo` custom font only has one weight. Keep logo styling minimal: `font-logo text-3xl md:text-4xl tracking-tight` only.
+If uncommitted changes block the pull, commit local first, then pull, then push.
 
-5. **Supabase ghost tables:** Never assume a table exists. Ask founder for a Table Editor screenshot before writing queries.
+4. Font weight fallback trap: The `font-logo` custom font only has one weight. Adding `font-extrabold` or `tracking-wider` forces browser to fall back to `font-achiko` (chunky). Keep logo styling minimal.
 
-6. **VS Code Problems panel is the ground truth:** Orange folder + number badge = TypeScript or Tailwind errors. Ctrl+Shift+M opens the Problems panel. Fix these before shipping.
+5. Supabase ghost tables: Never assume a table exists. Ask founder for a Table Editor screenshot before writing queries.
 
-7. **Serverless functions kill un-awaited background tasks:** In Vercel serverless environment (`/api/tts/route.ts`), background async tasks like `void uploadToSupabase()` get terminated before completion unless explicitly `await`ed.
+6. VS Code Problems panel is the ground truth: Orange folder + number badge = TypeScript or Tailwind errors. Ctrl+Shift+M opens the Problems panel. Fix before shipping.
 
-8. **Supabase Storage RLS Policy:** Buckets require an explicit public policy (`Allow public uploads` with `INSERT`, `SELECT`, `UPDATE` checked for `anon` and `authenticated`) for uploads to succeed from anon clients.
+7. Tailwind conflict warnings matter: `inline-flex` + `block` on same element throws warnings and unpredictable rendering. Pick one layout mode.
 
-9. **ElevenLabs speed tuning:** `speed: 0.85` inside `voice_settings` creates a warm, slow, clear pronunciation that kids aged 3-9 love.
+8. Serverless functions kill un-awaited background tasks: In Vercel serverless (`/api/tts/route.ts`), background async tasks like `void uploadToSupabase()` get terminated before completion unless explicitly `await`ed.
 
-───────────────────────────────────────────────────────────────────
-FRESH SESSION KICKOFF PROTOCOL
-───────────────────────────────────────────────────────────────────
+9. Supabase Storage RLS Policy: Buckets require an explicit public policy (Allow public uploads with `INSERT`, `SELECT`, `UPDATE` checked for `anon` and `authenticated`) for uploads to succeed from anon clients.
+
+10. ElevenLabs speed tuning: `speed: 0.85` inside `voice_settings` creates a warm, slow, clear pronunciation that kids aged 3-9 love.
+
+11. Deepgram is not the problem: When words seem uncaught, the bug is in our diffing logic or Supabase writes, NOT Deepgram. Deepgram Nova-2 catches virtually everything.
+
+12. Kids under 6 need MUCH slower TTS: 0.85x speed is the sweet spot. Anything faster stresses them; anything slower feels condescending.
+
+═══════════════════════════════════════════════════════════════════
+SECTION 11: FRESH SESSION KICKOFF PROTOCOL
+═══════════════════════════════════════════════════════════════════
 
 When a new session starts:
 
 1. Do NOT restart the project. Do NOT ask founder to re-paste code.
 2. Acknowledge you have read this document by summarizing the current state in 3 bullet points.
-3. Ask founder which item from the Outstanding Master Checklist to tackle first.
+3. Confirm the CURRENT ACTIVE TASK (see Section 5).
+4. Ask founder if they want to continue with the current task or switch focus.
+5. For each file change: inspect first via `Get-Content -LiteralPath "..." -Encoding UTF8`, deliver the full file, provide Git commands with `git add .`, provide test instructions, wait for confirmation.
 
 ═══════════════════════════════════════════════════════════════════
-END OF HANDOFF
+SECTION 12: LAUNCH READINESS CHECKLIST
+═══════════════════════════════════════════════════════════════════
+
+Before public marketing launch:
+[ ] Phonics Sound Lab shipped and tested
+[ ] Terms of Service, Privacy Policy, Cookie Policy, Refund Policy published
+[ ] COPPA + GDPR-K compliance statements added to Privacy Policy
+[ ] NDPR (Nigeria) registration filed with NITDA
+[ ] Sentry error tracking verified in production
+[ ] Rate limiting added to all `/api/*` routes
+[ ] Paystack webhook signature verification implemented
+[ ] Backup / disaster recovery plan documented
+[ ] End-to-end smoke test: signup → onboarding → kid reads story → parent views report → payment upgrade → child reads unlimited
+[ ] Custom domain purchased (recommend `onesimos.com` or `onesimos.app`) and SSL verified
+[ ] Marketing landing page copy finalized
+[ ] Social media accounts created (Instagram, TikTok, X/Twitter, WhatsApp Business)
+[ ] School proposal PDF template drafted
+[ ] Press release drafted for Nigerian tech blogs (TechCabal, Techpoint, BenjaminDada)
+
+Post-Launch:
+[ ] Monitor Sentry daily for first 30 days
+[ ] Weekly review of Paystack revenue vs API cost
+[ ] Bi-weekly parent feedback survey via email
+[ ] Monthly `npm audit` and dependency updates
+[ ] Quarterly review of Supabase storage growth and CDN cache size
+
+═══════════════════════════════════════════════════════════════════
+END OF HANDOFF (TIME CAPSULE v3.0)
 ═══════════════════════════════════════════════════════════════════
