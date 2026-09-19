@@ -2,8 +2,14 @@
  * Onesimos — Solo Spelling Game
  * =======================================
  * Encoding practice pulling from each child's real stumbled words.
- * Features 50+ curriculum words per level (shuffled every round),
- * 0.85x slower ElevenLabs audio, and daily 2-round quota limit for free plans.
+ * Features 1-hint max limit per round, unassisted word mastery graduation,
+ * 0.85x slower ElevenLabs audio, and daily free quota limits.
+ *
+ * Difficulty scaling (by child.reading_level):
+ *   Level 1 (pre-reader)  : 3-letter words, 1 distractor, 1 hint max
+ *   Level 2 (emerging)    : 3–4 letter words, 2 distractors, 1 hint max
+ *   Level 3 (early)       : 4–5 letter words, 3 distractors, 1 hint max
+ *   Level 4 (confident)   : 5–7 letter words, 4 distractors, 2 hints max
  *
  * @fonts Achiko (headings) + Switzer (body/UI)
  * @module app/kid/[childId]/spell/page
@@ -70,7 +76,7 @@ const EXPANDED_FALLBACK_WORDS: Record<number, string[]> = {
   2: [
     "jump", "frog", "kind", "play", "star", "tree", "milk", "nest", "sing", "book",
     "fish", "bird", "lamp", "hand", "fast", "slow", "duck", "park", "cold", "warm",
-    "gold", "rain", "moon", "wind", "ship", "bell", "ring", "ring", "gift", "cake",
+    "gold", "rain", "moon", "wind", "ship", "bell", "ring", "gift", "cake", "boat",
   ],
   3: [
     "brave", "smile", "water", "climb", "cloud", "green", "light", "clean", "story", "sweet",
@@ -89,34 +95,14 @@ const LEVEL_CONFIG: Record<
   {
     maxWordLen: number;
     distractors: number;
-    autoHintMs: number;
+    maxHintsPerRound: number;
     label: string;
   }
 > = {
-  1: {
-    maxWordLen: 3,
-    distractors: 1,
-    autoHintMs: 8000,
-    label: "Letter Match",
-  },
-  2: {
-    maxWordLen: 4,
-    distractors: 2,
-    autoHintMs: 10000,
-    label: "Easy Spell",
-  },
-  3: {
-    maxWordLen: 5,
-    distractors: 3,
-    autoHintMs: 12000,
-    label: "Spell It",
-  },
-  4: {
-    maxWordLen: 7,
-    distractors: 4,
-    autoHintMs: 14000,
-    label: "Challenge",
-  },
+  1: { maxWordLen: 3, distractors: 1, maxHintsPerRound: 1, label: "Letter Match" },
+  2: { maxWordLen: 4, distractors: 2, maxHintsPerRound: 1, label: "Easy Spell" },
+  3: { maxWordLen: 5, distractors: 3, maxHintsPerRound: 1, label: "Spell It" },
+  4: { maxWordLen: 7, distractors: 4, maxHintsPerRound: 2, label: "Challenge" },
 };
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
@@ -147,23 +133,34 @@ function buildBank(word: string, distractorCount: number): BankTile[] {
   return all.map((letter, i) => ({ id: i, letter, used: false }));
 }
 
+/** Priority queue: Words stumbled 2+ times come first! */
 function assembleRoundWords(
   stumbledItems: StumbledWordCountItem[],
   level: number
 ): SpellingWordItem[] {
   const cfg = LEVEL_CONFIG[level] ?? LEVEL_CONFIG[2];
   
-  const realStumbled: SpellingWordItem[] = shuffle(
+  // High struggle priority words (stumbled 2+ times)
+  const highPriority = shuffle(
     stumbledItems
-      .filter((w) => w.word.length <= cfg.maxWordLen)
+      .filter((w) => w.word.length <= cfg.maxWordLen && w.count >= 2)
       .map((w) => ({ word: w.word.toLowerCase(), times_stumbled: w.count }))
   );
 
-  if (realStumbled.length >= ROUND_SIZE) {
-    return realStumbled.slice(0, ROUND_SIZE);
+  // Single stumble words
+  const normalStumbled = shuffle(
+    stumbledItems
+      .filter((w) => w.word.length <= cfg.maxWordLen && w.count < 2)
+      .map((w) => ({ word: w.word.toLowerCase(), times_stumbled: w.count }))
+  );
+
+  const combined = [...highPriority, ...normalStumbled];
+
+  if (combined.length >= ROUND_SIZE) {
+    return combined.slice(0, ROUND_SIZE);
   }
 
-  const pool = [...realStumbled];
+  const pool = [...combined];
   const seen = new Set(pool.map((p) => p.word));
 
   const fallbackList = shuffle(
@@ -178,7 +175,7 @@ function assembleRoundWords(
     }
   }
 
-  return shuffle(pool.slice(0, ROUND_SIZE));
+  return pool.slice(0, ROUND_SIZE);
 }
 
 function getDailySpellingRoundsCount(childId: string): number {
@@ -208,6 +205,10 @@ export default function SpellingGamePage(): JSX.Element {
   const [wordIndex, setWordIndex] = useState(0);
   const [stars, setStars] = useState(0);
 
+  // Hint budget state (Max 1-2 per round)
+  const [hintsRemaining, setHintsRemaining] = useState(1);
+  const [usedHintOnCurrentWord, setUsedHintOnCurrentWord] = useState(false);
+
   // Free Tier Lock States
   const [isPaidPlan, setIsPaidPlan] = useState(false);
   const [limitModalOpen, setLimitModalOpen] = useState(false);
@@ -217,14 +218,13 @@ export default function SpellingGamePage(): JSX.Element {
   const [bank, setBank] = useState<BankTile[]>([]);
   const [slots, setSlots] = useState<SlotTile[]>([]);
   const [hintSlotIndex, setHintSlotIndex] = useState<number | null>(null);
-  const autoHintRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Derived ──
   const currentWord = roundWords[wordIndex];
   const level = child?.reading_level ?? 2;
   const cfg = LEVEL_CONFIG[level] ?? LEVEL_CONFIG[2];
 
-  // ─── DATA FETCH & SUBSCRIPTION CHECK ─────────────────────────────────────
+  // ─── DATA FETCH ──────────────────────────────────────────────────────────
 
   useEffect(() => {
     let cancelled = false;
@@ -248,7 +248,6 @@ export default function SpellingGamePage(): JSX.Element {
       const profile = childData as ChildProfile;
       setChild(profile);
 
-      // Check user subscription status for free vs paid plan
       const usage = await checkMonthlyStoryLimit(profile.id);
       setIsPaidPlan(usage.isPaidPlan);
 
@@ -280,18 +279,12 @@ export default function SpellingGamePage(): JSX.Element {
       setBank(newBank);
       setSlots(newSlots);
       setHintSlotIndex(null);
+      setUsedHintOnCurrentWord(false);
 
-      // ElevenLabs 0.85x slower audio
+      // Speak word with 0.85x speed ElevenLabs
       setTimeout(() => void speakWord(word), 300);
-
-      if (autoHintRef.current) clearTimeout(autoHintRef.current);
-      if (level <= 1) {
-        autoHintRef.current = setTimeout(() => {
-          setHintSlotIndex(0);
-        }, cfg.autoHintMs);
-      }
     },
-    [cfg, level]
+    [cfg]
   );
 
   useEffect(() => {
@@ -300,13 +293,7 @@ export default function SpellingGamePage(): JSX.Element {
     }
   }, [phase, wordIndex, setupWord, currentWord]);
 
-  useEffect(() => {
-    return () => {
-      if (autoHintRef.current) clearTimeout(autoHintRef.current);
-    };
-  }, []);
-
-  // ─── START GAME WITH FREE TIER CHECK ──────────────────────────────────────
+  // ─── START GAME ──────────────────────────────────────────────────────────
 
   const handleStartGame = () => {
     if (!child) return;
@@ -322,6 +309,7 @@ export default function SpellingGamePage(): JSX.Element {
     incrementDailySpellingRounds(child.id);
     setWordIndex(0);
     setStars(0);
+    setHintsRemaining(cfg.maxHintsPerRound);
     setPhase("playing");
   };
 
@@ -370,7 +358,7 @@ export default function SpellingGamePage(): JSX.Element {
     );
   }
 
-  function checkAnswer(filledSlots: SlotTile[]): void {
+  async function checkAnswer(filledSlots: SlotTile[]): Promise<void> {
     if (!currentWord) return;
     const attempt = filledSlots.map((s) => s.letter).join("");
     const target = currentWord.word.toUpperCase();
@@ -378,7 +366,19 @@ export default function SpellingGamePage(): JSX.Element {
     if (attempt === target) {
       setPhase("correct");
       setStars((prev) => prev + 1);
-      if (autoHintRef.current) clearTimeout(autoHintRef.current);
+
+      // GRADUATION LOGIC: Mark word as MASTERED in Supabase ONLY IF NO HINTS WERE USED!
+      if (!usedHintOnCurrentWord) {
+        try {
+          await supabase
+            .from("stumbled_words")
+            .update({ mastered: true, updated_at: new Date().toISOString() })
+            .eq("child_id", childId)
+            .eq("word", currentWord.word.toLowerCase());
+        } catch {
+          // Ignore fallback if table missing
+        }
+      }
 
       setTimeout(() => advanceWord(), CELEBRATION_MS);
     } else {
@@ -401,7 +401,8 @@ export default function SpellingGamePage(): JSX.Element {
   }
 
   function handleHint(): void {
-    if (phase !== "playing" || !currentWord) return;
+    if (phase !== "playing" || !currentWord || hintsRemaining <= 0) return;
+
     const nextEmpty = slots.findIndex((s) => s.bankId === null);
     if (nextEmpty === -1) return;
 
@@ -411,17 +412,18 @@ export default function SpellingGamePage(): JSX.Element {
     );
 
     if (matchingTile) {
+      setHintsRemaining((h) => Math.max(0, h - 1));
+      setUsedHintOnCurrentWord(true);
       setHintSlotIndex(nextEmpty);
 
       setTimeout(() => {
         handleBankTap(matchingTile.id);
         setHintSlotIndex(null);
-      }, 900);
+      }, 800);
     }
   }
 
   function handleSkip(): void {
-    if (autoHintRef.current) clearTimeout(autoHintRef.current);
     advanceWord();
   }
 
@@ -466,9 +468,14 @@ export default function SpellingGamePage(): JSX.Element {
           <strong className="text-amber-950 font-extrabold">{roundWords.length} practice words</strong>.
           Tap 🔊 to listen, then tap the letters!
         </p>
-        <p className="rounded-full bg-amber-100 border border-amber-200 px-4 py-1.5 font-switzer text-xs font-bold text-amber-900">
-          Mode: {cfg.label}
-        </p>
+        <div className="flex gap-2 font-switzer">
+          <span className="rounded-full bg-amber-100 border border-amber-200 px-3 py-1 text-xs font-bold text-amber-900">
+            Mode: {cfg.label}
+          </span>
+          <span className="rounded-full bg-amber-100 border border-amber-200 px-3 py-1 text-xs font-bold text-amber-900">
+            💡 {cfg.maxHintsPerRound} Hint Per Round
+          </span>
+        </div>
         <button
           type="button"
           onClick={handleStartGame}
@@ -477,7 +484,6 @@ export default function SpellingGamePage(): JSX.Element {
           Start Spelling 🚀
         </button>
 
-        {/* Free Plan Lock Modal */}
         {limitModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 font-switzer">
             <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl border border-gray-100 font-switzer">
@@ -551,9 +557,9 @@ export default function SpellingGamePage(): JSX.Element {
           <button
             type="button"
             onClick={() => {
-              // Prepare next round with fresh shuffled words
               const nextWords = assembleRoundWords([], child?.reading_level || 2);
               setRoundWords(nextWords);
+              setHintsRemaining(cfg.maxHintsPerRound);
               setPhase("intro");
             }}
             className="rounded-2xl bg-amber-500 hover:bg-amber-600 px-8 py-3.5 font-achiko text-base text-white shadow-md active:scale-95 transition-all"
@@ -572,14 +578,14 @@ export default function SpellingGamePage(): JSX.Element {
     );
   }
 
-  // ─── RENDER: MAIN GAME (playing / correct / retry) ───────────────────────
+  // ─── RENDER: MAIN GAME ───────────────────────────────────────────────────
 
   const targetWord = currentWord?.word.toUpperCase() ?? "";
   const allFilled = slots.every((s) => s.letter !== null);
 
   return (
     <main className="flex min-h-screen flex-col bg-gradient-to-b from-sky-50/40 via-[#FDFBF7] to-amber-50/40 font-switzer pb-8">
-      {/* ── Header ── */}
+      {/* Header */}
       <header className="flex items-center justify-between px-6 py-4 max-w-2xl mx-auto w-full font-switzer">
         <button
           type="button"
@@ -612,7 +618,7 @@ export default function SpellingGamePage(): JSX.Element {
         </div>
       </header>
 
-      {/* ── Progress bar ── */}
+      {/* Progress bar */}
       <div className="max-w-2xl mx-auto w-full px-6 mb-4">
         <div className="h-2.5 overflow-hidden rounded-full bg-amber-100/80 border border-amber-200">
           <div
@@ -624,9 +630,8 @@ export default function SpellingGamePage(): JSX.Element {
         </div>
       </div>
 
-      {/* ── Game area ── */}
+      {/* Game area */}
       <section className="flex flex-1 flex-col items-center justify-center gap-8 px-6 max-w-2xl mx-auto w-full font-switzer">
-        {/* Audio prompt with ElevenLabs 0.85x speed */}
         <button
           type="button"
           onClick={() => currentWord && void speakWord(currentWord.word)}
@@ -637,7 +642,6 @@ export default function SpellingGamePage(): JSX.Element {
           <span className="text-base font-switzer">Hear Word Out Loud</span>
         </button>
 
-        {/* Feedback overlay */}
         {phase === "correct" && (
           <div className="animate-bounce text-center">
             <span className="text-5xl">🎉</span>
@@ -664,11 +668,6 @@ export default function SpellingGamePage(): JSX.Element {
                 key={i}
                 type="button"
                 onClick={() => handleSlotTap(i)}
-                aria-label={
-                  slot.letter
-                    ? `Remove letter ${slot.letter}`
-                    : `Empty slot ${i + 1}`
-                }
                 className={`
                   flex h-14 w-14 items-center justify-center rounded-2xl border-2
                   font-achiko text-2xl uppercase shadow-xs transition-all
@@ -705,7 +704,6 @@ export default function SpellingGamePage(): JSX.Element {
                 type="button"
                 onClick={() => handleBankTap(tile.id)}
                 disabled={tile.used || phase !== "playing"}
-                aria-label={`Letter ${tile.letter}`}
                 className={`
                   flex h-14 w-14 items-center justify-center rounded-2xl
                   font-achiko text-2xl uppercase shadow-sm transition-all
@@ -724,15 +722,15 @@ export default function SpellingGamePage(): JSX.Element {
         </div>
       </section>
 
-      {/* ── Bottom actions ── */}
+      {/* Bottom actions with Hint Budget */}
       <footer className="flex items-center justify-center gap-4 px-6 pb-8 pt-6 max-w-2xl mx-auto w-full font-switzer">
         <button
           type="button"
           onClick={handleHint}
-          disabled={phase !== "playing" || allFilled}
+          disabled={phase !== "playing" || allFilled || hintsRemaining <= 0}
           className="rounded-2xl bg-amber-100 border border-amber-300 px-6 py-3 font-switzer font-extrabold text-xs text-amber-950 hover:bg-amber-200 active:scale-95 disabled:opacity-40"
         >
-          💡 Hint
+          💡 Hint ({hintsRemaining} Left)
         </button>
         <button
           type="button"
