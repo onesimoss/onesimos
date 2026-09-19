@@ -5,7 +5,7 @@
  *   1. Groq        (GROQ_API_KEY)
  *   2. Gemini      (GEMINI_API_KEY)
  *   3. OpenRouter  (OPENROUTER_API_KEY)
- *   4. Offline concrete template (no key required)
+ *   4. Dynamic 25-Virtue Offline Matrix (no key required)
  *
  * Never put raw API keys in source. Keys live only in env vars.
  *
@@ -15,7 +15,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
 import { getRecentStumbledWords } from "@/lib/stumbledWords";
-import { getRandomLifeSkill, type LifeSkill } from "@/lib/lifeSkills";
+import { getRandomLifeSkill, getLifeSkillById, type LifeSkill } from "@/lib/lifeSkills";
 import type {
   SampleStory,
   StoryPage,
@@ -57,6 +57,17 @@ function capitalize(name: string): string {
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
+const STORY_SETTINGS = [
+  "at the neighborhood park playground",
+  "along the bustling market path",
+  "in the quiet corner of the school library",
+  "near the big mango tree in the courtyard",
+  "at the community garden gate",
+  "on a rainy afternoon on the porch",
+  "during art time in the classroom",
+  "at the evening bus stop with family",
+];
+
 function buildPrompt(params: {
   childName: string;
   level: number;
@@ -66,30 +77,213 @@ function buildPrompt(params: {
   const { childName, level, words, skill } = params;
   const wordList =
     words.length > 0 ? words.join(", ") : "kindness, patience, brave";
+  
+  const randomSetting = STORY_SETTINGS[Math.floor(Math.random() * STORY_SETTINGS.length)];
 
-  return `You write short children's reading chapters for African and diaspora families (ages 3-9).
+  return `You write short, creative children's reading chapters for African and diaspora families (ages 3-9).
 Secular, warm, concrete. No preaching. No vague lines like "showed great wisdom" without saying WHAT the child DID.
 
 CHILD NAME (must appear often, correctly capitalised): ${childName}
-READING LEVEL 1-4 (1=very short sentences, 4=longer): ${level}
-STUMBLED WORDS to weave naturally as vocabulary practice (do not list them as a list; use inside sentences): ${wordList}
+READING LEVEL 1-4 (1=very short 4-word sentences, 4=longer 10-word sentences): ${level}
+STUMBLED WORDS to weave naturally as vocabulary practice: ${wordList}
 LIFE SKILL FOCUS: ${skill.title}
 SKILL MEANING: ${skill.description}
-MORAL IN ONE LINE (show through action, do not lecture): ${skill.keyMoralLesson}
+MORAL IN ONE LINE: ${skill.keyMoralLesson}
+SETTING SUGGESTION: ${randomSetting}
 
 RULES:
 - 5 pages for level 1-2, 6 pages for level 3-4.
-- Each page: 1-3 short sentences. Concrete setting (home, school gate, market path, courtyard, bus stop).
-- Page 1: ordinary moment. Middle: a real choice or problem tied to the skill. End: clear kind action and calm adult affirmation.
-- Use at least 3 of the stumbled words in natural places (not crammed).
-- Comprehension: exactly 3 questions (literal, inferential, vocabulary) with 3 options each and correctIndex 0-2.
-- Return ONLY valid JSON (no markdown) matching:
+- Make the story TITLE unique and creative based on ${skill.title}. Examples: "${childName} and the Lost Puppy", "${childName}'s Mango Tree Choice", "${childName} at the Big Gate". NEVER use "Spilled Bottle".
+- Use at least 3 of the stumbled words naturally inside sentences.
+- Generate exactly 3 comprehension questions (1 literal, 1 inferential, 1 vocabulary) with 3 options each (correctIndex 0-2).
+- Return ONLY valid JSON matching:
 {
-  "title": "string including ${childName}",
+  "title": "Creative Title With ${childName}",
   "coverEmoji": "one emoji",
   "pages": [{"text":"...", "imageEmoji":"..."}],
-  "questions": [{"questionText":"...","options":["a","b","c"],"correctIndex":0,"type":"literal","explanation":"..."}]
+  "questions": [
+    {
+      "questionText": "...",
+      "options": ["a", "b", "c"],
+      "correctIndex": 0,
+      "type": "literal",
+      "explanation": "..."
+    }
+  ]
 }`;
+}
+
+// ─── DYNAMIC 25-VIRTUE OFFLINE MATRIX ───────────────────────────────────────
+
+function getSkillTemplateScenario(skillId: number, name: string, w: string[]): {
+  title: string;
+  coverEmoji: string;
+  pages: StoryPage[];
+  questions: ComprehensionQuestion[];
+} {
+  const ts = Date.now();
+
+  switch (skillId % 5) {
+    case 1:
+      return {
+        title: `${name} and the Tall Tree`,
+        coverEmoji: "🌳",
+        pages: [
+          { text: `${name} walked past the big tree near the ${w[0] || "gate"}.`, imageEmoji: "🌳" },
+          { text: `A small kite was stuck high in the leaves above the path.`, imageEmoji: "🪁" },
+          { text: `${name} stopped and looked at the climbing rope nearby.`, imageEmoji: "🧗" },
+          { text: `Instead of rushing, ${name} called an adult for help to safely reach the ${w[1] || "branch"}.`, imageEmoji: "🤝" },
+          { text: `Together, they gently pulled the kite down and handed it to a happy child.`, imageEmoji: "😊" },
+          { text: `At home, ${name} shared a fresh ${w[2] || "water"} bottle and smiled.`, imageEmoji: "💧" },
+        ],
+        questions: [
+          {
+            id: `lq1-${ts}`,
+            questionText: `What was stuck in the tree?`,
+            options: ["A small kite", "A basketball", "A hat"],
+            correctIndex: 0,
+            type: "literal",
+            explanation: "A small kite was stuck high in the leaves.",
+          },
+          {
+            id: `lq2-${ts}`,
+            questionText: `Why did ${name} call an adult for help?`,
+            options: ["To be safe and thoughtful", "To win a race", "Because they were scared"],
+            correctIndex: 0,
+            type: "inferential",
+            explanation: `${name} made a safe, careful choice.`,
+          },
+          {
+            id: `lq3-${ts}`,
+            questionText: `What did ${name} do after getting the kite?`,
+            options: ["Handed it to a happy child", "Kept it secret", "Threw it away"],
+            correctIndex: 0,
+            type: "vocabulary",
+            explanation: `${name} handed the kite back kindly.`,
+          },
+        ],
+      };
+
+    case 2:
+      return {
+        title: `${name} and the Lost Puppy`,
+        coverEmoji: "🐶",
+        pages: [
+          { text: `${name} heard a quiet sound near the ${w[0] || "garden"} fence.`, imageEmoji: "🏡" },
+          { text: `A little puppy with a blue collar was sitting under a ${w[1] || "bench"}.`, imageEmoji: "🐶" },
+          { text: `${name} did not run or shout. ${name} walked slowly and spoke softly.`, imageEmoji: "🌱" },
+          { text: `${name} checked the collar and saw a phone number written clearly.`, imageEmoji: "🔍" },
+          { text: `Mama called the number, and the neighbor came quickly to hug their pet.`, imageEmoji: "❤️" },
+          { text: `${name} felt proud for staying calm and offering a cup of ${w[2] || "milk"}.`, imageEmoji: "🥛" },
+        ],
+        questions: [
+          {
+            id: `lq1-${ts}`,
+            questionText: `Where was the puppy sitting?`,
+            options: ["Under a bench", "In a car", "On the roof"],
+            correctIndex: 0,
+            type: "literal",
+            explanation: "The puppy was sitting under a bench.",
+          },
+          {
+            id: `lq2-${ts}`,
+            questionText: `How did ${name} approach the puppy?`,
+            options: ["Walked slowly and spoke softly", "Shouted loudly", "Ran away"],
+            correctIndex: 0,
+            type: "inferential",
+            explanation: "Gentle words and slow steps help animals feel safe.",
+          },
+          {
+            id: `lq3-${ts}`,
+            questionText: `Who came to pick up the puppy?`,
+            options: ["The neighbor", "A bus driver", "A teacher"],
+            correctIndex: 0,
+            type: "vocabulary",
+            explanation: "The neighbor came quickly when Mama called the number.",
+          },
+        ],
+      };
+
+    case 3:
+      return {
+        title: `${name}'s Shared Umbrella`,
+        coverEmoji: "☂️",
+        pages: [
+          { text: `Rain started to fall heavily over the ${w[0] || "bus"} stop.`, imageEmoji: "🌧️" },
+          { text: `${name} opened a bright yellow umbrella with a strong handle.`, imageEmoji: "☂️" },
+          { text: `A classmate was standing in the rain, clutching a heavy ${w[1] || "bag"}.`, imageEmoji: "🎒" },
+          { text: `${name} stepped closer and held the umbrella over both of them.`, imageEmoji: "🤗" },
+          { text: `They walked together safely under the shield until the bus arrived.`, imageEmoji: "🚌" },
+          { text: `The classmate thanked ${name} with a big smile for sharing the ${w[2] || "shelter"}.`, imageEmoji: "🌟" },
+        ],
+        questions: [
+          {
+            id: `lq1-${ts}`,
+            questionText: `What color was ${name}'s umbrella?`,
+            options: ["Bright yellow", "Dark blue", "Green"],
+            correctIndex: 0,
+            type: "literal",
+            explanation: `${name} opened a bright yellow umbrella.`,
+          },
+          {
+            id: `lq2-${ts}`,
+            questionText: `What action showed kindness?`,
+            options: ["Sharing the umbrella in the rain", "Running ahead alone", "Hiding the umbrella"],
+            correctIndex: 0,
+            type: "inferential",
+            explanation: "Offering shelter to a classmate in the rain shows care.",
+          },
+          {
+            id: `lq3-${ts}`,
+            questionText: `Where were they waiting?`,
+            options: ["At the bus stop", "At a bakery", "In a cinema"],
+            correctIndex: 0,
+            type: "vocabulary",
+            explanation: "Rain fell heavily over the bus stop.",
+          },
+        ],
+      };
+
+    default:
+      return {
+        title: `${name} and the Community Garden`,
+        coverEmoji: "🌻",
+        pages: [
+          { text: `${name} arrived at the garden path carrying a clean ${w[0] || "bucket"}.`, imageEmoji: "🌻" },
+          { text: `The green plants needed water after a warm, sunny morning.`, imageEmoji: "☀️" },
+          { text: `${name} filled the container carefully near the ${w[1] || "tap"}.`, imageEmoji: "🚰" },
+          { text: `${name} poured water at the roots of every seedling without spilling.`, imageEmoji: "🌱" },
+          { text: `An elder nodded with joy and handed ${name} a sweet ${w[2] || "orange"}.`, imageEmoji: "🍊" },
+          { text: `${name} thanked them politely and walked home feeling cheerful.`, imageEmoji: "🏡" },
+        ],
+        questions: [
+          {
+            id: `lq1-${ts}`,
+            questionText: `What did ${name} carry to the garden?`,
+            options: ["A clean bucket", "A heavy box", "A football"],
+            correctIndex: 0,
+            type: "literal",
+            explanation: `${name} carried a clean bucket to the garden path.`,
+          },
+          {
+            id: `lq2-${ts}`,
+            questionText: `Where did ${name} pour the water?`,
+            options: ["At the roots of every seedling", "On the stone path", "In the air"],
+            correctIndex: 0,
+            type: "inferential",
+            explanation: "Pouring water at the roots helps plants grow strong.",
+          },
+          {
+            id: `lq3-${ts}`,
+            questionText: `What fruit did the elder give ${name}?`,
+            options: ["A sweet orange", "An apple", "A banana"],
+            correctIndex: 0,
+            type: "vocabulary",
+            explanation: "The elder handed ${name} a sweet orange.",
+          },
+        ],
+      };
+  }
 }
 
 function offlineFallback(params: {
@@ -100,88 +294,21 @@ function offlineFallback(params: {
   age?: number;
 }): SampleStory {
   const name = capitalize(params.childName);
-  const w = [
-    params.words[0] || "bag",
-    params.words[1] || "gate",
-    params.words[2] || "water",
-    params.words[3] || "share",
-  ].map((x) => x.toLowerCase());
+  const scenario = getSkillTemplateScenario(params.skill.id, name, params.words);
 
-  const skill = params.skill;
-  const pages: StoryPage[] = [
-    {
-      text: `${name} carried a small ${w[0]} toward the ${w[1]} after school.`,
-      imageEmoji: "🎒",
-    },
-    {
-      text: `A younger child tripped and spilled a bottle of ${w[2]} across the path.`,
-      imageEmoji: "💧",
-    },
-    {
-      text: `Some people walked around the puddle. ${name} stopped and looked closely.`,
-      imageEmoji: skill.emoji,
-    },
-    {
-      text: `${name} knelt down, lifted the bottle, and moved it away from the walking path.`,
-      imageEmoji: "🤲",
-    },
-    {
-      text: `"Are you hurt?" ${name} asked quietly. The younger child shook their head and smiled.`,
-      imageEmoji: "🤝",
-    },
-    {
-      text: `At home, ${name} told Mama exactly what happened, then offered to ${w[3]} the orange slices.`,
-      imageEmoji: "🍊",
-    },
-  ].slice(0, params.level <= 2 ? 5 : 6);
-
-  const ts = Date.now();
-  const questions: ComprehensionQuestion[] = [
-    {
-      id: `lq1-${ts}`,
-      questionText: `What did ${name} do when the bottle spilled?`,
-      options: [
-        "Walked around it quickly",
-        "Knelt down and moved the bottle away",
-        "Shouted at the younger child",
-      ],
-      correctIndex: 1,
-      type: "literal",
-      explanation: `${name} knelt down, lifted the bottle, and moved it off the path.`,
-    },
-    {
-      id: `lq2-${ts}`,
-      questionText: `Which skill does this story practise?`,
-      options: [skill.title, "Ignoring people", "Shouting louder"],
-      correctIndex: 0,
-      type: "inferential",
-      explanation: `The story centres on ${skill.title.toLowerCase()}.`,
-    },
-    {
-      id: `lq3-${ts}`,
-      questionText: `Why did ${name} ask if the younger child was hurt?`,
-      options: [
-        "To check they were safe",
-        "To win a prize",
-        "To keep a secret",
-      ],
-      correctIndex: 0,
-      type: "vocabulary",
-      explanation: skill.keyMoralLesson,
-    },
-  ];
+  const pages = scenario.pages.slice(0, params.level <= 2 ? 5 : 6);
 
   return {
-    id: `living-offline-${ts}`,
-    title: `${name} and the Spilled Bottle`,
+    id: `living-offline-${Date.now()}`,
+    title: scenario.title,
     levelMin: params.level,
     levelMax: params.level,
     targetAgeGroup: `Ages ${params.age || 6}`,
-    themes: [skill.category, "character", skill.title.toLowerCase()],
+    themes: [params.skill.category, "character", params.skill.title.toLowerCase()],
     estimatedMinutes: params.level <= 2 ? 4 : 6,
-    coverEmoji: skill.emoji,
+    coverEmoji: scenario.coverEmoji || params.skill.emoji,
     pages,
-    questions,
+    questions: scenario.questions,
   };
 }
 
@@ -215,13 +342,13 @@ async function generateWithGroq(
       },
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
-        temperature: 0.7,
+        temperature: 0.8,
         response_format: { type: "json_object" },
         messages: [
           {
             role: "system",
             content:
-              "You are a children's literacy author. Return only valid JSON.",
+              "You are a creative children's literacy author. Return only valid JSON.",
           },
           { role: "user", content: prompt },
         ],
@@ -257,7 +384,7 @@ async function generateWithGemini(
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
-          temperature: 0.7,
+          temperature: 0.8,
           responseMimeType: "application/json",
         },
       }),
@@ -281,17 +408,12 @@ async function generateWithGemini(
   }
 }
 
-/**
- * OpenRouter: one key, many models. Free-tier model id may change over time.
- * Uses OpenAI-compatible chat completions.
- */
 async function generateWithOpenRouter(
   prompt: string
 ): Promise<LlmStoryPayload | null> {
   const key = process.env.OPENROUTER_API_KEY;
   if (!key) return null;
 
-  // Prefer a free model; if OpenRouter renames free models, swap this string only.
   const model =
     process.env.OPENROUTER_MODEL || "meta-llama/llama-3.3-70b-instruct:free";
 
@@ -306,7 +428,7 @@ async function generateWithOpenRouter(
       },
       body: JSON.stringify({
         model,
-        temperature: 0.7,
+        temperature: 0.8,
         messages: [
           {
             role: "system",
@@ -403,9 +525,6 @@ function toSampleStory(
   };
 }
 
-/**
- * Try providers in order until one returns usable pages.
- */
 async function generateWithFailover(
   prompt: string
 ): Promise<{ payload: LlmStoryPayload | null; engine: EngineName }> {
