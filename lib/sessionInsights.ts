@@ -76,11 +76,25 @@ export async function saveReadingSession(params: {
     payload.quiz_accuracy = Math.max(0, Math.min(100, Math.round(params.quizAccuracy)));
   }
 
-  const { data, error } = await supabase
+  // Primary Insert Attempt
+  let { data, error } = await supabase
     .from("reading_sessions")
     .insert(payload)
     .select()
     .single();
+
+  // Retry Fallback: If DB schema does not have quiz_accuracy column yet, retry without it
+  if (error && payload.quiz_accuracy !== undefined) {
+    console.warn("[saveReadingSession] Retrying insert without quiz_accuracy column fallback...");
+    delete payload.quiz_accuracy;
+    const retry = await supabase
+      .from("reading_sessions")
+      .insert(payload)
+      .select()
+      .single();
+    data = retry.data;
+    error = retry.error;
+  }
 
   if (error) {
     console.error("Error saving reading session:", error);
@@ -208,7 +222,7 @@ export function computeReportCardStats(
     accuracyPercentage = Math.max(40, Math.min(100, Math.round((correctWords / estimatedWordsRead) * 100)));
   }
 
-  // 3. REAL COMPREHENSION: Average of actual quiz scores logged in sessions
+  // 3. REAL COMPREHENSION: Average of actual quiz scores logged in sessions (No fake 100% fallbacks)
   let comprehensionPercentage = 0;
   const sessionsWithQuiz = sessions.filter(
     (s) => typeof s.quiz_accuracy === "number" && s.quiz_accuracy !== null
@@ -216,13 +230,10 @@ export function computeReportCardStats(
 
   if (sessionsWithQuiz.length > 0) {
     const sumAccuracy = sessionsWithQuiz.reduce(
-      (sum, s) => sum + (s.quiz_accuracy || 0),
+      (sum, s) => sum + (s.quiz_accuracy ?? 0),
       0
     );
     comprehensionPercentage = Math.round(sumAccuracy / sessionsWithQuiz.length);
-  } else if (base.storiesFinished > 0) {
-    // If completed without quiz questions (e.g. pre-reader mode), grant completion credit
-    comprehensionPercentage = 100;
   }
 
   // 4. CLEAN READING AGE FORMAT (No .0, No dashes)
