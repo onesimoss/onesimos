@@ -1,14 +1,9 @@
 /**
- * Onesimos — Solo Spelling Game (Step F)
+ * Onesimos — Solo Spelling Game
  * =======================================
  * Encoding practice pulling from each child's real stumbled words.
- *
- * Flow:
- *   1. Fetch non-mastered stumbled words from Supabase
- *   2. Select a round (up to ROUND_SIZE words, scaled by reading level)
- *   3. For each word: play audio → child taps letter bank → fill slots
- *   4. Celebrate correct, gently retry incorrect
- *   5. Summary screen with stars → option to replay or go home
+ * Features automatic curated level fallback words (so new kids can always play),
+ * cross-device ElevenLabs + Supabase CDN audio playback, and level-scaled difficulty.
  *
  * Difficulty scaling (by child.reading_level):
  *   Level 1 (pre-reader)  : 3-letter words, 1 distractor, auto-hint after 8s
@@ -16,66 +11,71 @@
  *   Level 3 (early)       : 4–5 letter words, 3 distractors
  *   Level 4 (confident)   : 5–7 letter words, 4 distractors
  *
+ * @fonts Achiko (headings) + Switzer (body/UI)
  * @module app/kid/[childId]/spell/page
  */
 
-'use client';
+"use client";
 
 // ─── IMPORTS ────────────────────────────────────────────────────────────────
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+import {
+  getRecentStumbledWords,
+  speakWord,
+  type StumbledWordCountItem,
+} from "@/lib/stumbledWords";
+import { getAvatarById } from "@/lib/avatars";
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 
-/** Row shape from public.stumbled_words */
-interface StumbledWordRow {
+interface SpellingWordItem {
   word: string;
   times_stumbled: number;
-  mastered: boolean;
 }
 
-/** Child profile (minimal fields needed for game) */
 interface ChildProfile {
   id: string;
   name: string;
   reading_level: number;
-  avatar: {
-    color: string;
-    imageUrl: string;
-  };
+  avatar_id?: string;
 }
 
-/** A single letter tile in the bank */
 interface BankTile {
   id: number;
   letter: string;
   used: boolean;
 }
 
-/** A single letter slot in the answer row */
 interface SlotTile {
   bankId: number | null;
   letter: string | null;
 }
 
-/** Top-level game phase */
 type GamePhase =
-  | 'loading'
-  | 'empty'
-  | 'intro'
-  | 'playing'
-  | 'correct'
-  | 'retry'
-  | 'complete';
+  | "loading"
+  | "intro"
+  | "playing"
+  | "correct"
+  | "retry"
+  | "complete";
 
 // ─── CONSTANTS ──────────────────────────────────────────────────────────────
 
 const ROUND_SIZE = 6;
-const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const CELEBRATION_MS = 1400;
 const RETRY_MS = 1200;
+
+/** Curated age-appropriate practice words when Word Pocket is empty */
+const FALLBACK_WORDS_BY_LEVEL: Record<number, string[]> = {
+  1: ["cat", "sun", "dog", "run", "big", "red", "hat", "cup", "box", "top"],
+  2: ["jump", "frog", "kind", "play", "star", "tree", "milk", "nest", "sing", "book"],
+  3: ["brave", "smile", "water", "climb", "cloud", "green", "light", "clean", "story", "sweet"],
+  4: ["courage", "whisper", "journey", "explore", "shelter", "patient", "curious", "freedom", "wisdom", "balance"],
+};
 
 /** Difficulty config per reading level */
 const LEVEL_CONFIG: Record<
@@ -91,33 +91,30 @@ const LEVEL_CONFIG: Record<
     maxWordLen: 3,
     distractors: 1,
     autoHintMs: 8000,
-    label: 'Letter Match',
+    label: "Letter Match",
   },
   2: {
     maxWordLen: 4,
     distractors: 2,
     autoHintMs: 10000,
-    label: 'Easy Spell',
+    label: "Easy Spell",
   },
   3: {
     maxWordLen: 5,
     distractors: 3,
     autoHintMs: 12000,
-    label: 'Spell It',
+    label: "Spell It",
   },
   4: {
     maxWordLen: 7,
     distractors: 4,
     autoHintMs: 14000,
-    label: 'Challenge',
+    label: "Challenge",
   },
 };
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
 
-/**
- * Fisher-Yates shuffle (pure, returns new array).
- */
 function shuffle<T>(arr: T[]): T[] {
   const out = [...arr];
   for (let i = out.length - 1; i > 0; i--) {
@@ -127,13 +124,8 @@ function shuffle<T>(arr: T[]): T[] {
   return out;
 }
 
-/**
- * Build a scrambled letter bank for a given word.
- * Includes all correct letters + N random distractors.
- * Handles duplicate letters correctly (e.g. "SHEEP" → two E tiles).
- */
 function buildBank(word: string, distractorCount: number): BankTile[] {
-  const correct = word.toUpperCase().split('');
+  const correct = word.toUpperCase().split("");
   const usedSet = new Set(correct);
   const distractors: string[] = [];
 
@@ -150,56 +142,39 @@ function buildBank(word: string, distractorCount: number): BankTile[] {
 }
 
 /**
- * Safe speech synthesis with Fire OS / Silk fallback.
- * Mirrors the pattern in lib/stumbledWords.ts.
+ * Builds round word list from stumbled words + level fallbacks if empty.
  */
-function speakWord(word: string): void {
-  if (typeof window === 'undefined') return;
-
-  try {
-    const synth = window.speechSynthesis;
-    if (!synth) return;
-
-    synth.cancel();
-    const utter = new SpeechSynthesisUtterance(word);
-    utter.rate = 0.75;
-    utter.pitch = 1.1;
-
-    // Fire OS fix: force a short delay before speak
-    const timer = setTimeout(() => {
-      synth.speak(utter);
-    }, 50);
-
-    utter.onend = () => clearTimeout(timer);
-    utter.onerror = () => clearTimeout(timer);
-  } catch {
-    // Silent fallback — the word is still visible on screen
-  }
-}
-
-/**
- * Pick N words from the stumbled list, prioritising most-stumbled.
- * Filters by max word length for the child's level.
- */
-function pickRoundWords(
-  words: StumbledWordRow[],
-  level: number,
-  count: number,
-): StumbledWordRow[] {
+function assembleRoundWords(
+  stumbledItems: StumbledWordCountItem[],
+  level: number
+): SpellingWordItem[] {
   const cfg = LEVEL_CONFIG[level] ?? LEVEL_CONFIG[2];
-  const eligible = words
-    .filter((w) => w.word.length <= cfg.maxWordLen && !w.mastered)
-    .sort((a, b) => b.times_stumbled - a.times_stumbled);
+  
+  // 1. Filter stumbled words fitting this level
+  const realStumbled: SpellingWordItem[] = stumbledItems
+    .filter((w) => w.word.length <= cfg.maxWordLen)
+    .map((w) => ({ word: w.word.toLowerCase(), times_stumbled: w.count }));
 
-  // If not enough eligible, relax length constraint
-  if (eligible.length < count) {
-    const relaxed = words
-      .filter((w) => !w.mastered)
-      .sort((a, b) => b.times_stumbled - a.times_stumbled);
-    return relaxed.slice(0, count);
+  // 2. If enough stumbled words exist, return top ones
+  if (realStumbled.length >= ROUND_SIZE) {
+    return realStumbled.slice(0, ROUND_SIZE);
   }
 
-  return eligible.slice(0, count);
+  // 3. Otherwise, blend stumbled words with curated level fallback words
+  const pool = [...realStumbled];
+  const seen = new Set(pool.map((p) => p.word));
+
+  const fallbackList = FALLBACK_WORDS_BY_LEVEL[level] || FALLBACK_WORDS_BY_LEVEL[2];
+  for (const fallbackWord of fallbackList) {
+    if (pool.length >= ROUND_SIZE) break;
+    const lower = fallbackWord.toLowerCase();
+    if (!seen.has(lower)) {
+      pool.push({ word: lower, times_stumbled: 1 });
+      seen.add(lower);
+    }
+  }
+
+  return pool.slice(0, ROUND_SIZE);
 }
 
 // ─── MAIN COMPONENT ─────────────────────────────────────────────────────────
@@ -210,12 +185,11 @@ export default function SpellingGamePage(): JSX.Element {
   const childId = params.childId;
 
   // ── Core state ──
-  const [phase, setPhase] = useState<GamePhase>('loading');
+  const [phase, setPhase] = useState<GamePhase>("loading");
   const [child, setChild] = useState<ChildProfile | null>(null);
-  const [roundWords, setRoundWords] = useState<StumbledWordRow[]>([]);
+  const [roundWords, setRoundWords] = useState<SpellingWordItem[]>([]);
   const [wordIndex, setWordIndex] = useState(0);
   const [stars, setStars] = useState(0);
-  const [hintsUsed, setHintsUsed] = useState(0);
 
   // ── Per-word state ──
   const [bank, setBank] = useState<BankTile[]>([]);
@@ -236,13 +210,13 @@ export default function SpellingGamePage(): JSX.Element {
     async function load(): Promise<void> {
       // 1. Fetch child profile
       const { data: childData, error: childErr } = await supabase
-        .from('children')
-        .select('id, name, reading_level, avatar_color, avatar_image_url')
-        .eq('id', childId)
+        .from("children")
+        .select("id, name, reading_level, avatar_id")
+        .eq("id", childId)
         .single();
 
       if (cancelled || childErr || !childData) {
-        if (!cancelled) setPhase('empty');
+        if (!cancelled) router.replace("/who");
         return;
       }
 
@@ -250,44 +224,25 @@ export default function SpellingGamePage(): JSX.Element {
         id: childData.id,
         name: childData.name,
         reading_level: childData.reading_level ?? 2,
-        avatar: {
-          color: childData.avatar_color ?? '#F59E0B',
-          imageUrl: childData.avatar_image_url ?? '',
-        },
+        avatar_id: childData.avatar_id,
       };
       setChild(profile);
 
-      // 2. Fetch stumbled words
-      const { data: words, error: wordsErr } = await supabase
-        .from('stumbled_words')
-        .select('word, times_stumbled, mastered')
-        .eq('child_id', childId)
-        .eq('mastered', false)
-        .order('times_stumbled', { ascending: false })
-        .limit(40);
+      // 2. Fetch stumbled words with automatic fallback support
+      const { data: words } = await getRecentStumbledWords(childId, 30);
 
       if (cancelled) return;
 
-      if (wordsErr || !words || words.length === 0) {
-        setPhase('empty');
-        return;
-      }
-
-      const picked = pickRoundWords(words, profile.reading_level, ROUND_SIZE);
-      if (picked.length === 0) {
-        setPhase('empty');
-        return;
-      }
-
-      setRoundWords(picked);
-      setPhase('intro');
+      const roundList = assembleRoundWords(words || [], profile.reading_level);
+      setRoundWords(roundList);
+      setPhase("intro");
     }
 
     void load();
     return () => {
       cancelled = true;
     };
-  }, [childId]);
+  }, [childId, router]);
 
   // ─── WORD SETUP ──────────────────────────────────────────────────────────
 
@@ -295,19 +250,17 @@ export default function SpellingGamePage(): JSX.Element {
     (word: string) => {
       const upper = word.toUpperCase();
       const newBank = buildBank(upper, cfg.distractors);
-      const newSlots: SlotTile[] = upper.split('').map(() => ({
+      const newSlots: SlotTile[] = upper.split("").map(() => ({
         bankId: null,
         letter: null,
       }));
       setBank(newBank);
       setSlots(newSlots);
       setHintSlotIndex(null);
-      setHintsUsed(0);
 
-      // Auto-speak the word
-      setTimeout(() => speakWord(word), 300);
+      // Cross-device ElevenLabs + Supabase CDN Tap-to-Hear
+      setTimeout(() => void speakWord(word), 300);
 
-      // Auto-hint timer (Level 1 only by default)
       if (autoHintRef.current) clearTimeout(autoHintRef.current);
       if (level <= 1) {
         autoHintRef.current = setTimeout(() => {
@@ -315,18 +268,15 @@ export default function SpellingGamePage(): JSX.Element {
         }, cfg.autoHintMs);
       }
     },
-    [cfg, level],
+    [cfg, level]
   );
 
-  // Start first word when entering 'playing'
   useEffect(() => {
-    if (phase === 'playing' && currentWord) {
+    if (phase === "playing" && currentWord) {
       setupWord(currentWord.word);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, wordIndex]);
+  }, [phase, wordIndex, setupWord, currentWord]);
 
-  // Cleanup timer on unmount
   useEffect(() => {
     return () => {
       if (autoHintRef.current) clearTimeout(autoHintRef.current);
@@ -335,9 +285,8 @@ export default function SpellingGamePage(): JSX.Element {
 
   // ─── INTERACTIONS ────────────────────────────────────────────────────────
 
-  /** Child taps a letter in the bank → place in next empty slot */
   function handleBankTap(tileId: number): void {
-    if (phase !== 'playing') return;
+    if (phase !== "playing") return;
 
     const tile = bank.find((t) => t.id === tileId);
     if (!tile || tile.used) return;
@@ -345,98 +294,83 @@ export default function SpellingGamePage(): JSX.Element {
     const nextEmpty = slots.findIndex((s) => s.bankId === null);
     if (nextEmpty === -1) return;
 
-    // Build new state for both bank and slots
     const newBank = bank.map((t) =>
-      t.id === tileId ? { ...t, used: true } : t,
+      t.id === tileId ? { ...t, used: true } : t
     );
     const newSlots = slots.map((s, i) =>
-      i === nextEmpty ? { bankId: tileId, letter: tile.letter } : s,
+      i === nextEmpty ? { bankId: tileId, letter: tile.letter } : s
     );
 
     setBank(newBank);
     setSlots(newSlots);
     setHintSlotIndex(null);
 
-    // Check if all slots are now filled
     if (newSlots.every((s) => s.letter !== null)) {
       checkAnswer(newSlots);
     }
   }
 
-  /** Child taps a filled slot → return letter to bank */
   function handleSlotTap(slotIndex: number): void {
-    if (phase !== 'playing') return;
+    if (phase !== "playing") return;
 
     const slot = slots[slotIndex];
     if (slot.bankId === null) return;
 
     setBank((prev) =>
       prev.map((t) =>
-        t.id === slot.bankId ? { ...t, used: false } : t,
-      ),
+        t.id === slot.bankId ? { ...t, used: false } : t
+      )
     );
     setSlots((prev) =>
       prev.map((s, i) =>
-        i === slotIndex ? { bankId: null, letter: null } : s,
-      ),
+        i === slotIndex ? { bankId: null, letter: null } : s
+      )
     );
   }
 
-  /** Validate filled slots against the target word */
   function checkAnswer(filledSlots: SlotTile[]): void {
     if (!currentWord) return;
-    const attempt = filledSlots.map((s) => s.letter).join('');
+    const attempt = filledSlots.map((s) => s.letter).join("");
     const target = currentWord.word.toUpperCase();
 
     if (attempt === target) {
-      setPhase('correct');
+      setPhase("correct");
       setStars((prev) => prev + 1);
       if (autoHintRef.current) clearTimeout(autoHintRef.current);
 
-      // Mark word as practiced in Supabase (fire-and-forget)
-      void supabase
-        .from('stumbled_words')
-        .update({ mastered: true })
-        .eq('child_id', childId)
-        .eq('word', currentWord.word);
-
       setTimeout(() => advanceWord(), CELEBRATION_MS);
     } else {
-      setPhase('retry');
+      setPhase("retry");
       setTimeout(() => {
         setupWord(currentWord.word);
-        setPhase('playing');
+        setPhase("playing");
       }, RETRY_MS);
     }
   }
 
-  /** Move to next word or finish */
   function advanceWord(): void {
     const next = wordIndex + 1;
     if (next >= roundWords.length) {
-      setPhase('complete');
+      setPhase("complete");
     } else {
       setWordIndex(next);
-      setPhase('playing');
+      setPhase("playing");
     }
   }
 
-  /** Show a hint: pulse the correct letter for the first empty slot */
   function handleHint(): void {
-    if (phase !== 'playing' || !currentWord) return;
+    if (phase !== "playing" || !currentWord) return;
     const nextEmpty = slots.findIndex((s) => s.bankId === null);
     if (nextEmpty === -1) return;
 
     const neededLetter = currentWord.word.toUpperCase()[nextEmpty];
     const matchingTile = bank.find(
-      (t) => t.letter === neededLetter && !t.used,
+      (t) => t.letter === neededLetter && !t.used
     );
 
     if (matchingTile) {
       setHintSlotIndex(nextEmpty);
-      setHintsUsed((h) => h + 1);
 
-      // Auto-place after a brief pulse
       setTimeout(() => {
         handleBankTap(matchingTile.id);
         setHintSlotIndex(null);
@@ -444,7 +378,6 @@ export default function SpellingGamePage(): JSX.Element {
     }
   }
 
-  /** Skip current word */
   function handleSkip(): void {
     if (autoHintRef.current) clearTimeout(autoHintRef.current);
     advanceWord();
@@ -452,83 +385,60 @@ export default function SpellingGamePage(): JSX.Element {
 
   // ─── RENDER: LOADING ─────────────────────────────────────────────────────
 
-  if (phase === 'loading') {
+  if (phase === "loading") {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-orange-50">
+      <main className="flex min-h-screen items-center justify-center bg-amber-50/60 font-switzer">
         <div className="flex flex-col items-center gap-4">
           <div className="h-12 w-12 animate-spin rounded-full border-4 border-amber-300 border-t-amber-600" />
-          <p className="font-switzer text-lg text-amber-900">
-            Getting your words ready…
+          <p className="font-switzer font-bold text-lg text-amber-900">
+            Getting your spelling round ready...
           </p>
         </div>
       </main>
     );
   }
 
-  // ─── RENDER: EMPTY STATE ─────────────────────────────────────────────────
-
-  if (phase === 'empty') {
-    return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-orange-50 px-6 text-center">
-        <span className="text-6xl">📖</span>
-        <h1 className="font-achiko text-2xl text-amber-900">
-          No tricky words yet!
-        </h1>
-        <p className="max-w-xs font-switzer text-amber-700">
-          Read a story first and I&apos;ll save the words you find tricky. Then
-          come back here to practise spelling them!
-        </p>
-        <button
-          onClick={() => router.push(`/kid/${childId}`)}
-          className="rounded-2xl bg-amber-500 px-8 py-4 font-achiko text-lg text-white shadow-lg active:scale-95"
-        >
-          Go Read a Story 📚
-        </button>
-      </main>
-    );
-  }
+  const avatar = getAvatarById(child?.avatar_id);
 
   // ─── RENDER: INTRO ───────────────────────────────────────────────────────
 
-  if (phase === 'intro') {
+  if (phase === "intro") {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-orange-50 px-6 text-center">
+      <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-amber-50/60 px-6 text-center font-switzer">
         {child && (
           <div
-            className="flex h-20 w-20 items-center justify-center rounded-full text-3xl shadow-md"
-            style={{ backgroundColor: child.avatar.color }}
+            className="flex h-24 w-24 items-center justify-center rounded-3xl border-4 border-white shadow-md overflow-hidden"
+            style={{ backgroundColor: `${avatar.color}33` }}
           >
-            {child.avatar.imageUrl ? (
-              <img
-                src={child.avatar.imageUrl}
-                alt={child.name}
-                className="h-full w-full rounded-full object-cover"
-              />
-            ) : (
-              <span>🌟</span>
-            )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={avatar.imageUrl}
+              alt={child.name}
+              className="h-full w-full object-cover"
+            />
           </div>
         )}
-        <h1 className="font-achiko text-3xl text-amber-900">
+        <h1 className="font-achiko text-4xl text-amber-950">
           Spelling Time! ✏️
         </h1>
-        <p className="max-w-sm font-switzer text-amber-700">
-          Let&apos;s practise spelling{' '}
-          <strong>{roundWords.length} tricky words</strong> from your stories.
-          Listen, then tap the letters!
+        <p className="max-w-sm font-switzer text-amber-800 text-sm font-medium">
+          Let&apos;s practise spelling{" "}
+          <strong className="text-amber-950 font-extrabold">{roundWords.length} practice words</strong>.
+          Tap 🔊 to listen, then tap the letters!
         </p>
-        <p className="rounded-full bg-amber-100 px-4 py-1 font-switzer text-sm text-amber-600">
+        <p className="rounded-full bg-amber-100 border border-amber-200 px-4 py-1.5 font-switzer text-xs font-bold text-amber-900">
           Mode: {cfg.label}
         </p>
         <button
+          type="button"
           onClick={() => {
             setWordIndex(0);
             setStars(0);
-            setPhase('playing');
+            setPhase("playing");
           }}
-          className="mt-2 rounded-2xl bg-amber-500 px-10 py-5 font-achiko text-xl text-white shadow-lg active:scale-95"
+          className="mt-2 rounded-2xl bg-amber-500 hover:bg-amber-600 px-10 py-4 font-achiko text-xl text-white shadow-md active:scale-95 transition-all font-switzer"
         >
-          Start! 🚀
+          Start Spelling 🚀
         </button>
       </main>
     );
@@ -536,41 +446,43 @@ export default function SpellingGamePage(): JSX.Element {
 
   // ─── RENDER: COMPLETE ────────────────────────────────────────────────────
 
-  if (phase === 'complete') {
+  if (phase === "complete") {
     const pct = Math.round((stars / roundWords.length) * 100);
-    const emoji = pct >= 80 ? '🏆' : pct >= 50 ? '⭐' : '💪';
+    const emoji = pct >= 80 ? "🏆" : pct >= 50 ? "⭐" : "💪";
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-orange-50 px-6 text-center">
+      <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-amber-50/60 px-6 text-center font-switzer">
         <span className="text-7xl">{emoji}</span>
-        <h1 className="font-achiko text-3xl text-amber-900">
-          Amazing, {child?.name ?? 'Reader'}!
+        <h1 className="font-achiko text-3xl text-amber-950">
+          Amazing, {child?.name ?? "Reader"}!
         </h1>
-        <p className="font-switzer text-xl text-amber-700">
-          You spelled{' '}
-          <strong className="text-amber-600">
-            {stars} / {roundWords.length}
-          </strong>{' '}
-          words!
+        <p className="font-switzer text-lg text-amber-800 font-medium">
+          You spelled{" "}
+          <strong className="text-amber-950 font-black">
+            {stars} of {roundWords.length}
+          </strong>{" "}
+          words correctly!
         </p>
-        <div className="flex gap-1 text-3xl">
+        <div className="flex gap-1.5 text-3xl">
           {Array.from({ length: roundWords.length }).map((_, i) => (
-            <span key={i}>{i < stars ? '⭐' : '☆'}</span>
+            <span key={i}>{i < stars ? "⭐" : "☆"}</span>
           ))}
         </div>
-        <div className="mt-4 flex flex-col gap-3">
+        <div className="mt-4 flex flex-col sm:flex-row gap-3 font-switzer">
           <button
+            type="button"
             onClick={() => {
               setWordIndex(0);
               setStars(0);
-              setPhase('intro');
+              setPhase("intro");
             }}
-            className="rounded-2xl bg-amber-500 px-8 py-4 font-achiko text-lg text-white shadow-lg active:scale-95"
+            className="rounded-2xl bg-amber-500 hover:bg-amber-600 px-8 py-3.5 font-achiko text-base text-white shadow-md active:scale-95 transition-all"
           >
             Play Again 🔄
           </button>
           <button
+            type="button"
             onClick={() => router.push(`/kid/${childId}`)}
-            className="rounded-2xl border-2 border-amber-300 bg-white px-8 py-4 font-achiko text-lg text-amber-700 active:scale-95"
+            className="rounded-2xl border border-amber-300 bg-white hover:bg-amber-50 px-8 py-3.5 font-achiko text-base text-amber-900 shadow-2xs active:scale-95 transition-all"
           >
             Back Home 🏠
           </button>
@@ -581,39 +493,37 @@ export default function SpellingGamePage(): JSX.Element {
 
   // ─── RENDER: MAIN GAME (playing / correct / retry) ───────────────────────
 
-  const targetWord = currentWord?.word.toUpperCase() ?? '';
+  const targetWord = currentWord?.word.toUpperCase() ?? "";
   const allFilled = slots.every((s) => s.letter !== null);
 
   return (
-    <main className="flex min-h-screen flex-col bg-orange-50">
+    <main className="flex min-h-screen flex-col bg-gradient-to-b from-sky-50/40 via-[#FDFBF7] to-amber-50/40 font-switzer pb-8">
       {/* ── Header ── */}
-      <header className="flex items-center justify-between px-4 py-3">
+      <header className="flex items-center justify-between px-6 py-4 max-w-2xl mx-auto w-full font-switzer">
         <button
+          type="button"
           onClick={() => router.push(`/kid/${childId}`)}
           aria-label="Back to home"
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-xl shadow-sm active:scale-90"
+          className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white border border-gray-200 text-gray-700 shadow-2xs active:scale-90 font-switzer font-bold"
         >
           ←
         </button>
 
         {child && (
           <div
-            className="flex h-10 w-10 items-center justify-center rounded-full text-sm shadow-sm"
-            style={{ backgroundColor: child.avatar.color }}
+            className="flex h-11 w-11 items-center justify-center rounded-2xl border-2 border-white shadow-xs overflow-hidden"
+            style={{ backgroundColor: `${avatar.color}33` }}
           >
-            {child.avatar.imageUrl ? (
-              <img
-                src={child.avatar.imageUrl}
-                alt={child.name}
-                className="h-full w-full rounded-full object-cover"
-              />
-            ) : (
-              <span>🌟</span>
-            )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={avatar.imageUrl}
+              alt={child.name}
+              className="h-full w-full object-cover"
+            />
           </div>
         )}
 
-        <div className="flex items-center gap-1 font-switzer text-lg text-amber-700">
+        <div className="flex items-center gap-1.5 font-switzer font-extrabold text-base text-amber-950 bg-white/90 border border-amber-200 px-3 py-1 rounded-full shadow-2xs">
           <span>⭐</span>
           <span>
             {stars}/{roundWords.length}
@@ -622,41 +532,44 @@ export default function SpellingGamePage(): JSX.Element {
       </header>
 
       {/* ── Progress bar ── */}
-      <div className="mx-4 mb-2 h-2 overflow-hidden rounded-full bg-amber-100">
-        <div
-          className="h-full rounded-full bg-amber-400 transition-all duration-500"
-          style={{
-            width: `${((wordIndex + (phase === 'correct' ? 1 : 0)) / roundWords.length) * 100}%`,
-          }}
-        />
+      <div className="max-w-2xl mx-auto w-full px-6 mb-4">
+        <div className="h-2.5 overflow-hidden rounded-full bg-amber-100/80 border border-amber-200">
+          <div
+            className="h-full rounded-full bg-amber-500 transition-all duration-500"
+            style={{
+              width: `${((wordIndex + (phase === "correct" ? 1 : 0)) / roundWords.length) * 100}%`,
+            }}
+          />
+        </div>
       </div>
 
       {/* ── Game area ── */}
-      <section className="flex flex-1 flex-col items-center justify-center gap-8 px-4">
-        {/* Audio prompt */}
+      <section className="flex flex-1 flex-col items-center justify-center gap-8 px-6 max-w-2xl mx-auto w-full font-switzer">
+        {/* Audio prompt with ElevenLabs / Deepgram Aura Cloud TTS */}
         <button
-          onClick={() => currentWord && speakWord(currentWord.word)}
-          className="flex items-center gap-2 rounded-full bg-white px-6 py-3 font-switzer text-lg text-amber-800 shadow-md active:scale-95"
-          aria-label="Hear the word again"
+          type="button"
+          onClick={() => currentWord && void speakWord(currentWord.word)}
+          className="flex items-center gap-2.5 rounded-2xl bg-white border-2 border-amber-300 px-7 py-3.5 font-switzer font-extrabold text-amber-950 shadow-sm hover:bg-amber-50 active:scale-95 transition-all"
+          aria-label="Hear the word out loud"
         >
           <span className="text-2xl">🔊</span>
-          Hear the word
+          <span className="text-base font-switzer">Hear Word Out Loud</span>
         </button>
 
         {/* Feedback overlay */}
-        {phase === 'correct' && (
+        {phase === "correct" && (
           <div className="animate-bounce text-center">
             <span className="text-5xl">🎉</span>
-            <p className="mt-2 font-achiko text-2xl text-green-600">
+            <p className="mt-2 font-achiko text-2xl text-emerald-700">
               Correct!
             </p>
           </div>
         )}
-        {phase === 'retry' && (
+        {phase === "retry" && (
           <div className="text-center">
             <span className="text-5xl">💪</span>
-            <p className="mt-2 font-achiko text-xl text-amber-600">
-              Almost! Try again…
+            <p className="mt-2 font-achiko text-xl text-amber-800">
+              Almost! Try again...
             </p>
           </div>
         )}
@@ -668,6 +581,7 @@ export default function SpellingGamePage(): JSX.Element {
             return (
               <button
                 key={i}
+                type="button"
                 onClick={() => handleSlotTap(i)}
                 aria-label={
                   slot.letter
@@ -675,19 +589,19 @@ export default function SpellingGamePage(): JSX.Element {
                     : `Empty slot ${i + 1}`
                 }
                 className={`
-                  flex h-14 w-14 items-center justify-center rounded-xl border-3
-                  font-achiko text-2xl uppercase shadow-sm transition-all
+                  flex h-14 w-14 items-center justify-center rounded-2xl border-2
+                  font-achiko text-2xl uppercase shadow-xs transition-all
                   ${
                     slot.letter
-                      ? 'border-amber-400 bg-amber-100 text-amber-900'
-                      : 'border-dashed border-amber-300 bg-white text-transparent'
+                      ? "border-amber-400 bg-amber-100/90 text-amber-950 font-black"
+                      : "border-dashed border-amber-300 bg-white/80 text-transparent"
                   }
-                  ${isHinted ? 'animate-pulse border-green-400 bg-green-50' : ''}
-                  ${phase === 'retry' ? 'animate-[shake_0.4s_ease-in-out]' : ''}
+                  ${isHinted ? "animate-pulse border-emerald-400 bg-emerald-50" : ""}
+                  ${phase === "retry" ? "animate-[shake_0.4s_ease-in-out]" : ""}
                   active:scale-90
                 `}
               >
-                {slot.letter ?? '_'}
+                {slot.letter ?? "_"}
               </button>
             );
           })}
@@ -707,18 +621,19 @@ export default function SpellingGamePage(): JSX.Element {
             return (
               <button
                 key={tile.id}
+                type="button"
                 onClick={() => handleBankTap(tile.id)}
-                disabled={tile.used || phase !== 'playing'}
+                disabled={tile.used || phase !== "playing"}
                 aria-label={`Letter ${tile.letter}`}
                 className={`
-                  flex h-14 w-14 items-center justify-center rounded-xl
-                  font-achiko text-2xl uppercase shadow-md transition-all
+                  flex h-14 w-14 items-center justify-center rounded-2xl
+                  font-achiko text-2xl uppercase shadow-sm transition-all
                   ${
                     tile.used
-                      ? 'bg-gray-100 text-gray-300 shadow-none'
-                      : 'bg-white text-amber-800 active:scale-90 active:bg-amber-50'
+                      ? "bg-gray-100 text-gray-300 border border-gray-200 shadow-none opacity-40"
+                      : "bg-white border border-amber-200 text-amber-950 hover:bg-amber-50 active:scale-90 font-black"
                   }
-                  ${isHintTarget ? 'ring-2 ring-green-400' : ''}
+                  ${isHintTarget ? "ring-2 ring-emerald-400" : ""}
                 `}
               >
                 {tile.letter}
@@ -729,44 +644,24 @@ export default function SpellingGamePage(): JSX.Element {
       </section>
 
       {/* ── Bottom actions ── */}
-      <footer className="flex items-center justify-center gap-4 px-4 pb-8 pt-4">
+      <footer className="flex items-center justify-center gap-4 px-6 pb-8 pt-6 max-w-2xl mx-auto w-full font-switzer">
         <button
+          type="button"
           onClick={handleHint}
-          disabled={phase !== 'playing' || allFilled}
-          className="rounded-xl bg-amber-100 px-5 py-3 font-switzer text-amber-700 active:scale-95 disabled:opacity-40"
+          disabled={phase !== "playing" || allFilled}
+          className="rounded-2xl bg-amber-100 border border-amber-300 px-6 py-3 font-switzer font-extrabold text-xs text-amber-950 hover:bg-amber-200 active:scale-95 disabled:opacity-40"
         >
           💡 Hint
         </button>
         <button
+          type="button"
           onClick={handleSkip}
-          disabled={phase !== 'playing'}
-          className="rounded-xl bg-white px-5 py-3 font-switzer text-amber-600 shadow-sm active:scale-95 disabled:opacity-40"
+          disabled={phase !== "playing"}
+          className="rounded-2xl bg-white border border-gray-200 px-6 py-3 font-switzer font-bold text-xs text-gray-700 hover:bg-gray-50 active:scale-95 disabled:opacity-40"
         >
-          ⏭ Skip
+          ⏭ Skip Word
         </button>
       </footer>
-
-      {/* ── Inline keyframe for shake animation ── */}
-      <style jsx>{`
-        @keyframes shake {
-          0%,
-          100% {
-            transform: translateX(0);
-          }
-          20% {
-            transform: translateX(-6px);
-          }
-          40% {
-            transform: translateX(6px);
-          }
-          60% {
-            transform: translateX(-4px);
-          }
-          80% {
-            transform: translateX(4px);
-          }
-        }
-      `}</style>
     </main>
   );
 }
