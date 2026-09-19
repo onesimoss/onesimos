@@ -574,7 +574,7 @@ function SummaryContent() {
                 ))}
               </div>
             </div>
-          ))}
+          )}
         </div>
 
         {/* Action Buttons */}
