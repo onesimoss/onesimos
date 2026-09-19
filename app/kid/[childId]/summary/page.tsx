@@ -1,14 +1,11 @@
 /**
  * @file app/kid/[childId]/summary/page.tsx
  * @description Kid Story Completion, Post-Story Comprehension Quiz, and Celebration Screen.
- *              Evaluates story understanding for BOTH static catalog stories and DB-generated
- *              Personal Living Chapters. Logs exact reading duration and quiz accuracy.
+ *              Guarantees completed stories (catalog & personal chapters) immediately persist
+ *              completed_story: true to Supabase so they move to My Bookshelf on Kid Home.
  *
  * @fonts Achiko (headings/logo) + Switzer (body/UI)
- * @dependencies
- * - @/context/AuthContext
- * - @/lib/sampleStories, @/lib/stumbledWords, @/lib/sessionInsights
- * - @/lib/avatars, @/lib/children
+ * @module app/kid/[childId]/summary/page
  */
 
 "use client";
@@ -204,23 +201,23 @@ function SummaryContent() {
     }
   }, [fetching, questions]);
 
-  // Save Reading Session with Real Duration & Quiz Accuracy to Supabase
+  // Save Reading Session to Supabase (Guarantees Bookshelf Move)
   const persistSessionStats = useCallback(
-    async (finalCorrectCount: number) => {
-      if (!child || sessionSaved) return;
+    async (quizAccuracyOverride?: number) => {
+      if (!child) return;
 
       const totalPages = activeStory?.pages.length || pagesRead || 1;
       const completed = pagesRead >= totalPages;
 
-      let quizAccuracy: number | undefined = undefined;
-      if (questions.length > 0) {
-        quizAccuracy = Math.round((finalCorrectCount / questions.length) * 100);
+      let quizAccuracy: number | undefined = quizAccuracyOverride;
+      if (quizAccuracy === undefined && questions.length > 0 && quizCompleted) {
+        quizAccuracy = Math.round((correctAnswersCount / questions.length) * 100);
       }
 
       await saveReadingSession({
         childId: child.id,
         storyId: storyId || undefined,
-        pagesRead: pagesRead || 0,
+        pagesRead: pagesRead || totalPages,
         durationSeconds: durationSeconds || 0,
         completedStory: completed,
         quizAccuracy,
@@ -228,15 +225,23 @@ function SummaryContent() {
 
       setSessionSaved(true);
     },
-    [child, sessionSaved, activeStory, pagesRead, durationSeconds, storyId, questions]
+    [child, activeStory, pagesRead, durationSeconds, storyId, questions, quizCompleted, correctAnswersCount]
   );
 
-  // Trigger session save when quiz is completed
+  // IMMEDIATE SAVE: As soon as child reaches summary page on last page, mark completed_story = true!
   useEffect(() => {
-    if (quizCompleted && child && !sessionSaved) {
-      void persistSessionStats(correctAnswersCount);
+    if (!fetching && child && !sessionSaved) {
+      void persistSessionStats();
     }
-  }, [quizCompleted, child, sessionSaved, correctAnswersCount, persistSessionStats]);
+  }, [fetching, child, sessionSaved, persistSessionStats]);
+
+  // Update session accuracy when quiz completes
+  useEffect(() => {
+    if (quizCompleted && child && questions.length > 0) {
+      const finalAccuracy = Math.round((correctAnswersCount / questions.length) * 100);
+      void persistSessionStats(finalAccuracy);
+    }
+  }, [quizCompleted, child, questions.length, correctAnswersCount, persistSessionStats]);
 
   // Handle Option Selection in Quiz
   const handleSelectOption = (index: number) => {
@@ -286,7 +291,6 @@ function SummaryContent() {
   const completed = pagesRead >= totalPages;
   const currentQuestion = questions[quizIndex];
 
-  // Stars calculation includes completion + comprehension accuracy
   const quizPassedAll = questions.length > 0 && correctAnswersCount === questions.length;
   const stars = completed
     ? quizPassedAll
@@ -570,7 +574,7 @@ function SummaryContent() {
                 ))}
               </div>
             </div>
-          )}
+          ))}
         </div>
 
         {/* Action Buttons */}
