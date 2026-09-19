@@ -80,7 +80,7 @@ export default function PrivacyPolicyPage(): JSX.Element {
               3. Voice & Audio Data Processing
             </h2>
             <p>
-              When a child reads out loud, live audio is transmitted securely over TLS 1.3 encryption to our speech-to-text engine (Deepgram Nova-2) strictly to generate a text transcript. Audio clips are processed in real time and are not stored permanently. Transcripts are evaluated against story text to build the child&apos;s Word Pocket.
+              When a child reads out loud, live audio is transmitted securely over TLS 1.3 encryption to our speech recognition engine strictly to generate a text transcript. Audio clips are processed in real time and are not stored permanently. Transcripts are evaluated against story text to build the child&apos;s Word Pocket.
             </p>
           </section>
 
@@ -146,8 +146,8 @@ export default function PrivacyPolicyPage(): JSX.Element {
               To exercise your privacy rights or ask questions about our child safety practices, contact Example Mirror Ltd at:
             </p>
             <p className="mt-2 font-bold text-amber-950">
-              Email: privacy@onesimos.app <br />
-              Data Protection Officer: Example Mirror Ltd, Lagos, Nigeria
+              Email: crux@onesimos.app <br />
+              Data Protection Officer: Example Mirror Ltd, Abuja, Nigeria
             </p>
           </section>
         </div>
