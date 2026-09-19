@@ -1,8 +1,8 @@
 /**
  * @file app/kid/[childId]/phonics/page.tsx
  * @description Phonics Sound Lab : Interactive phonics curriculum covering 7 essential groups
- * with interactive sound tiles, phonetic pronunciation mappings (phonemes over letter names),
- * physiological mouth guidelines, animated sample word cascades, and browser-cached discovery tracking.
+ * with interactive sound tiles, phonetic pronunciation mappings, physiological mouth guidelines,
+ * animated sample word cascades, browser-cached discovery tracking, and subscription gating.
  *
  * @module app/kid/[childId]/phonics/page
  * @fonts Logo (wordmark) + Achiko (headings) + Switzer (body/UI/stats)
@@ -18,15 +18,12 @@ import { supabase } from "@/lib/supabaseClient";
 import { getAvatarById } from "@/lib/avatars";
 import type { ChildProfile } from "@/lib/children";
 import { speakWord } from "@/lib/stumbledWords";
+import { checkMonthlyStoryLimit, type MonthlyUsageStatus } from "@/lib/sessionBudget";
+import ParentGate from "@/components/ParentGate";
 
 // ─── Section 1: Phonetic Speech Synthesis Mapping ───
 
-/**
- * Phonetic spelling overrides so Text-to-Speech engines pronounce true phonemes
- * instead of spelling out letter names or reading acronyms.
- */
 const PHONETIC_AUDIO_MAP: Record<string, string> = {
-  // Single Letter Short Vowels & Consonants
   a: "ah",
   b: "buh",
   c: "cuh",
@@ -53,8 +50,6 @@ const PHONETIC_AUDIO_MAP: Record<string, string> = {
   x: "ks",
   y: "yuh",
   z: "zzz",
-
-  // Digraphs & Blends
   sh: "shhh",
   ch: "chuh",
   th: "thhh",
@@ -62,37 +57,27 @@ const PHONETIC_AUDIO_MAP: Record<string, string> = {
   ph: "fff",
   ng: "ngg",
   nk: "nnk",
-
-  // Long Vowels
   a_e: "ay",
   ee: "eee",
   i_e: "eye",
   o_e: "oh",
   u_e: "ooo",
-
-  // R-Controlled
   ar: "ahr",
   er: "err",
   ir: "err",
   or: "or",
   ur: "err",
-
-  // Diphthongs
   oi: "oy",
   oy: "oy",
   ou: "ow",
   ow: "ow",
   au: "aw",
   aw: "aw",
-
-  // Wild Old Rules
   old: "ohld",
   ost: "ohst",
   ild: "eyeld",
   ind: "ined",
   olt: "ohlt",
-
-  // Soft Consonants
   "soft c": "sss",
   "soft g": "juh",
 };
@@ -114,6 +99,7 @@ interface PhonicsCategory {
   badgeBg: string;
   badgeText: string;
   description: string;
+  isFreeTier: boolean;
   sounds: SoundTile[];
 }
 
@@ -127,6 +113,7 @@ const PHONICS_CURRICULUM: PhonicsCategory[] = [
     badgeBg: "bg-amber-100",
     badgeText: "text-amber-800",
     description: "The basic building blocks of reading from A to Z",
+    isFreeTier: true,
     sounds: [
       { sound: "a", mouthHint: "Open your mouth wide like taking a bite", examples: ["apple", "ant", "cat"] },
       { sound: "b", mouthHint: "Put your lips together and make a quick pop", examples: ["ball", "bat", "tub"] },
@@ -165,6 +152,7 @@ const PHONICS_CURRICULUM: PhonicsCategory[] = [
     badgeBg: "bg-sky-100",
     badgeText: "text-sky-800",
     description: "Short vowels capped by locking consonants",
+    isFreeTier: false,
     sounds: [
       { sound: "sh", mouthHint: "Put your finger to your lips: hush sound", examples: ["ship", "shell", "fish"] },
       { sound: "ch", mouthHint: "Make a sharp choo choo train sneeze", examples: ["chin", "chip", "rich"] },
@@ -184,6 +172,7 @@ const PHONICS_CURRICULUM: PhonicsCategory[] = [
     badgeBg: "bg-emerald-100",
     badgeText: "text-emerald-800",
     description: "Vowels that proudly shout out their own name",
+    isFreeTier: false,
     sounds: [
       { sound: "a_e", mouthHint: "Smile wide then relax your jaw down", examples: ["make", "lake", "gate"] },
       { sound: "ee", mouthHint: "Stretch your lips wide like cheering", examples: ["see", "tree", "feet"] },
@@ -201,6 +190,7 @@ const PHONICS_CURRICULUM: PhonicsCategory[] = [
     badgeBg: "bg-purple-100",
     badgeText: "text-purple-800",
     description: "The bossy letter R takes charge of vowels",
+    isFreeTier: false,
     sounds: [
       { sound: "ar", mouthHint: "Open wide like a pirate: say arrr", examples: ["car", "star", "park"] },
       { sound: "er", mouthHint: "Keep your tongue steady and growl a bit", examples: ["her", "sister", "term"] },
@@ -218,6 +208,7 @@ const PHONICS_CURRICULUM: PhonicsCategory[] = [
     badgeBg: "bg-pink-100",
     badgeText: "text-pink-800",
     description: "Sliding vowel sounds that jump from high to low",
+    isFreeTier: false,
     sounds: [
       { sound: "oi", mouthHint: "Start with a round oh and slide into ee", examples: ["coin", "soil", "join"] },
       { sound: "oy", mouthHint: "Slide from oh into a cheerful ee cheer", examples: ["boy", "toy", "joy"] },
@@ -236,6 +227,7 @@ const PHONICS_CURRICULUM: PhonicsCategory[] = [
     badgeBg: "bg-violet-100",
     badgeText: "text-violet-800",
     description: "Special endings that stretch short vowels long",
+    isFreeTier: false,
     sounds: [
       { sound: "old", mouthHint: "Make a long oh then slide into a flat L", examples: ["bold", "cold", "gold"] },
       { sound: "ost", mouthHint: "A long oh sound followed by a quick hiss", examples: ["most", "post", "host"] },
@@ -253,6 +245,7 @@ const PHONICS_CURRICULUM: PhonicsCategory[] = [
     badgeBg: "bg-cyan-100",
     badgeText: "text-cyan-800",
     description: "Consonants that swap clicks for gentle sighs",
+    isFreeTier: false,
     sounds: [
       { sound: "soft c", mouthHint: "Make a clean snake hiss when beside e, i, y", examples: ["city", "face", "race"] },
       { sound: "soft g", mouthHint: "Push lips out and vibrate when beside e, i, y", examples: ["gem", "giraffe", "cage"] },
@@ -270,12 +263,17 @@ export default function PhonicsSoundLabPage(): JSX.Element {
   const { user, loading } = useAuth();
   const router = useRouter();
 
-  // Child Data & UI Navigation
+  // Core States
   const [child, setChild] = useState<ChildProfile | null>(null);
   const [fetching, setFetching] = useState(true);
   const [activeCategory, setActiveCategory] = useState<PhonicsCategory | null>(null);
+  const [monthlyUsage, setMonthlyUsage] = useState<MonthlyUsageStatus | null>(null);
   
-  // Interaction and Gamification State
+  // Paywall & Gate States
+  const [gateOpen, setGateOpen] = useState(false);
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+
+  // Interaction State
   const [discoveredSounds, setDiscoveredSounds] = useState<string[]>([]);
   const [currentlyPlayingSound, setCurrentlyPlayingSound] = useState<string | null>(null);
   const [currentlyPlayingWord, setCurrentlyPlayingWord] = useState<string | null>(null);
@@ -287,7 +285,7 @@ export default function PhonicsSoundLabPage(): JSX.Element {
     }
   }, [user, loading, router]);
 
-  // Load Child Profile & Discovery Progress
+  // Load Child Profile, Subscription Status & Discoveries
   useEffect(() => {
     async function loadLabData(): Promise<void> {
       if (!user || !childId) return;
@@ -307,6 +305,10 @@ export default function PhonicsSoundLabPage(): JSX.Element {
 
       setChild(data as ChildProfile);
 
+      // Check subscription status
+      const usage = await checkMonthlyStoryLimit(data.id, user.email);
+      setMonthlyUsage(usage);
+
       try {
         const stored = localStorage.getItem(`onesimos_phonics_progress_${childId}`);
         if (stored) {
@@ -322,6 +324,17 @@ export default function PhonicsSoundLabPage(): JSX.Element {
     void loadLabData();
   }, [user, childId, router]);
 
+  const isPaidUser = monthlyUsage?.isPaidPlan ?? false;
+
+  const handleSelectCategory = (category: PhonicsCategory): void => {
+    // If category requires subscription and user is on free tier, trigger upgrade gate
+    if (!category.isFreeTier && !isPaidUser) {
+      setUpgradeModalOpen(true);
+      return;
+    }
+    setActiveCategory(category);
+  };
+
   const handleSaveDiscovery = (sound: string): void => {
     const cleanSound = sound.toLowerCase();
     if (discoveredSounds.includes(cleanSound)) return;
@@ -336,7 +349,6 @@ export default function PhonicsSoundLabPage(): JSX.Element {
     }
   };
 
-  // Play Sound pronunciation using Phonetic Audio Map Override
   const handlePlaySound = async (soundItem: SoundTile): Promise<void> => {
     const key = soundItem.sound.toLowerCase();
     const spokenText = PHONETIC_AUDIO_MAP[key] || soundItem.sound;
@@ -454,11 +466,6 @@ export default function PhonicsSoundLabPage(): JSX.Element {
               style={{ width: `${(totalDiscoveredCount / TOTAL_SOUND_INVENTORY) * 100}%` }}
             />
           </div>
-          {totalDiscoveredCount === TOTAL_SOUND_INVENTORY && (
-            <p className="text-center text-xs font-bold text-emerald-700 mt-3 animate-bounce font-switzer">
-              🌟 Stellar achievement, you completed the entire Sound Lab! 🌟
-            </p>
-          )}
         </div>
 
         {/* Categories Grid or Selected Category */}
@@ -469,20 +476,21 @@ export default function PhonicsSoundLabPage(): JSX.Element {
                 Explore Categories
               </h2>
               <span className="text-xs text-gray-500 font-switzer">
-                Select a room to begin
+                {!isPaidUser ? "Letter Sounds Free · Full Lab Locked" : "Full Access Unlocked"}
               </span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {PHONICS_CURRICULUM.map((category) => {
                 const stats = categoryProgressMap[category.id] || { count: 0, percentage: 0 };
+                const isLocked = !category.isFreeTier && !isPaidUser;
                 
                 return (
                   <button
                     key={category.id}
                     type="button"
-                    onClick={() => setActiveCategory(category)}
-                    className={`bg-white rounded-3xl p-5 border ${category.border} shadow-2xs hover:shadow-sm hover:-translate-y-0.5 transition-all text-left flex items-center justify-between gap-4 active:scale-[0.99] group font-switzer`}
+                    onClick={() => handleSelectCategory(category)}
+                    className={`bg-white rounded-3xl p-5 border ${category.border} shadow-2xs hover:shadow-sm hover:-translate-y-0.5 transition-all text-left flex items-center justify-between gap-4 active:scale-[0.99] group font-switzer relative overflow-hidden`}
                   >
                     <div className="flex items-start gap-4">
                       <div className={`w-14 h-14 bg-gradient-to-br ${category.color} rounded-2xl flex items-center justify-center text-3xl text-white shadow-xs shrink-0`}>
@@ -493,6 +501,11 @@ export default function PhonicsSoundLabPage(): JSX.Element {
                           <h3 className="font-switzer font-black text-lg text-gray-900 group-hover:text-amber-950 leading-tight">
                             {category.title}
                           </h3>
+                          {isLocked && (
+                            <span className="px-2 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-bold font-switzer flex items-center gap-1">
+                              <span>🔒</span> Unlock
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-gray-500 mt-1 mr-2 leading-relaxed font-switzer">
                           {category.description}
@@ -665,6 +678,50 @@ export default function PhonicsSoundLabPage(): JSX.Element {
           </section>
         )}
       </div>
+
+      {/* Parent PIN Lock Gate Modal */}
+      <ParentGate
+        open={gateOpen}
+        onClose={() => setGateOpen(false)}
+        onSuccess={() => {
+          setGateOpen(false);
+          router.push("/parent/pricing");
+        }}
+      />
+
+      {/* Subscription Paywall Unlock Modal */}
+      {upgradeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 font-switzer">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl border border-gray-100 font-switzer">
+            <div className="text-4xl mb-3">🎵</div>
+            <h3 className="font-achiko text-xl text-amber-900 mb-2">
+              Unlock Full Sound Lab!
+            </h3>
+            <p className="text-xs text-gray-600 mb-6 leading-relaxed font-switzer">
+              Letter Sounds are free! Ask a parent to unlock all <strong>7 Phonics Sound Rooms</strong> (Closed Syllables, Long Vowels, Diphthongs, and more).
+            </p>
+            <div className="flex flex-col gap-2 font-switzer">
+              <button
+                type="button"
+                onClick={() => {
+                  setUpgradeModalOpen(false);
+                  setGateOpen(true);
+                }}
+                className="w-full py-3 rounded-2xl bg-amber-500 text-white font-bold text-xs shadow-sm hover:bg-amber-600 font-switzer active:scale-95 transition-all"
+              >
+                Ask Parent to Unlock ✨
+              </button>
+              <button
+                type="button"
+                onClick={() => setUpgradeModalOpen(false)}
+                className="w-full py-2.5 rounded-2xl border border-gray-200 text-gray-600 font-bold text-xs hover:bg-gray-50 font-switzer"
+              >
+                Keep Exploring Free Sounds
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
