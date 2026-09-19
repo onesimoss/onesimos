@@ -1,8 +1,8 @@
 /**
  * @file lib/payments.ts
  * @description Paystack Payment & Subscription Engine for Onesimos.
- * Handles plan tiers, parent subscription resolution from Supabase,
- * and server-side Paystack transaction initialization & verification.
+ * Handles single-reader, family, extended family, and school classroom plans,
+ * parent subscription resolution from Supabase, and Paystack transaction initialization.
  *
  * @fonts Achiko (headings) + Switzer (body/UI)
  * @dependencies
@@ -13,7 +13,17 @@ import { supabase } from "./supabaseClient";
 
 // ─── Section 1: Types & Pricing Constants ───
 
-export type SubscriptionPlanId = "free" | "premium_monthly" | "premium_annual";
+export type SubscriptionPlanId =
+  | "free"
+  | "single_monthly"
+  | "single_annual"
+  | "family_monthly"
+  | "family_annual"
+  | "extended_monthly"
+  | "school_term"
+  | "school_annual"
+  | "premium_monthly" // Legacy alias for single_monthly
+  | "premium_annual"; // Legacy alias for single_annual
 
 export type SubscriptionStatus =
   | "active"
@@ -30,8 +40,8 @@ export interface PlanConfig {
   priceFormatted: string;
   approxUsd: string;
   approxGbp: string;
-  interval: "month" | "year" | "free";
-  storyLimit: number | "unlimited";
+  interval: "month" | "year" | "term" | "free";
+  maxChildren: number | "unlimited";
   features: string[];
   popular?: boolean;
 }
@@ -45,14 +55,138 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlanId, PlanConfig> = {
     approxUsd: "$0",
     approxGbp: "£0",
     interval: "free",
-    storyLimit: 3,
+    maxChildren: 1,
     features: [
-      "3 reading stories per child every month",
-      "Solo spelling practice game",
+      "5 stories per month for 1 child",
+      "2 solo spelling practice rounds per day",
       "Basic read-aloud pronunciation feedback",
-      "Standard reading report card",
+      "Standard academic growth report card",
     ],
   },
+  single_monthly: {
+    id: "single_monthly",
+    name: "Single Reader Monthly",
+    priceNgn: 2500,
+    priceFormatted: "₦2,500",
+    approxUsd: "~$1.60",
+    approxGbp: "~£1.30",
+    interval: "month",
+    maxChildren: 1,
+    features: [
+      "Unlimited stories for 1 Child",
+      "Personal AI Living Story chapters woven from real mistakes",
+      "Full 25 Core Life Skills & Virtues curriculum",
+      "Unlimited daily spelling games with ElevenLabs audio",
+      "Comprehensive growth reports & WPM tracking",
+      "Cancel anytime with one tap",
+    ],
+  },
+  single_annual: {
+    id: "single_annual",
+    name: "Single Reader Annual",
+    badge: "Save 33%",
+    priceNgn: 19999,
+    priceFormatted: "₦19,999",
+    approxUsd: "~$13.00",
+    approxGbp: "~£10.50",
+    interval: "year",
+    maxChildren: 1,
+    popular: true,
+    features: [
+      "Everything in Single Monthly for 1 Child all year",
+      "33% annual discount (Save ₦10,000/yr)",
+      "Priority AI chapter weaving",
+      "Full offline bookshelf access (Read for Fun)",
+      "Unlocks all age bands (3 to 9 years)",
+    ],
+  },
+  family_monthly: {
+    id: "family_monthly",
+    name: "Family Plan Monthly",
+    badge: "Most Popular for Homes",
+    priceNgn: 5000,
+    priceFormatted: "₦5,000",
+    approxUsd: "~$3.20",
+    approxGbp: "~£2.60",
+    interval: "month",
+    maxChildren: 4,
+    popular: true,
+    features: [
+      "Unlimited stories for UP TO 4 CHILDREN",
+      "Individual Word Pockets & spelling tracking per child",
+      "Personal Living Chapters for every reader",
+      "Family dashboard with multi-child growth cards",
+      "Mastered Words Wall & Progress Story timelines",
+    ],
+  },
+  family_annual: {
+    id: "family_annual",
+    name: "Family Plan Annual",
+    badge: "Best Family Value",
+    priceNgn: 39999,
+    priceFormatted: "₦39,999",
+    approxUsd: "~$26.00",
+    approxGbp: "~£21.00",
+    interval: "year",
+    maxChildren: 4,
+    features: [
+      "Everything in Family Monthly for up to 4 children all year",
+      "Save 33% on annual family billing",
+      "Print/Save PDF progress packages for all kids",
+      "Continuous curriculum & geo-adaptive updates",
+    ],
+  },
+  extended_monthly: {
+    id: "extended_monthly",
+    name: "Extended Family & Daycare",
+    priceNgn: 15000,
+    priceFormatted: "₦15,000",
+    approxUsd: "~$9.60",
+    approxGbp: "~£7.80",
+    interval: "month",
+    maxChildren: 10,
+    features: [
+      "Unlimited reading for UP TO 10 CHILDREN",
+      "Ideal for extended families, home-schools & daycares",
+      "Individualized progress tracking for every reader",
+      "Dedicated account management support",
+    ],
+  },
+  school_term: {
+    id: "school_term",
+    name: "School Classroom License",
+    badge: "For Teachers & Schools",
+    priceNgn: 30000,
+    priceFormatted: "₦30,000",
+    approxUsd: "~$19.00",
+    approxGbp: "~£15.50",
+    interval: "term",
+    maxChildren: 30,
+    features: [
+      "Covers 1 Classroom (UP TO 30 STUDENTS) for 1 Term",
+      "Teacher dashboard with classroom fluency leaderboards",
+      "Printable end-of-term academic report packages for parents",
+      "Phonics & Spelling drills tailored for group learning",
+    ],
+  },
+  school_annual: {
+    id: "school_annual",
+    name: "Classroom Full School Year",
+    badge: "Best School Value",
+    priceNgn: 85000,
+    priceFormatted: "₦85,000",
+    approxUsd: "~$55.00",
+    approxGbp: "~£44.00",
+    interval: "year",
+    maxChildren: 30,
+    features: [
+      "Covers 1 Classroom (Up to 30 Students) for 3 Full Terms",
+      "Save ₦5,000 off termly billing",
+      "Official Onesimos School Partner Badge for school portal",
+    ],
+  },
+
+  // Legacy mappings for existing DB rows
   premium_monthly: {
     id: "premium_monthly",
     name: "Living Reader Monthly",
@@ -61,35 +195,19 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlanId, PlanConfig> = {
     approxUsd: "~$1.60",
     approxGbp: "~£1.30",
     interval: "month",
-    storyLimit: "unlimited",
-    features: [
-      "Unlimited stories for ALL your children",
-      "Personal AI Living Story chapters woven from real mistakes",
-      "Full 25 Core Life Skills & Virtues curriculum",
-      "Comprehensive academic growth reports & WPM tracking",
-      "Adaptive reading difficulty bridge",
-      "Cancel anytime with one tap",
-    ],
+    maxChildren: "unlimited",
+    features: ["Unlimited stories for all children", "Living chapters"],
   },
   premium_annual: {
     id: "premium_annual",
     name: "Living Reader Annual",
-    badge: "Save 33% (Best Value)",
     priceNgn: 19999,
     priceFormatted: "₦19,999",
     approxUsd: "~$13.00",
     approxGbp: "~£10.50",
     interval: "year",
-    storyLimit: "unlimited",
-    popular: true,
-    features: [
-      "Everything in Monthly with 33% annual discount",
-      "Unlimited stories for ALL your children all year",
-      "Priority AI chapter weaving",
-      "Full offline bookshelf access (Read for Fun)",
-      "Unlocks all age bands (3–9 years)",
-      "Continuous curriculum & geo-adaptive updates",
-    ],
+    maxChildren: "unlimited",
+    features: ["Unlimited annual stories for all children", "Living chapters"],
   },
 };
 
@@ -113,9 +231,6 @@ export interface ParentSubscriptionRow {
 
 /**
  * Fetches active subscription details for a parent from Supabase.
- *
- * @param parentId - Supabase Auth User ID
- * @returns ParentSubscriptionRow or null
  */
 export async function getParentSubscription(
   parentId: string
@@ -142,9 +257,6 @@ export async function getParentSubscription(
 
 /**
  * Evaluates whether a parent currently has active, unlimited paid access.
- *
- * @param parentId - Supabase Auth User ID
- * @returns boolean
  */
 export async function hasActivePaidPlan(parentId: string): Promise<boolean> {
   if (!parentId) return false;
@@ -153,9 +265,8 @@ export async function hasActivePaidPlan(parentId: string): Promise<boolean> {
   if (!sub) return false;
 
   const isActive = sub.status === "active";
-  const isPaid = sub.plan === "premium_monthly" || sub.plan === "premium_annual";
+  const isPaid = sub.plan !== "free";
 
-  // If a period end date is specified, ensure it hasn't expired
   if (sub.current_period_end) {
     const expiresAt = new Date(sub.current_period_end).getTime();
     if (Date.now() > expiresAt) {
@@ -183,10 +294,6 @@ interface PaystackInitResult {
   error?: string;
 }
 
-/**
- * Initializes a Paystack transaction securely via the server.
- * Amount is converted to kobo (amountNgn * 100).
- */
 export async function initializePaystackCheckout(
   params: PaystackInitParams,
   secretKey: string
@@ -211,7 +318,7 @@ export async function initializePaystackCheckout(
             {
               display_name: "Plan",
               variable_name: "plan",
-              value: SUBSCRIPTION_PLANS[params.planId].name,
+              value: SUBSCRIPTION_PLANS[params.planId]?.name || params.planId,
             },
           ],
         },
@@ -235,9 +342,6 @@ export async function initializePaystackCheckout(
   }
 }
 
-/**
- * Verifies a completed Paystack transaction by reference.
- */
 export async function verifyPaystackReference(
   reference: string,
   secretKey: string
@@ -271,7 +375,7 @@ export async function verifyPaystackReference(
 
     const metadata = data.data.metadata || {};
     const parentId = metadata.parent_id;
-    const planId = (metadata.plan_id as SubscriptionPlanId) || "premium_monthly";
+    const planId = (metadata.plan_id as SubscriptionPlanId) || "single_monthly";
 
     return {
       success: true,
