@@ -3,7 +3,7 @@
  * =======================================
  * Encoding practice pulling from each child's real stumbled words.
  * Features 1-hint max limit per round, unassisted word mastery graduation,
- * 0.85x slower ElevenLabs audio, and daily free quota limits.
+ * 0.85x slower ElevenLabs audio, daily free quota limits, and explicit top navigation.
  *
  * Difficulty scaling (by child.reading_level):
  *   Level 1 (pre-reader)  : 3-letter words, 1 distractor, 1 hint max
@@ -19,7 +19,7 @@
 
 // ─── IMPORTS ────────────────────────────────────────────────────────────────
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import {
@@ -133,21 +133,18 @@ function buildBank(word: string, distractorCount: number): BankTile[] {
   return all.map((letter, i) => ({ id: i, letter, used: false }));
 }
 
-/** Priority queue: Words stumbled 2+ times come first! */
 function assembleRoundWords(
   stumbledItems: StumbledWordCountItem[],
   level: number
 ): SpellingWordItem[] {
   const cfg = LEVEL_CONFIG[level] ?? LEVEL_CONFIG[2];
   
-  // High struggle priority words (stumbled 2+ times)
   const highPriority = shuffle(
     stumbledItems
       .filter((w) => w.word.length <= cfg.maxWordLen && w.count >= 2)
       .map((w) => ({ word: w.word.toLowerCase(), times_stumbled: w.count }))
   );
 
-  // Single stumble words
   const normalStumbled = shuffle(
     stumbledItems
       .filter((w) => w.word.length <= cfg.maxWordLen && w.count < 2)
@@ -205,21 +202,17 @@ export default function SpellingGamePage(): JSX.Element {
   const [wordIndex, setWordIndex] = useState(0);
   const [stars, setStars] = useState(0);
 
-  // Hint budget state (Max 1-2 per round)
   const [hintsRemaining, setHintsRemaining] = useState(1);
   const [usedHintOnCurrentWord, setUsedHintOnCurrentWord] = useState(false);
 
-  // Free Tier Lock States
   const [isPaidPlan, setIsPaidPlan] = useState(false);
   const [limitModalOpen, setLimitModalOpen] = useState(false);
   const [gateOpen, setGateOpen] = useState(false);
 
-  // ── Per-word state ──
   const [bank, setBank] = useState<BankTile[]>([]);
   const [slots, setSlots] = useState<SlotTile[]>([]);
   const [hintSlotIndex, setHintSlotIndex] = useState<number | null>(null);
 
-  // ── Derived ──
   const currentWord = roundWords[wordIndex];
   const level = child?.reading_level ?? 2;
   const cfg = LEVEL_CONFIG[level] ?? LEVEL_CONFIG[2];
@@ -281,7 +274,6 @@ export default function SpellingGamePage(): JSX.Element {
       setHintSlotIndex(null);
       setUsedHintOnCurrentWord(false);
 
-      // Speak word with 0.85x speed ElevenLabs
       setTimeout(() => void speakWord(word), 300);
     },
     [cfg]
@@ -367,7 +359,6 @@ export default function SpellingGamePage(): JSX.Element {
       setPhase("correct");
       setStars((prev) => prev + 1);
 
-      // GRADUATION LOGIC: Mark word as MASTERED in Supabase ONLY IF NO HINTS WERE USED!
       if (!usedHintOnCurrentWord) {
         try {
           await supabase
@@ -376,7 +367,7 @@ export default function SpellingGamePage(): JSX.Element {
             .eq("child_id", childId)
             .eq("word", currentWord.word.toLowerCase());
         } catch {
-          // Ignore fallback if table missing
+          // Fallback ignore
         }
       }
 
@@ -442,47 +433,70 @@ export default function SpellingGamePage(): JSX.Element {
 
   const avatar = getAvatarById(child?.avatar_id || "avatar-1");
 
-  // ─── RENDER: INTRO ───────────────────────────────────────────────────────
+  // ─── RENDER: INTRO (WITH TOP BACK BUTTON) ────────────────────────────────
 
   if (phase === "intro") {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-amber-50/60 px-6 text-center font-switzer">
-        {child && (
-          <div
-            className="flex h-24 w-24 items-center justify-center rounded-3xl border-4 border-white shadow-md overflow-hidden"
-            style={{ backgroundColor: `${avatar.color}33` }}
+      <main className="flex min-h-screen flex-col items-center justify-start bg-amber-50/60 px-6 py-8 text-center font-switzer">
+        {/* Top Header Navigation */}
+        <div className="w-full max-w-sm flex items-center justify-between mb-8 font-switzer">
+          <button
+            type="button"
+            onClick={() => router.push(`/kid/${childId}`)}
+            className="text-xs font-bold text-gray-700 bg-white border border-gray-200 px-4 py-2 rounded-full shadow-2xs hover:bg-gray-50 active:scale-95 transition-all font-switzer flex items-center gap-1.5"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={avatar.imageUrl}
-              alt={child.name}
-              className="h-full w-full object-cover"
-            />
-          </div>
-        )}
-        <h1 className="font-achiko text-4xl text-amber-950">
-          Spelling Time! ✏️
-        </h1>
-        <p className="max-w-sm font-switzer text-amber-800 text-sm font-medium">
-          Let&apos;s practise spelling{" "}
-          <strong className="text-amber-950 font-extrabold">{roundWords.length} practice words</strong>.
-          Tap 🔊 to listen, then tap the letters!
-        </p>
-        <div className="flex gap-2 font-switzer">
-          <span className="rounded-full bg-amber-100 border border-amber-200 px-3 py-1 text-xs font-bold text-amber-900">
-            Mode: {cfg.label}
+            <span>🏠</span> Home
+          </button>
+
+          <span className="font-logo text-2xl text-amber-900">
+            Onesimos
           </span>
-          <span className="rounded-full bg-amber-100 border border-amber-200 px-3 py-1 text-xs font-bold text-amber-900">
-            💡 {cfg.maxHintsPerRound} Hint Per Round
-          </span>
+
+          <div className="w-16 text-right" />
         </div>
-        <button
-          type="button"
-          onClick={handleStartGame}
-          className="mt-2 rounded-2xl bg-amber-500 hover:bg-amber-600 px-10 py-4 font-achiko text-xl text-white shadow-md active:scale-95 transition-all font-switzer"
-        >
-          Start Spelling 🚀
-        </button>
+
+        <div className="my-auto flex flex-col items-center gap-5 max-w-sm w-full">
+          {child && (
+            <div
+              className="flex h-24 w-24 items-center justify-center rounded-3xl border-4 border-white shadow-md overflow-hidden"
+              style={{ backgroundColor: `${avatar.color}33` }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={avatar.imageUrl}
+                alt={child.name}
+                className="h-full w-full object-cover"
+              />
+            </div>
+          )}
+          
+          <h1 className="font-achiko text-4xl text-amber-950">
+            Spelling Time! ✏️
+          </h1>
+
+          <p className="font-switzer text-amber-800 text-sm font-medium leading-relaxed">
+            Let&apos;s practise spelling{" "}
+            <strong className="text-amber-950 font-extrabold">{roundWords.length} practice words</strong>.
+            Tap 🔊 to listen, then tap the letters!
+          </p>
+
+          <div className="flex flex-wrap items-center justify-center gap-2 font-switzer">
+            <span className="rounded-full bg-amber-100 border border-amber-200 px-3 py-1 text-xs font-bold text-amber-900">
+              Mode: {cfg.label}
+            </span>
+            <span className="rounded-full bg-amber-100 border border-amber-200 px-3 py-1 text-xs font-bold text-amber-900">
+              💡 {cfg.maxHintsPerRound} Hint Per Round
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleStartGame}
+            className="w-full mt-2 rounded-2xl bg-amber-500 hover:bg-amber-600 px-10 py-4 font-achiko text-xl text-white shadow-md active:scale-95 transition-all font-switzer"
+          >
+            Start Spelling 🚀
+          </button>
+        </div>
 
         {limitModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 font-switzer">
@@ -508,10 +522,13 @@ export default function SpellingGamePage(): JSX.Element {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setLimitModalOpen(false)}
+                  onClick={() => {
+                    setLimitModalOpen(false);
+                    router.push(`/kid/${childId}`);
+                  }}
                   className="w-full py-2.5 rounded-2xl border border-gray-200 text-gray-600 font-bold text-xs hover:bg-gray-50 font-switzer"
                 >
-                  Maybe Later
+                  Back to Kid Home 🏠
                 </button>
               </div>
             </div>
@@ -631,7 +648,7 @@ export default function SpellingGamePage(): JSX.Element {
       </div>
 
       {/* Game area */}
-      <section className="flex flex-1 flex-col items-center justify-center gap-8 px-6 max-w-2xl mx-auto w-full font-switzer">
+      <section className="flex flex-1 flex-col items-[#FDFBF7] items-center justify-center gap-8 px-6 max-w-2xl mx-auto w-full font-switzer">
         <button
           type="button"
           onClick={() => currentWord && void speakWord(currentWord.word)}
