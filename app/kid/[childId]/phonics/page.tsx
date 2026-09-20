@@ -1,8 +1,7 @@
 /**
  * @file app/kid/[childId]/phonics/page.tsx
  * @description Phonics Sound Lab : Interactive phonics curriculum covering 7 essential groups
- * with interactive sound tiles, phonetic pronunciation mappings, physiological mouth guidelines,
- * animated sample word cascades, browser-cached discovery tracking, and subscription gating.
+ * with instant phonetic audio playback, mouth guidelines, animated word cascades, and category gating.
  *
  * @module app/kid/[childId]/phonics/page
  * @fonts Logo (wordmark) + Achiko (headings) + Switzer (body/UI/stats)
@@ -81,8 +80,6 @@ const PHONETIC_AUDIO_MAP: Record<string, string> = {
   "soft c": "sss",
   "soft g": "juh",
 };
-
-// ─── Section 2: Curriculum Data Structure ───
 
 interface SoundTile {
   sound: string;
@@ -255,37 +252,30 @@ const PHONICS_CURRICULUM: PhonicsCategory[] = [
 
 const TOTAL_SOUND_INVENTORY = PHONICS_CURRICULUM.reduce((acc, cat) => acc + cat.sounds.length, 0);
 
-// ─── Section 3: Main Component ───
-
 export default function PhonicsSoundLabPage(): JSX.Element {
   const params = useParams<{ childId: string }>();
   const childId = params.childId;
   const { user, loading } = useAuth();
   const router = useRouter();
 
-  // Core States
   const [child, setChild] = useState<ChildProfile | null>(null);
   const [fetching, setFetching] = useState(true);
   const [activeCategory, setActiveCategory] = useState<PhonicsCategory | null>(null);
   const [monthlyUsage, setMonthlyUsage] = useState<MonthlyUsageStatus | null>(null);
   
-  // Paywall & Gate States
   const [gateOpen, setGateOpen] = useState(false);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
 
-  // Interaction State
   const [discoveredSounds, setDiscoveredSounds] = useState<string[]>([]);
   const [currentlyPlayingSound, setCurrentlyPlayingSound] = useState<string | null>(null);
   const [currentlyPlayingWord, setCurrentlyPlayingWord] = useState<string | null>(null);
 
-  // Auth Guard protection
   useEffect(() => {
     if (!loading && !user) {
       router.replace("/parent/login");
     }
   }, [user, loading, router]);
 
-  // Load Child Profile, Subscription Status & Discoveries
   useEffect(() => {
     async function loadLabData(): Promise<void> {
       if (!user || !childId) return;
@@ -305,7 +295,6 @@ export default function PhonicsSoundLabPage(): JSX.Element {
 
       setChild(data as ChildProfile);
 
-      // Check subscription status
       const usage = await checkMonthlyStoryLimit(data.id, user.email);
       setMonthlyUsage(usage);
 
@@ -327,7 +316,6 @@ export default function PhonicsSoundLabPage(): JSX.Element {
   const isPaidUser = monthlyUsage?.isPaidPlan ?? false;
 
   const handleSelectCategory = (category: PhonicsCategory): void => {
-    // If category requires subscription and user is on free tier, trigger upgrade gate
     if (!category.isFreeTier && !isPaidUser) {
       setUpgradeModalOpen(true);
       return;
@@ -358,7 +346,14 @@ export default function PhonicsSoundLabPage(): JSX.Element {
 
     handleSaveDiscovery(soundItem.sound);
 
-    await speakWord(spokenText);
+    // Try playing static local MP3 first if present, otherwise call speech engine
+    try {
+      const audioPath = `/phonics/${key.replace("_", "")}.mp3`;
+      const localAudio = new Audio(audioPath);
+      await localAudio.play();
+    } catch {
+      await speakWord(spokenText);
+    }
     
     setTimeout(() => {
       setCurrentlyPlayingSound(null);
@@ -679,7 +674,6 @@ export default function PhonicsSoundLabPage(): JSX.Element {
         )}
       </div>
 
-      {/* Parent PIN Lock Gate Modal */}
       <ParentGate
         open={gateOpen}
         onClose={() => setGateOpen(false)}
@@ -689,7 +683,6 @@ export default function PhonicsSoundLabPage(): JSX.Element {
         }}
       />
 
-      {/* Subscription Paywall Unlock Modal */}
       {upgradeModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 font-switzer">
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl border border-gray-100 font-switzer">
