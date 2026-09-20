@@ -8,12 +8,9 @@
  * @fonts Logo (wordmark) + Achiko (headings) + Switzer (body/UI)
  */
 
-import Link from "next/link";
+"use client";
 
-export const metadata = {
-  title: "School Partnership Proposal | Onesimos",
-  description: "30-day literacy pilot proposal and evaluation protocol for private primary schools.",
-};
+import Link from "next/link";
 
 export default function SchoolProposalPage(): JSX.Element {
   return (
