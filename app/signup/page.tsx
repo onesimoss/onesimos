@@ -1,182 +1,243 @@
 /**
  * @file app/signup/page.tsx
- * @description Parent Signup Screen with Email/Password and Google OAuth authentication.
+ * @description Parent registration page with Google OAuth, email signup, and mandatory adult COPPA age verification checkbox.
  *
- * @fonts Achiko (headings/logo) + Switzer (body/UI)
- * @dependencies
- * - @/context/AuthContext
- * - @/lib/supabaseClient
+ * @module app/signup/page
+ * @fonts Logo (wordmark) + Achiko (headings) + Switzer (body/UI)
  */
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 
-export default function SignUp() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const { signUp } = useAuth();
+export default function SignupPage(): JSX.Element {
+  const { user, loading } = useAuth();
   const router = useRouter();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isAdultConfirmed, setIsAdultConfirmed] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace("/onboarding");
+    }
+  }, [user, loading, router]);
+
+  const handleEmailSignup = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
-    setError("");
-    setLoading(true);
+    setAuthError(null);
 
-    const { error } = await signUp(email, password);
-    if (error) {
-      setError(error.message);
-    } else {
-      router.push("/onboarding");
+    if (!isAdultConfirmed) {
+      setAuthError("You must confirm you are a parent or guardian age 18 or older.");
+      return;
     }
-    setLoading(false);
-  };
 
-  const handleGoogleSignIn = async () => {
-    setError("");
-    setGoogleLoading(true);
+    setSubmitting(true);
 
-    const redirectUrl = typeof window !== "undefined"
-      ? `${window.location.origin}/onboarding`
-      : "https://onesimos.app/onboarding";
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/onboarding`,
+        },
+      });
 
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: redirectUrl,
-      },
-    });
+      if (error) {
+        setAuthError(error.message);
+        setSubmitting(false);
+        return;
+      }
 
-    if (error) {
-      setError(error.message || "Failed to connect with Google. Try again.");
-      setGoogleLoading(false);
+      router.replace("/onboarding");
+    } catch {
+      setAuthError("An unexpected error occurred during signup.");
+      setSubmitting(false);
     }
   };
+
+  const handleGoogleSignup = async (): Promise<void> => {
+    setAuthError(null);
+
+    if (!isAdultConfirmed) {
+      setAuthError("Please check the box below confirming you are a parent or guardian age 18 or older.");
+      return;
+    }
+
+    setGoogleSubmitting(true);
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        setAuthError(error.message);
+        setGoogleSubmitting(false);
+      }
+    } catch {
+      setAuthError("Failed to initialize Google signup.");
+      setGoogleSubmitting(false);
+    }
+  };
+
+  if (loading || user) {
+    return (
+      <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center font-switzer">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-amber-400 border-t-amber-600 rounded-full animate-spin mx-auto mb-3" />
+          <p className="font-bold text-gray-600 text-sm font-switzer">
+            Creating your account...
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   return (
-    <main className="min-h-screen bg-cream flex items-center justify-center p-6 font-switzer">
-      <div className="absolute top-0 left-0 w-72 h-72 bg-gold/10 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-coral/10 rounded-full blur-3xl translate-x-1/3 translate-y-1/3" />
-
-      <div className="relative max-w-md w-full">
-        <Link href="/" className="block text-center mb-8">
-          <span className="font-logo text-3xl text-bark">Onesimos</span>
-        </Link>
-
-        <div className="card !p-8 shadow-soft bg-white rounded-3xl border border-border">
-          <h1 className="font-heading text-3xl font-extrabold text-bark text-center mb-1">
-            Create Your Account
+    <main className="min-h-screen bg-gradient-to-b from-[#FDFBF7] via-amber-50/20 to-sky-50/30 font-switzer flex items-center justify-center p-6">
+      <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-gray-200 shadow-sm font-switzer">
+        
+        {/* Header */}
+        <div className="text-center mb-6">
+          <Link href="/" className="font-logo text-4xl text-amber-900 block mb-2">
+            Onesimos
+          </Link>
+          <h1 className="font-achiko text-2xl text-amber-950">
+            Start Your Reading Adventure
           </h1>
-          <p className="text-bark-muted text-center mb-6 text-sm">
-            Start your child&apos;s reading adventure today
-          </p>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 p-3 rounded-2xl mb-6 text-sm font-medium text-center">
-              {error}
-            </div>
-          )}
-
-          {/* Google OAuth Quick Sign-In */}
-          <button
-            type="button"
-            disabled={googleLoading || loading}
-            onClick={handleGoogleSignIn}
-            className="w-full py-3.5 px-4 rounded-2xl border border-border bg-white text-bark font-bold text-sm hover:bg-cream/60 transition-all flex items-center justify-center gap-3 shadow-2xs active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed mb-6 font-switzer"
-          >
-            {googleLoading ? (
-              <span className="animate-pulse">Connecting to Google...</span>
-            ) : (
-              <>
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  <path
-                    fill="#4285F4"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                  />
-                </svg>
-                <span>Continue with Google</span>
-              </>
-            )}
-          </button>
-
-          {/* Divider */}
-          <div className="relative flex items-center justify-center mb-6">
-            <div className="border-t border-border w-full" />
-            <span className="bg-white px-3 text-xs text-bark-muted font-bold uppercase tracking-wider absolute">
-              Or
-            </span>
-          </div>
-
-          {/* Standard Email/Password Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-sm font-bold text-bark-light mb-1.5">
-                Email Address
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="parent@example.com"
-                className="w-full px-4 py-3 bg-cream border border-border rounded-2xl focus:ring-2 focus:ring-coral/40 focus:border-coral focus:outline-none text-bark placeholder:text-bark-muted/50 transition-all font-switzer"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-bark-light mb-1.5">
-                Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="At least 6 characters"
-                className="w-full px-4 py-3 bg-cream border border-border rounded-2xl focus:ring-2 focus:ring-coral/40 focus:border-coral focus:outline-none text-bark placeholder:text-bark-muted/50 transition-all font-switzer"
-                required
-                minLength={6}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading || googleLoading}
-              className="btn-primary w-full !py-3.5 !text-base disabled:opacity-50 disabled:cursor-not-allowed font-switzer font-bold"
-            >
-              {loading ? "Creating account..." : "Create Free Account"}
-            </button>
-          </form>
-
-          <p className="text-center text-bark-muted text-sm mt-6">
-            Already have an account?{" "}
-            <Link href="/login" className="text-coral font-bold hover:underline">
-              Log in
-            </Link>
+          <p className="text-xs text-gray-500 mt-1 font-switzer">
+            Free forever tier includes 5 stories/month + Phonics Sound Lab
           </p>
         </div>
 
-        <p className="text-center text-bark-muted/60 text-xs mt-6">
-          Your data is safe. We never share personal information.
+        {/* Error Alert */}
+        {authError && (
+          <div className="mb-4 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 font-bold text-center font-switzer">
+            {authError}
+          </div>
+        )}
+
+        {/* Adult COPPA Age Checkbox */}
+        <div className="mb-5 p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 flex items-start gap-3 font-switzer">
+          <input
+            type="checkbox"
+            id="adult-confirm"
+            checked={isAdultConfirmed}
+            onChange={(e) => setIsAdultConfirmed(e.target.checked)}
+            className="mt-0.5 w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500 shrink-0 cursor-pointer"
+          />
+          <label htmlFor="adult-confirm" className="text-xs text-amber-950 leading-tight font-medium cursor-pointer font-switzer">
+            I confirm I am a <strong>parent, legal guardian, or educator (18+)</strong> setting up this account for a child.
+          </label>
+        </div>
+
+        {/* Google OAuth Button */}
+        <button
+          type="button"
+          onClick={() => void handleGoogleSignup()}
+          disabled={googleSubmitting}
+          className="w-full py-3.5 px-4 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-bold text-xs shadow-2xs transition-all flex items-center justify-center gap-3 font-switzer active:scale-[0.98] disabled:opacity-60 mb-6"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24">
+            <path
+              fill="#4285F4"
+              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+            />
+            <path
+              fill="#34A853"
+              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+            />
+            <path
+              fill="#FBBC05"
+              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+            />
+            <path
+              fill="#EA4335"
+              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+            />
+          </svg>
+          <span>{googleSubmitting ? "Connecting to Google..." : "Sign Up with Google"}</span>
+        </button>
+
+        <div className="relative flex items-center justify-center mb-6">
+          <div className="border-t border-gray-200 w-full" />
+          <span className="bg-white px-3 text-[10px] uppercase font-bold text-gray-400 absolute font-switzer">
+            or email
+          </span>
+        </div>
+
+        {/* Email Form */}
+        <form onSubmit={(e) => void handleEmailSignup(e)} className="space-y-4 font-switzer">
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1 font-switzer">
+              Parent Email Address
+            </label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="parent@example.com"
+              className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-xs font-switzer focus:outline-none focus:border-amber-400 bg-gray-50/50"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1 font-switzer">
+              Create Password
+            </label>
+            <input
+              type="password"
+              required
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="At least 6 characters"
+              className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-xs font-switzer focus:outline-none focus:border-amber-400 bg-gray-50/50"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-xs transition-all active:scale-[0.98] disabled:opacity-60 font-switzer"
+          >
+            {submitting ? "Creating Account..." : "Create Parent Account →"}
+          </button>
+        </form>
+
+        {/* Terms Footer Disclaimer */}
+        <p className="text-[10px] text-gray-400 text-center mt-4 font-switzer leading-tight">
+          By signing up, you agree to Example Mirror Ltd&apos;s{" "}
+          <Link href="/terms" className="underline hover:text-gray-600">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="underline hover:text-gray-600">
+            Privacy Policy
+          </Link>.
         </p>
+
+        {/* Footer Link */}
+        <div className="mt-4 pt-4 border-t border-gray-100 text-center text-xs text-gray-500 font-switzer">
+          Already have an account?{" "}
+          <Link href="/login" className="font-bold text-amber-800 hover:underline font-switzer">
+            Log In
+          </Link>
+        </div>
+
       </div>
     </main>
   );
