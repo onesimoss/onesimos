@@ -1,7 +1,7 @@
 /**
  * @file app/signup/page.tsx
- * @description Resilient parent registration page with Google OAuth, email signup,
- * Parent Name capture, Newsletter consent, adult COPPA verification, and automated DB fallback.
+ * @description Parent registration page with Google OAuth, email signup with inline
+ * inbox verification confirmation card, Parent Name capture, Newsletter consent, and COPPA check.
  *
  * @module app/signup/page
  * @fonts Logo (wordmark) + Achiko (headings) + Switzer (body/UI)
@@ -24,7 +24,9 @@ export default function SignupPage(): JSX.Element {
   const [password, setPassword] = useState("");
   const [isAdultConfirmed, setIsAdultConfirmed] = useState(false);
   const [newsletterConsent, setNewsletterConsent] = useState(true);
+  
   const [authError, setAuthError] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
@@ -53,8 +55,7 @@ export default function SignupPage(): JSX.Element {
       const cleanEmail = email.trim();
       const cleanName = parentName.trim();
 
-      // 1. Primary Attempt: Sign up with parent name metadata
-      let { data, error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password,
         options: {
@@ -62,19 +63,9 @@ export default function SignupPage(): JSX.Element {
             full_name: cleanName,
             newsletter_opt_in: newsletterConsent,
           },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
-
-      // 2. Resilient Fallback: If DB trigger throws schema error, retry plain signup
-      if (error && (error.message.includes("Database error") || error.message.includes("Database"))) {
-        console.warn("[Signup] Trigger failed on metadata, executing clean fallback...");
-        const retry = await supabase.auth.signUp({
-          email: cleanEmail,
-          password,
-        });
-        data = retry.data;
-        error = retry.error;
-      }
 
       if (error) {
         setAuthError(error.message);
@@ -82,21 +73,15 @@ export default function SignupPage(): JSX.Element {
         return;
       }
 
-      // 3. Immediately sign in to establish session token if email confirmation is disabled
-      if (data?.user && !data.session) {
-        const { error: loginError } = await supabase.auth.signInWithPassword({
-          email: cleanEmail,
-          password,
-        });
-
-        if (loginError) {
-          setAuthError("Account created! Please check your inbox to confirm your account or sign in.");
-          setSubmitting(false);
-          return;
-        }
+      // If active session created immediately (e.g. email confirmation off)
+      if (data?.session) {
+        router.replace("/welcome");
+        return;
       }
 
-      router.replace("/onboarding");
+      // If confirmation email was dispatched by Supabase/Resend
+      setEmailSent(true);
+      setSubmitting(false);
     } catch {
       setAuthError("An unexpected error occurred during signup. Please try again.");
       setSubmitting(false);
@@ -136,7 +121,32 @@ export default function SignupPage(): JSX.Element {
       <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center font-switzer">
         <div className="text-center font-switzer">
           <div className="w-12 h-12 border-4 border-amber-400 border-t-amber-600 rounded-full animate-spin mx-auto mb-3" />
-          <p className="font-bold text-gray-600 text-sm font-switzer">Creating account...</p>
+          <p className="font-bold text-gray-600 text-sm font-switzer">Opening account...</p>
+        </div>
+      </main>
+    );
+  }
+
+  // Show "Check Your Inbox" Screen when verification email is dispatched
+  if (emailSent) {
+    return (
+      <main className="min-h-screen bg-gradient-to-b from-[#FDFBF7] via-amber-50/20 to-sky-50/30 font-switzer flex items-center justify-center p-6 py-12">
+        <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-gray-200 shadow-sm text-center font-switzer">
+          <div className="text-5xl mb-3 animate-bounce">📧</div>
+          <span className="font-logo text-3xl text-amber-900 block mb-2">Onesimos</span>
+          <h1 className="font-achiko text-2xl text-amber-950 mb-2">Check Your Inbox!</h1>
+          <p className="text-xs text-gray-600 mb-6 leading-relaxed font-switzer">
+            We sent a verification link to <strong className="text-gray-900">{email}</strong>. Click the link in your email to confirm your account and start reading!
+          </p>
+          <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 mb-6 font-switzer">
+            💡 <strong>Tip:</strong> If you don&apos;t see it in a minute, check your spam or junk folder.
+          </div>
+          <Link
+            href="/login"
+            className="inline-block w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-xs transition-all font-switzer"
+          >
+            Go to Login Page →
+          </Link>
         </div>
       </main>
     );

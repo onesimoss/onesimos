@@ -168,6 +168,14 @@ export default function LoginPage(): JSX.Element {
 
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-1 font-switzer">
+              <div className="flex items-center justify-between mb-1">
+  <label className="block text-xs font-bold text-gray-700 font-switzer">
+    Password
+  </label>
+  <Link href="/forgot-password" className="text-[10px] font-bold text-amber-800 hover:underline font-switzer">
+    Forgot Password?
+  </Link>
+</div>
               Password
             </label>
             <input
