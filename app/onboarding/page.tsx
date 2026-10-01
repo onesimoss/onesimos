@@ -1,8 +1,8 @@
 /**
  * @file app/onboarding/page.tsx
  * @description Parent onboarding wizard — 6-step child profile creation.
- *              Step K.1: Age-band indicator shown live during age selection
- *              and reading level confirmation.
+ *              Enforces subscription plan child profile limits (1 for Single, 4 for Family, 
+ *              10 for Daycare, 30 for Classroom, Unlimited for Admin).
  *
  * @steps
  *  0 — Welcome
@@ -12,10 +12,8 @@
  *  4 — Interests
  *  5 — Reading level + session time (with age-band context)
  *
- * @dependencies
- * - @/context/AuthContext
- * - @/components/AvatarPicker
- * - @/lib/children
+ * @module app/onboarding/page
+ * @fonts Logo (wordmark) + Achiko (headings) + Switzer (body/UI)
  */
 
 "use client";
@@ -27,21 +25,40 @@ import { useAuth } from "@/context/AuthContext";
 import AvatarPicker from "@/components/AvatarPicker";
 import {
   createChild,
+  getChildrenForParent,
   defaultReadingLevelFromAge,
   getAgeBandConfig,
   type Curriculum,
   type AgeBand,
 } from "@/lib/children";
+import { getParentSubscription } from "@/lib/payments";
 
-// ─── Section 1: Constants ───
+// ─── Section 1: Constants & Limit Rules ───
+
+const ADMIN_EMAILS = new Set([
+  "crux@onesimos.app",
+  "examplemirrorltd@gmail.com",
+  "baiceconsulting@gmail.com",
+]);
+
+function getMaxChildrenAllowed(plan?: string | null, email?: string | null): number {
+  if (email && ADMIN_EMAILS.has(email.toLowerCase())) {
+    return 999;
+  }
+  if (!plan) return 1;
+  if (plan.includes("family")) return 4;
+  if (plan.includes("daycare")) return 10;
+  if (plan.includes("classroom")) return 30;
+  return 1;
+}
 
 const INTERESTS = [
-  { id: "dinosaurs", label: "Dinosaurs", emoji: "\u{1F995}" },
-  { id: "space", label: "Space", emoji: "\u{1F680}" },
-  { id: "football", label: "Football", emoji: "\u{26BD}" },
-  { id: "fantasy", label: "Fantasy", emoji: "\u{1F9D9}" },
-  { id: "animals", label: "Animals", emoji: "\u{1F981}" },
-  { id: "adventure", label: "Adventure", emoji: "\u{1F5FA}\u{FE0F}" },
+  { id: "dinosaurs", label: "Dinosaurs", emoji: "🦕" },
+  { id: "space", label: "Space", emoji: "🚀" },
+  { id: "football", label: "Football", emoji: "⚽" },
+  { id: "fantasy", label: "Fantasy", emoji: "🧙" },
+  { id: "animals", label: "Animals", emoji: "🦁" },
+  { id: "adventure", label: "Adventure", emoji: "🗺️" },
 ];
 
 const CURRICULUMS: { id: Curriculum; label: string; hint: string }[] = [
@@ -75,9 +92,6 @@ const LEVEL_HINTS = [
   { level: 9, label: "Advanced", desc: "Chapter-style text" },
 ];
 
-/**
- * Visual config for each age band badge in the onboarding UI.
- */
 const AGE_BAND_STYLES: Record<
   AgeBand,
   { bg: string; border: string; text: string; icon: string }
@@ -86,25 +100,25 @@ const AGE_BAND_STYLES: Record<
     bg: "bg-emerald-50",
     border: "border-emerald-300",
     text: "text-emerald-800",
-    icon: "\u{1F331}",
+    icon: "🌱",
   },
   emerging: {
     bg: "bg-sky-50",
     border: "border-sky-300",
     text: "text-sky-800",
-    icon: "\u{1F4D6}",
+    icon: "📖",
   },
   confident: {
     bg: "bg-violet-50",
     border: "border-violet-300",
     text: "text-violet-800",
-    icon: "\u{1F680}",
+    icon: "🚀",
   },
 };
 
-// ─── Section 2: Component ───
+// ─── Section 2: Main Component ───
 
-export default function OnboardingPage() {
+export default function OnboardingPage(): JSX.Element {
   const { user, loading } = useAuth();
   const router = useRouter();
 
@@ -112,6 +126,7 @@ export default function OnboardingPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  // Child Profile Form State
   const [name, setName] = useState("");
   const [age, setAge] = useState(6);
   const [avatarId, setAvatarId] = useState("avatar-1");
@@ -120,26 +135,48 @@ export default function OnboardingPage() {
   const [readingLevel, setReadingLevel] = useState(3);
   const [sessionMinutes, setSessionMinutes] = useState<20 | 30 | 45>(20);
 
+  // Plan Limit Check States
+  const [existingCount, setExistingCount] = useState<number>(0);
+  const [maxAllowed, setMaxAllowed] = useState<number>(1);
+  const [limitReached, setLimitReached] = useState<boolean>(false);
+
   const totalSteps = 6;
   const progress = ((step + 1) / totalSteps) * 100;
 
-  // Derive age band reactively from age
   const ageBandConfig = useMemo(() => getAgeBandConfig(age), [age]);
   const bandStyle = AGE_BAND_STYLES[ageBandConfig.band];
 
-  // ─── Effects ───
-
+  // Auth Guard & Limit Fetching
   useEffect(() => {
     if (!loading && !user) {
       router.replace("/login");
+      return;
     }
+
+    async function checkLimits(): Promise<void> {
+      if (!user) return;
+      const [sub, childrenRes] = await Promise.all([
+        getParentSubscription(user.id),
+        getChildrenForParent(user.id),
+      ]);
+
+      const count = childrenRes.data.length;
+      const allowed = getMaxChildrenAllowed(sub?.plan, user.email);
+
+      setExistingCount(count);
+      setMaxAllowed(allowed);
+
+      if (count >= allowed) {
+        setLimitReached(true);
+      }
+    }
+
+    void checkLimits();
   }, [user, loading, router]);
 
   useEffect(() => {
     setReadingLevel(defaultReadingLevelFromAge(age));
   }, [age]);
-
-  // ─── Helpers ───
 
   const canContinue = useMemo(() => {
     if (step === 1) return name.trim().length >= 2;
@@ -150,7 +187,7 @@ export default function OnboardingPage() {
     return true;
   }, [step, name, avatarId, curriculum, interests, readingLevel]);
 
-  const toggleInterest = (id: string) => {
+  const toggleInterest = (id: string): void => {
     setInterests((prev) => {
       if (prev.includes(id)) {
         if (prev.length === 1) return prev;
@@ -161,8 +198,14 @@ export default function OnboardingPage() {
     });
   };
 
-  const handleFinish = async () => {
+  const handleFinish = async (): Promise<void> => {
     if (!user) return;
+
+    if (existingCount >= maxAllowed) {
+      setLimitReached(true);
+      return;
+    }
+
     setSaving(true);
     setError("");
 
@@ -184,99 +227,102 @@ export default function OnboardingPage() {
       return;
     }
 
-    router.push("/dashboard");
+    router.push("/parent");
   };
-
-  // ─── Loading State ───
 
   if (loading || !user) {
     return (
-      <main className="min-h-screen bg-cream flex items-center justify-center">
-        <p className="text-bark-muted font-heading">Loading...</p>
+      <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center font-switzer">
+        <p className="text-gray-500 font-bold animate-pulse font-switzer">Loading...</p>
       </main>
     );
   }
 
-  // ─── Render ───
-
   return (
-    <main className="min-h-screen bg-cream flex flex-col">
-      {/* Progress Bar */}
-      <div className="w-full max-w-2xl mx-auto px-6 pt-6">
+    <main className="min-h-screen bg-[#FDFBF7] flex flex-col font-switzer">
+      
+      {/* Progress Bar Header */}
+      <div className="w-full max-w-2xl mx-auto px-6 pt-6 font-switzer">
         <div className="flex items-center justify-between mb-4">
-          <Link href="/" className="font-logo text-2xl text-bark">
+          <Link href="/parent" className="font-logo text-2xl text-amber-900">
             Onesimos
           </Link>
-          <span className="text-sm font-bold text-bark-muted">
+          <span className="text-xs font-bold text-gray-500 font-switzer">
             Step {step + 1} of {totalSteps}
           </span>
         </div>
-        <div className="h-2 w-full bg-border rounded-full overflow-hidden">
+        <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
           <div
-            className="h-full bg-coral rounded-full transition-all duration-300"
+            className="h-full bg-amber-500 rounded-full transition-all duration-300"
             style={{ width: `${progress}%` }}
           />
         </div>
       </div>
 
-      {/* Step Content */}
-      <div className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-2xl card !p-8">
+      {/* Step Content Card */}
+      <div className="flex-1 flex items-center justify-center p-6 font-switzer">
+        <div className="w-full max-w-2xl bg-white rounded-3xl border border-gray-200 p-8 shadow-sm font-switzer">
+          
           {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 text-red-600 p-3 rounded-2xl text-sm font-medium">
+            <div className="mb-6 bg-rose-50 border border-rose-200 text-rose-800 p-3 rounded-2xl text-xs font-bold text-center font-switzer">
               {error}
             </div>
           )}
 
-          {/* ── Step 0: Welcome ── */}
+          {/* Step 0: Welcome */}
           {step === 0 && (
-            <div className="text-center">
-              <div className="text-5xl mb-4">{"\u2728"}</div>
-              <h1 className="font-heading text-3xl md:text-4xl font-extrabold text-bark mb-3">
+            <div className="text-center font-switzer">
+              <div className="text-5xl mb-4">✨</div>
+              <h1 className="font-achiko text-3xl md:text-4xl text-amber-950 mb-3">
                 Let&apos;s meet your reader
               </h1>
-              <p className="text-bark-muted text-lg mb-8 max-w-md mx-auto">
+              <p className="text-gray-600 text-sm mb-8 max-w-md mx-auto leading-relaxed font-switzer">
                 We&apos;ll set up a personal profile so every story matches their
-                level, interests, and pace. Takes about 2 minutes.
+                level, interests, and pace. Takes under 2 minutes.
               </p>
               <button
                 type="button"
-                onClick={() => setStep(1)}
-                className="btn-primary !px-10 !py-3.5"
+                onClick={() => {
+                  if (limitReached) {
+                    return;
+                  }
+                  setStep(1);
+                }}
+                className="px-8 py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm shadow-xs active:scale-95 transition-all font-switzer"
               >
-                Start setup
+                Start Setup →
               </button>
             </div>
           )}
 
-          {/* ── Step 1: Name + Age (with Age Band Badge) ── */}
+          {/* Step 1: Name + Age */}
           {step === 1 && (
-            <div>
-              <h1 className="font-heading text-3xl font-extrabold text-bark mb-2">
+            <div className="font-switzer">
+              <h1 className="font-achiko text-3xl text-amber-950 mb-2">
                 Child&apos;s details
               </h1>
-              <p className="text-bark-muted mb-8">
+              <p className="text-xs text-gray-500 mb-8 font-switzer">
                 Use the name they like to be called while reading.
               </p>
 
-              <div className="space-y-6">
+              <div className="space-y-6 font-switzer">
                 <div>
-                  <label className="block text-sm font-bold text-bark-light mb-1.5">
-                    First name
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5 font-switzer">
+                    First name or nickname
                   </label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Ada"
-                    className="w-full px-4 py-3 bg-cream border border-border rounded-2xl focus:ring-2 focus:ring-coral/40 focus:border-coral focus:outline-none text-bark placeholder:text-bark-muted/50"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:border-amber-400 focus:outline-none text-xs font-switzer"
                     maxLength={40}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-bark-light mb-3">
-                    Age: <span className="text-coral">{age}</span>
+                  <label className="block text-xs font-bold text-gray-700 mb-3 font-switzer">
+                    Age: <span className="text-amber-800 font-extrabold">{age}</span>
                   </label>
                   <input
                     type="range"
@@ -284,26 +330,21 @@ export default function OnboardingPage() {
                     max={9}
                     value={age}
                     onChange={(e) => setAge(Number(e.target.value))}
-                    className="w-full accent-coral"
+                    className="w-full accent-amber-500"
                   />
-                  <div className="flex justify-between text-xs text-bark-muted mt-1">
-                    <span>3</span>
-                    <span>9</span>
+                  <div className="flex justify-between text-[11px] font-bold text-gray-400 mt-1 font-switzer">
+                    <span>3 yrs</span>
+                    <span>9 yrs</span>
                   </div>
 
-                  {/* Age Band Badge — live preview */}
-                  <div
-                    className={`mt-4 p-4 rounded-2xl border-2 ${bandStyle.bg} ${bandStyle.border} transition-all duration-300`}
-                  >
+                  <div className={`mt-4 p-4 rounded-2xl border-2 ${bandStyle.bg} ${bandStyle.border} transition-all duration-300 font-switzer`}>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xl">{bandStyle.icon}</span>
-                      <span
-                        className={`font-heading font-extrabold text-sm ${bandStyle.text}`}
-                      >
+                      <span className={`font-achiko font-bold text-sm ${bandStyle.text}`}>
                         {ageBandConfig.kidLabel}
                       </span>
                     </div>
-                    <p className={`text-xs leading-relaxed ${bandStyle.text} opacity-80`}>
+                    <p className={`text-xs leading-relaxed ${bandStyle.text} opacity-90 font-switzer`}>
                       {ageBandConfig.description}
                     </p>
                   </div>
@@ -312,42 +353,42 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* ── Step 2: Avatar ── */}
+          {/* Step 2: Avatar */}
           {step === 2 && (
-            <div>
-              <h1 className="font-heading text-3xl font-extrabold text-bark mb-2">
+            <div className="font-switzer">
+              <h1 className="font-achiko text-3xl text-amber-950 mb-2">
                 Pick an avatar
               </h1>
-              <p className="text-bark-muted mb-8">
-                No labels — just a look they like. They can change it later.
+              <p className="text-xs text-gray-500 mb-8 font-switzer">
+                Choose a fun avatar for their dashboard.
               </p>
               <AvatarPicker value={avatarId} onChange={setAvatarId} />
             </div>
           )}
 
-          {/* ── Step 3: Curriculum ── */}
+          {/* Step 3: Curriculum */}
           {step === 3 && (
-            <div>
-              <h1 className="font-heading text-3xl font-extrabold text-bark mb-2">
-                School curriculum / style
+            <div className="font-switzer">
+              <h1 className="font-achiko text-3xl text-amber-950 mb-2">
+                School curriculum style
               </h1>
-              <p className="text-bark-muted mb-8">
-                Helps spelling and story vocabulary match what they learn in school.
+              <p className="text-xs text-gray-500 mb-8 font-switzer">
+                Helps spelling and vocabulary match what they learn in school.
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 font-switzer">
                 {CURRICULUMS.map((c) => (
                   <button
                     key={c.id}
                     type="button"
                     onClick={() => setCurriculum(c.id)}
-                    className={`text-left p-4 rounded-2xl border-2 transition-all ${
+                    className={`text-left p-4 rounded-2xl border-2 transition-all font-switzer ${
                       curriculum === c.id
-                        ? "border-coral bg-white shadow-soft"
-                        : "border-border bg-cream hover:border-coral/40"
+                        ? "border-amber-400 bg-amber-50/50 shadow-xs"
+                        : "border-gray-200 bg-white hover:border-amber-200"
                     }`}
                   >
-                    <div className="font-heading font-bold text-bark">{c.label}</div>
-                    <div className="text-xs text-bark-muted mt-1 leading-relaxed">
+                    <div className="font-bold text-xs text-gray-900 font-switzer">{c.label}</div>
+                    <div className="text-[11px] text-gray-500 mt-1 leading-relaxed font-switzer">
                       {c.hint}
                     </div>
                   </button>
@@ -356,16 +397,16 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* ── Step 4: Interests ── */}
+          {/* Step 4: Interests */}
           {step === 4 && (
-            <div>
-              <h1 className="font-heading text-3xl font-extrabold text-bark mb-2">
+            <div className="font-switzer">
+              <h1 className="font-achiko text-3xl text-amber-950 mb-2">
                 What do they love?
               </h1>
-              <p className="text-bark-muted mb-8">
-                Pick up to 3. Stories will lean into these themes.
+              <p className="text-xs text-gray-500 mb-8 font-switzer">
+                Pick up to 3. Personal stories will lean into these themes.
               </p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 font-switzer">
                 {INTERESTS.map((item) => {
                   const selected = interests.includes(item.id);
                   return (
@@ -373,14 +414,14 @@ export default function OnboardingPage() {
                       key={item.id}
                       type="button"
                       onClick={() => toggleInterest(item.id)}
-                      className={`p-4 rounded-2xl border-2 text-center transition-all ${
+                      className={`p-4 rounded-2xl border-2 text-center transition-all font-switzer ${
                         selected
-                          ? "border-coral bg-white shadow-soft"
-                          : "border-border bg-cream hover:border-coral/40"
+                          ? "border-amber-400 bg-amber-50/50 shadow-xs"
+                          : "border-gray-200 bg-white hover:border-amber-200"
                       }`}
                     >
                       <div className="text-3xl mb-2">{item.emoji}</div>
-                      <div className="font-heading font-bold text-bark text-sm">
+                      <div className="font-bold text-xs text-gray-900 font-switzer">
                         {item.label}
                       </div>
                     </button>
@@ -390,34 +431,29 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* ── Step 5: Reading Level + Session Time (with Age Band Context) ── */}
+          {/* Step 5: Reading Level + Time */}
           {step === 5 && (
-            <div>
-              <h1 className="font-heading text-3xl font-extrabold text-bark mb-2">
+            <div className="font-switzer">
+              <h1 className="font-achiko text-3xl text-amber-950 mb-2">
                 Reading level & time
               </h1>
-              <p className="text-bark-muted mb-6">
-                Start honest — Onesimos will adjust automatically as they read.
+              <p className="text-xs text-gray-500 mb-6 font-switzer">
+                Onesimos adjusts automatically as they read out loud.
               </p>
 
-              {/* Age Band Context Banner */}
-              <div
-                className={`mb-6 p-3 rounded-xl border ${bandStyle.bg} ${bandStyle.border} flex items-center gap-2`}
-              >
+              <div className={`mb-6 p-3 rounded-xl border ${bandStyle.bg} ${bandStyle.border} flex items-center gap-2 font-switzer`}>
                 <span className="text-lg">{bandStyle.icon}</span>
-                <span className={`text-sm font-bold ${bandStyle.text}`}>
+                <span className={`text-xs font-bold ${bandStyle.text}`}>
                   {ageBandConfig.label} mode
                 </span>
-                <span className={`text-xs ${bandStyle.text} opacity-70`}>
-                  — {ageBandConfig.trackWpm
-                    ? "Reading speed will be tracked"
-                    : "No speed pressure, just fun"}
+                <span className={`text-[11px] ${bandStyle.text} opacity-80 font-switzer`}>
+                  : {ageBandConfig.trackWpm ? "Reading speed will be calculated" : "Focus on fun & sounds"}
                 </span>
               </div>
 
-              <div className="mb-8">
-                <label className="block text-sm font-bold text-bark-light mb-3">
-                  Starting level: <span className="text-coral">{readingLevel}</span>
+              <div className="mb-8 font-switzer">
+                <label className="block text-xs font-bold text-gray-700 mb-3 font-switzer">
+                  Starting level: <span className="text-amber-800 font-black">{readingLevel}</span>
                 </label>
                 <input
                   type="range"
@@ -425,61 +461,58 @@ export default function OnboardingPage() {
                   max={10}
                   value={readingLevel}
                   onChange={(e) => setReadingLevel(Number(e.target.value))}
-                  className="w-full accent-coral"
+                  className="w-full accent-amber-500"
                 />
-                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 font-switzer">
                   {LEVEL_HINTS.map((h) => (
                     <button
                       key={h.level}
                       type="button"
                       onClick={() => setReadingLevel(h.level)}
-                      className={`text-left p-3 rounded-xl border ${
+                      className={`text-left p-3 rounded-xl border text-xs font-switzer ${
                         readingLevel === h.level
-                          ? "border-coral bg-white"
-                          : "border-border bg-cream"
+                          ? "border-amber-400 bg-amber-50/60 font-bold"
+                          : "border-gray-200 bg-white text-gray-600"
                       }`}
                     >
-                      <div className="text-sm font-bold text-bark">{h.label}</div>
-                      <div className="text-xs text-bark-muted">{h.desc}</div>
+                      <div className="font-bold text-gray-900 font-switzer">{h.label}</div>
+                      <div className="text-[10px] text-gray-500 font-switzer">{h.desc}</div>
                     </button>
                   ))}
                 </div>
               </div>
 
-              <div>
-                <p className="text-sm font-bold text-bark-light mb-3">
-                  Daily reading time
+              <div className="font-switzer">
+                <p className="text-xs font-bold text-gray-700 mb-3 font-switzer">
+                  Daily target reading time
                 </p>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-3 gap-3 font-switzer">
                   {([20, 30, 45] as const).map((m) => (
                     <button
                       key={m}
                       type="button"
                       onClick={() => setSessionMinutes(m)}
-                      className={`py-3 rounded-2xl border-2 font-heading font-bold ${
+                      className={`py-3 rounded-2xl border-2 font-bold text-xs font-switzer ${
                         sessionMinutes === m
-                          ? "border-coral bg-white text-bark shadow-soft"
-                          : "border-border bg-cream text-bark-muted"
+                          ? "border-amber-400 bg-amber-50/60 text-amber-950 shadow-2xs"
+                          : "border-gray-200 bg-white text-gray-600"
                       }`}
                     >
                       {m} min
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-bark-muted mt-3">
-                  Healthy default is 20 minutes. You can change this later.
-                </p>
               </div>
             </div>
           )}
 
-          {/* ── Navigation ── */}
+          {/* Navigation Bar */}
           {step > 0 && (
-            <div className="mt-10 flex items-center justify-between gap-3">
+            <div className="mt-10 flex items-center justify-between gap-3 font-switzer">
               <button
                 type="button"
                 onClick={() => setStep((s) => Math.max(0, s - 1))}
-                className="btn-secondary !px-6 !py-2.5 !text-sm"
+                className="px-6 py-2.5 rounded-2xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50 font-switzer"
                 disabled={saving}
               >
                 Back
@@ -490,24 +523,55 @@ export default function OnboardingPage() {
                   type="button"
                   onClick={() => setStep((s) => s + 1)}
                   disabled={!canContinue}
-                  className="btn-primary !px-8 !py-2.5 !text-sm disabled:opacity-50"
+                  className="px-8 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-2xs disabled:opacity-50 font-switzer"
                 >
-                  Continue
+                  Continue →
                 </button>
               ) : (
                 <button
                   type="button"
-                  onClick={handleFinish}
+                  onClick={() => void handleFinish()}
                   disabled={!canContinue || saving}
-                  className="btn-primary !px-8 !py-2.5 !text-sm disabled:opacity-50"
+                  className="px-8 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-2xs disabled:opacity-50 font-switzer"
                 >
-                  {saving ? "Saving..." : "Finish setup"}
+                  {saving ? "Saving Profile..." : "Finish Setup 🎉"}
                 </button>
               )}
             </div>
           )}
+
         </div>
       </div>
+
+      {/* Plan Child Limit Exceeded Modal */}
+      {limitReached && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 font-switzer">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl border border-gray-100 font-switzer">
+            <div className="text-4xl mb-3">👨‍👩‍👧</div>
+            <h3 className="font-achiko text-xl text-amber-900 mb-2">
+              Reader Profile Limit Reached
+            </h3>
+            <p className="text-xs text-gray-600 mb-6 leading-relaxed font-switzer">
+              Your current plan allows <strong>{maxAllowed} child profile{maxAllowed > 1 ? "s" : ""}</strong> (you already have {existingCount}). Upgrade to the Family Plan to add up to 4 children!
+            </p>
+            <div className="flex flex-col gap-2 font-switzer">
+              <Link
+                href="/parent/pricing"
+                className="w-full py-3 rounded-2xl bg-amber-500 text-white font-bold text-xs shadow-sm hover:bg-amber-600 font-switzer active:scale-95 transition-all text-center"
+              >
+                Upgrade to Family Plan ✨
+              </Link>
+              <Link
+                href="/parent"
+                className="w-full py-2.5 rounded-2xl border border-gray-200 text-gray-600 font-bold text-xs hover:bg-gray-50 font-switzer text-center"
+              >
+                Back to Dashboard
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
     </main>
   );
 }
