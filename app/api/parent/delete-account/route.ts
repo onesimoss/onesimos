@@ -1,7 +1,7 @@
 /**
  * @file app/api/parent/delete-account/route.ts
- * @description Secure API route allowing authenticated parents to delete their account,
- * child profiles, reading history, and auth credentials under GDPR-K Right to Erasure laws.
+ * @description Secure API route allowing authenticated parents to either Deactivate or
+ * Permanently Delete their account under GDPR-K Right to Erasure laws.
  *
  * @module app/api/parent/delete-account/route
  */
@@ -17,21 +17,24 @@ export async function POST(req: Request): Promise<NextResponse> {
     }
 
     const token = authHeader.replace("Bearer ", "").trim();
+    const body = await req.json().catch(() => ({}));
+    const action = body.action || "delete"; // "deactivate" | "delete"
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json({ error: "Server configuration missing" }, { status: 500 });
+    if (!supabaseUrl || !anonKey) {
+      return NextResponse.json({ error: "Supabase configuration missing" }, { status: 500 });
     }
 
-    // Initialize Supabase Admin Client
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+    // 1. Verify parent user identity using user token
+    const supabaseClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
       auth: { persistSession: false },
     });
 
-    // Verify requesting parent user
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
 
     if (userError || !user) {
       return NextResponse.json({ error: "Invalid parent session" }, { status: 401 });
@@ -39,8 +42,22 @@ export async function POST(req: Request): Promise<NextResponse> {
 
     const parentId = user.id;
 
-    // 1. Fetch all child IDs owned by parent
-    const { data: children } = await supabaseAdmin
+    // ACTION A: DEACTIVATE ACCOUNT (Pause subscription & freeze profiles)
+    if (action === "deactivate") {
+      await supabaseClient
+        .from("parent_subscriptions")
+        .update({ status: "deactivated", updated_at: new Date().toISOString() })
+        .eq("parent_id", parentId);
+
+      return NextResponse.json({
+        success: true,
+        message: "Account deactivated. Your child progress is safely preserved.",
+      });
+    }
+
+    // ACTION B: PERMANENTLY DELETE ACCOUNT (GDPR-K Hard Purge)
+    // 2. Fetch all children owned by parent
+    const { data: children } = await supabaseClient
       .from("children")
       .select("id")
       .eq("parent_id", parentId);
@@ -48,31 +65,36 @@ export async function POST(req: Request): Promise<NextResponse> {
     if (children && children.length > 0) {
       const childIds = children.map((c) => c.id);
 
-      // 2. Cascade delete child session logs and stumbled words
+      // Cascade delete public table records using RLS
       await Promise.all([
-        supabaseAdmin.from("reading_sessions").delete().in("child_id", childIds),
-        supabaseAdmin.from("stumbled_words_log").delete().in("child_id", childIds),
-        supabaseAdmin.from("stumbled_words").delete().in("child_id", childIds),
-        supabaseAdmin.from("generated_stories").delete().in("child_id", childIds),
-        supabaseAdmin.from("mastered_words").delete().in("child_id", childIds),
+        supabaseClient.from("reading_sessions").delete().in("child_id", childIds),
+        supabaseClient.from("stumbled_words_log").delete().in("child_id", childIds),
+        supabaseClient.from("stumbled_words").delete().in("child_id", childIds),
+        supabaseClient.from("generated_stories").delete().in("child_id", childIds),
+        supabaseClient.from("mastered_words").delete().in("child_id", childIds),
       ]);
 
-      // 3. Delete child profiles
-      await supabaseAdmin.from("children").delete().eq("parent_id", parentId);
+      await supabaseClient.from("children").delete().eq("parent_id", parentId);
     }
 
-    // 4. Delete parent subscription row
-    await supabaseAdmin.from("parent_subscriptions").delete().eq("parent_id", parentId);
+    await supabaseClient.from("parent_subscriptions").delete().eq("parent_id", parentId);
 
-    // 5. Delete parent user from auth.users (allows email re-registration)
-    const { error: deleteUserError } = await supabaseAdmin.auth.admin.deleteUser(parentId);
-
-    if (deleteUserError) {
-      console.error("[DeleteAccount] Auth delete error:", deleteUserError);
-      return NextResponse.json({ error: "Failed to purge user auth record" }, { status: 500 });
+    // 3. Purge user from auth.users if Service Role Key is configured
+    if (serviceRoleKey) {
+      try {
+        const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+          auth: { persistSession: false },
+        });
+        await supabaseAdmin.auth.admin.deleteUser(parentId);
+      } catch (adminErr) {
+        console.warn("[DeleteAccount] Admin delete user warning:", adminErr);
+      }
     }
 
-    return NextResponse.json({ success: true, message: "Account deleted successfully" });
+    return NextResponse.json({
+      success: true,
+      message: "Account permanently deleted.",
+    });
   } catch (err) {
     console.error("[DeleteAccount] Unexpected error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

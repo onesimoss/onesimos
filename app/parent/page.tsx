@@ -2,7 +2,7 @@
  * @file app/parent/page.tsx
  * @description Parent Dashboard — multi-child summary cards, academic snapshots,
  *              stumbled vocabulary preview, Paystack subscription status, title-cased parent greeting,
- *              and GDPR-K compliant account deletion modal.
+ *              and Dual-Option Account Deactivation / Permanent Deletion modal.
  *
  * @fonts Achiko (headings) + Switzer (body/UI/stat numbers)
  * @module app/parent/page
@@ -133,11 +133,12 @@ function ParentDashboardContent() {
   const [parentPinSaving, setParentPinSaving] = useState(false);
   const [parentPinError, setParentPinError] = useState("");
 
-  // Account Deletion States
-  const [showAccountDeleteModal, setShowAccountDeleteModal] = useState(false);
+  // Dual-Option Account Modal States (Deactivate vs Delete)
+  const [showAccountModal, setShowAccountModal] = useState(false);
+  const [accountAction, setAccountAction] = useState<"deactivate" | "delete">("deactivate");
   const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
-  const [deletingAccount, setDeletingAccount] = useState(false);
-  const [accountDeleteError, setAccountDeleteError] = useState("");
+  const [actionSubmitting, setActionSubmitting] = useState(false);
+  const [accountActionError, setAccountActionError] = useState("");
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -271,22 +272,22 @@ function ParentDashboardContent() {
     setMessage(`Test data reset for ${child.name}.`);
   };
 
-  const handleSelfDeleteAccount = async (e: React.FormEvent) => {
+  const handleAccountActionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setAccountDeleteError("");
+    setAccountActionError("");
 
-    if (deleteConfirmInput.trim().toUpperCase() !== "DELETE") {
-      setAccountDeleteError("Please type DELETE to confirm account removal.");
+    if (accountAction === "delete" && deleteConfirmInput.trim().toUpperCase() !== "DELETE") {
+      setAccountActionError("Please type DELETE to confirm permanent removal.");
       return;
     }
 
-    setDeletingAccount(true);
+    setActionSubmitting(true);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        setAccountDeleteError("Session expired. Please log in again.");
-        setDeletingAccount(false);
+        setAccountActionError("Session expired. Please log in again.");
+        setActionSubmitting(false);
         return;
       }
 
@@ -296,20 +297,30 @@ function ParentDashboardContent() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
+        body: JSON.stringify({ action: accountAction }),
       });
 
+      const body = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        const body = await res.json();
-        setAccountDeleteError(body.error || "Failed to delete account.");
-        setDeletingAccount(false);
+        setAccountActionError(body.error || "Action failed. Please try again.");
+        setActionSubmitting(false);
         return;
       }
 
+      if (accountAction === "deactivate") {
+        setShowAccountModal(false);
+        setActionSubmitting(false);
+        setMessage("Your account has been deactivated. You can log in anytime to reactivate.");
+        return;
+      }
+
+      // Permanent Delete: Sign out and take to login
       await supabase.auth.signOut();
       router.replace("/login");
     } catch {
-      setAccountDeleteError("Network error. Could not delete account.");
-      setDeletingAccount(false);
+      setAccountActionError("Network error. Please try again.");
+      setActionSubmitting(false);
     }
   };
 
@@ -629,12 +640,12 @@ function ParentDashboardContent() {
           })}
         </div>
 
-        {/* Family Settings & GDPR-K Account Erasure */}
+        {/* Family Settings & Account Management */}
         <div className="mt-8 bg-white rounded-3xl p-6 border border-gray-200 shadow-sm font-switzer flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
             <h3 className="font-achiko text-lg text-gray-900 mb-1">Family Settings</h3>
             <p className="text-xs text-gray-500 font-switzer">
-              Manage your subscription or request account data removal.
+              Manage your subscription or adjust account status.
             </p>
           </div>
           <div className="flex items-center gap-2 font-switzer">
@@ -646,10 +657,10 @@ function ParentDashboardContent() {
             </Link>
             <button
               type="button"
-              onClick={() => setShowAccountDeleteModal(true)}
-              className="px-4 py-2 rounded-2xl border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-bold transition-all font-switzer whitespace-nowrap"
+              onClick={() => setShowAccountModal(true)}
+              className="px-4 py-2 rounded-2xl border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs font-bold transition-all font-switzer whitespace-nowrap"
             >
-              Delete Account
+              Manage Account ⚙️
             </button>
           </div>
         </div>
@@ -736,45 +747,96 @@ function ParentDashboardContent() {
         </div>
       )}
 
-      {/* GDPR-K Account Self-Deletion Modal */}
-      {showAccountDeleteModal && (
+      {/* Dual-Option Account Modal (Pause vs Permanent Delete) */}
+      {showAccountModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-6 font-switzer">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl border border-rose-100 font-switzer">
-            <div className="text-4xl mb-2">🗑️</div>
-            <h3 className="font-achiko text-xl text-rose-950 mb-1">
-              Delete Account Permanently?
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl border border-gray-100 font-switzer">
+            
+            <div className="text-4xl mb-2">⚙️</div>
+            <h3 className="font-achiko text-xl text-gray-900 mb-2">
+              Manage Account Status
             </h3>
-            <p className="text-gray-600 text-xs mb-4 font-switzer leading-relaxed">
-              This will erase your parent profile, all child readers, stumbled word logs, and learning reports. You can sign up again anytime with this email.
-            </p>
-            <form onSubmit={(e) => void handleSelfDeleteAccount(e)} className="space-y-4 font-switzer">
-              <div>
-                <label className="block text-[11px] font-bold text-gray-700 text-left mb-1 font-switzer">
-                  Type <strong>DELETE</strong> to confirm:
-                </label>
-                <input
-                  type="text"
-                  value={deleteConfirmInput}
-                  onChange={(e) => setDeleteConfirmInput(e.target.value)}
-                  placeholder="DELETE"
-                  className="w-full px-4 py-2.5 rounded-2xl border border-rose-200 bg-rose-50/50 text-center text-xs font-black focus:outline-none focus:ring-2 focus:ring-rose-400 font-switzer"
-                  autoFocus
-                />
-              </div>
 
-              {accountDeleteError && (
+            {/* Selector Tabs: Deactivate vs Delete */}
+            <div className="grid grid-cols-2 gap-1 p-1 bg-gray-100 rounded-2xl mb-4 font-switzer">
+              <button
+                type="button"
+                onClick={() => {
+                  setAccountAction("deactivate");
+                  setAccountActionError("");
+                }}
+                className={`py-2 text-xs font-bold rounded-xl transition-all font-switzer ${
+                  accountAction === "deactivate"
+                    ? "bg-white text-gray-900 shadow-2xs"
+                    : "text-gray-500 hover:text-gray-800"
+                }`}
+              >
+                ⏸ Pause / Deactivate
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAccountAction("delete");
+                  setAccountActionError("");
+                }}
+                className={`py-2 text-xs font-bold rounded-xl transition-all font-switzer ${
+                  accountAction === "delete"
+                    ? "bg-rose-500 text-white shadow-2xs"
+                    : "text-gray-500 hover:text-gray-800"
+                }`}
+              >
+                🗑️ Delete Permanently
+              </button>
+            </div>
+
+            <form onSubmit={(e) => void handleAccountActionSubmit(e)} className="space-y-4 font-switzer">
+              
+              {accountAction === "deactivate" ? (
+                <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 text-left font-switzer">
+                  <p className="text-xs font-bold text-amber-950 mb-1 font-switzer">
+                    Pause Account (Recommended)
+                  </p>
+                  <p className="text-[11px] text-amber-900 font-switzer leading-relaxed">
+                    Stops recurring billing and hides profiles. Your child&apos;s hard-earned reading history and Word Pocket are <strong>safely preserved</strong> for when you return!
+                  </p>
+                </div>
+              ) : (
+                <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-left font-switzer">
+                  <p className="text-xs font-bold text-rose-950 mb-1 font-switzer">
+                    Permanent Erasure (GDPR-K)
+                  </p>
+                  <p className="text-[11px] text-rose-900 font-switzer leading-relaxed">
+                    Completely purges parent profile, child readers, stumbled word logs, and reports. <strong>This cannot be undone.</strong>
+                  </p>
+                  <div className="mt-3">
+                    <label className="block text-[10px] uppercase font-bold text-rose-800 mb-1 font-switzer">
+                      Type <strong>DELETE</strong> to confirm:
+                    </label>
+                    <input
+                      type="text"
+                      value={deleteConfirmInput}
+                      onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                      placeholder="DELETE"
+                      className="w-full px-4 py-2 rounded-xl border border-rose-200 bg-white text-center text-xs font-black focus:outline-none focus:ring-2 focus:ring-rose-400 font-switzer"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+              )}
+
+              {accountActionError && (
                 <p className="text-xs font-bold text-rose-700 bg-rose-50 py-2 px-3 rounded-xl font-switzer">
-                  {accountDeleteError}
+                  {accountActionError}
                 </p>
               )}
 
-              <div className="flex gap-2 pt-2 font-switzer">
+              <div className="flex gap-2 pt-1 font-switzer">
                 <button
                   type="button"
                   onClick={() => {
-                    setShowAccountDeleteModal(false);
+                    setShowAccountModal(false);
                     setDeleteConfirmInput("");
-                    setAccountDeleteError("");
+                    setAccountActionError("");
                   }}
                   className="flex-1 py-2.5 rounded-2xl border border-gray-200 text-xs font-bold text-gray-600 font-switzer"
                 >
@@ -782,13 +844,25 @@ function ParentDashboardContent() {
                 </button>
                 <button
                   type="submit"
-                  disabled={deletingAccount || deleteConfirmInput.trim().toUpperCase() !== "DELETE"}
-                  className="flex-1 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold disabled:opacity-40 font-switzer"
+                  disabled={
+                    actionSubmitting ||
+                    (accountAction === "delete" && deleteConfirmInput.trim().toUpperCase() !== "DELETE")
+                  }
+                  className={`flex-1 py-2.5 rounded-2xl text-white text-xs font-bold disabled:opacity-40 font-switzer ${
+                    accountAction === "delete"
+                      ? "bg-rose-600 hover:bg-rose-700"
+                      : "bg-amber-500 hover:bg-amber-600"
+                  }`}
                 >
-                  {deletingAccount ? "Deleting..." : "Permanently Delete"}
+                  {actionSubmitting
+                    ? "Processing..."
+                    : accountAction === "delete"
+                    ? "Permanently Delete"
+                    : "Pause Account ⏸"}
                 </button>
               </div>
             </form>
+
           </div>
         </div>
       )}
