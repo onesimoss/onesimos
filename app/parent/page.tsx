@@ -1,8 +1,8 @@
 /**
  * @file app/parent/page.tsx
- * @description Parent Dashboard — multi-child summary cards with academic snapshots,
- *              live stumbled vocabulary preview, Paystack subscription status,
- *              clean metric displays, and title-cased parent name greeting.
+ * @description Parent Dashboard — multi-child summary cards, academic snapshots,
+ *              stumbled vocabulary preview, Paystack subscription status, title-cased parent greeting,
+ *              and GDPR-K compliant account deletion modal.
  *
  * @fonts Achiko (headings) + Switzer (body/UI/stat numbers)
  * @module app/parent/page
@@ -35,10 +35,8 @@ import {
   getParentSubscription,
   type ParentSubscriptionRow,
 } from "@/lib/payments";
+import { supabase } from "@/lib/supabaseClient";
 
-// ─── Section 1: Helpers & Badges ───
-
-/** Title-case a name: "onesimos" → "Onesimos", "mama david" → "Mama David" */
 function toTitleCase(str: string): string {
   if (!str) return "Parent";
   return str
@@ -109,8 +107,6 @@ function renderAgeBandBadge(age: number) {
   );
 }
 
-// ─── Section 2: Dashboard Content Component ───
-
 function ParentDashboardContent() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -136,6 +132,12 @@ function ParentDashboardContent() {
   const [confirmParentPin, setConfirmParentPin] = useState("");
   const [parentPinSaving, setParentPinSaving] = useState(false);
   const [parentPinError, setParentPinError] = useState("");
+
+  // Account Deletion States
+  const [showAccountDeleteModal, setShowAccountDeleteModal] = useState(false);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [accountDeleteError, setAccountDeleteError] = useState("");
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -269,6 +271,48 @@ function ParentDashboardContent() {
     setMessage(`Test data reset for ${child.name}.`);
   };
 
+  const handleSelfDeleteAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAccountDeleteError("");
+
+    if (deleteConfirmInput.trim().toUpperCase() !== "DELETE") {
+      setAccountDeleteError("Please type DELETE to confirm account removal.");
+      return;
+    }
+
+    setDeletingAccount(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setAccountDeleteError("Session expired. Please log in again.");
+        setDeletingAccount(false);
+        return;
+      }
+
+      const res = await fetch("/api/parent/delete-account", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const body = await res.json();
+        setAccountDeleteError(body.error || "Failed to delete account.");
+        setDeletingAccount(false);
+        return;
+      }
+
+      await supabase.auth.signOut();
+      router.replace("/login");
+    } catch {
+      setAccountDeleteError("Network error. Could not delete account.");
+      setDeletingAccount(false);
+    }
+  };
+
   if (loading || fetching || !user) {
     return (
       <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center font-switzer">
@@ -284,22 +328,18 @@ function ParentDashboardContent() {
       subscription.plan === "family_monthly" ||
       subscription.plan === "family_annual");
 
-  // Title-cased parent name (works for new signups, Google, and old email accounts)
-  const rawName =
-    user.user_metadata?.full_name ||
-    user.email?.split("@")[0] ||
-    "Parent";
+  const rawName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Parent";
   const parentName = toTitleCase(rawName);
 
   return (
     <main className="min-h-screen bg-[#FDFBF7] font-switzer pb-16">
       {/* Top Header */}
-      <header className="border-b border-gray-200 bg-white/80 backdrop-blur-md sticky top-0 z-20">
+      <header className="border-b border-gray-200 bg-white/80 backdrop-blur-md sticky top-0 z-20 font-switzer">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-3 font-switzer">
           <Link href="/parent" className="font-logo text-3xl text-amber-900 tracking-tight">
             Onesimos
           </Link>
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 font-switzer">
             <Link
               href="/parent/pricing"
               className={`text-xs font-bold px-3.5 py-1.5 rounded-full border transition-all font-switzer ${
@@ -322,8 +362,7 @@ function ParentDashboardContent() {
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        {/* Payment Celebration Banner */}
+      <div className="max-w-6xl mx-auto px-6 py-8 font-switzer">
         {paymentSuccess && (
           <div className="mb-6 p-4 rounded-3xl bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md flex items-center justify-between gap-4 font-switzer">
             <div className="flex items-center gap-3">
@@ -331,7 +370,7 @@ function ParentDashboardContent() {
               <div>
                 <p className="font-black text-sm">Welcome to Onesimos Premium!</p>
                 <p className="text-xs text-amber-100">
-                  Unlimited stories and Living Chapters are now unlocked for all your children.
+                  Unlimited stories and AI Living Chapters are now unlocked for all your children.
                 </p>
               </div>
             </div>
@@ -345,7 +384,6 @@ function ParentDashboardContent() {
           </div>
         )}
 
-        {/* Set Parent PIN Notice */}
         {hasParentPin === false && (
           <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-between flex-wrap gap-4 font-switzer">
             <div className="flex items-center gap-3">
@@ -367,7 +405,7 @@ function ParentDashboardContent() {
           </div>
         )}
 
-        {/* Action Header with Title-Cased Name */}
+        {/* Action Header */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8 font-switzer">
           <div>
             <h1 className="font-achiko text-3xl md:text-4xl text-gray-900">
@@ -377,7 +415,7 @@ function ParentDashboardContent() {
               Snapshot per child : open a full report for growth story, history, and settings.
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 font-switzer">
             <button
               type="button"
               onClick={() => setShowParentPinModal(true)}
@@ -405,8 +443,8 @@ function ParentDashboardContent() {
           </div>
         )}
 
-        {/* Children Grid — 100% preserved */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Children Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 font-switzer">
           {children.map((child) => {
             const avatar = getAvatarById(child.avatar_id);
             const isConfirming = confirmId === child.id;
@@ -461,7 +499,6 @@ function ParentDashboardContent() {
                   </div>
                 </div>
 
-                {/* Stat Box Cards */}
                 <div className="grid grid-cols-3 gap-2 mb-4 font-switzer">
                   <div
                     className={`rounded-2xl px-2 py-2 text-center ${
@@ -501,7 +538,6 @@ function ParentDashboardContent() {
                   </div>
                 </div>
 
-                {/* Stumbled Words Preview */}
                 <div className="mb-4 min-h-[3rem] font-switzer">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
                     Tricky Words Logged:
@@ -592,10 +628,37 @@ function ParentDashboardContent() {
             );
           })}
         </div>
+
+        {/* Family Settings & GDPR-K Account Erasure */}
+        <div className="mt-8 bg-white rounded-3xl p-6 border border-gray-200 shadow-sm font-switzer flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            <h3 className="font-achiko text-lg text-gray-900 mb-1">Family Settings</h3>
+            <p className="text-xs text-gray-500 font-switzer">
+              Manage your subscription or request account data removal.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 font-switzer">
+            <Link
+              href="/parent/pricing"
+              className="px-4 py-2 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold transition-all font-switzer whitespace-nowrap"
+            >
+              Subscription ⚙️
+            </Link>
+            <button
+              type="button"
+              onClick={() => setShowAccountDeleteModal(true)}
+              className="px-4 py-2 rounded-2xl border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-bold transition-all font-switzer whitespace-nowrap"
+            >
+              Delete Account
+            </button>
+          </div>
+        </div>
+
       </div>
 
+      {/* Parent PIN Modal */}
       {showParentPinModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 font-switzer">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-6 font-switzer">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl border border-gray-100 font-switzer">
             <div className="text-3xl mb-2">🔒</div>
             <h3 className="font-achiko text-xl text-gray-900 mb-1">
@@ -672,6 +735,64 @@ function ParentDashboardContent() {
           </div>
         </div>
       )}
+
+      {/* GDPR-K Account Self-Deletion Modal */}
+      {showAccountDeleteModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-6 font-switzer">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl border border-rose-100 font-switzer">
+            <div className="text-4xl mb-2">🗑️</div>
+            <h3 className="font-achiko text-xl text-rose-950 mb-1">
+              Delete Account Permanently?
+            </h3>
+            <p className="text-gray-600 text-xs mb-4 font-switzer leading-relaxed">
+              This will erase your parent profile, all child readers, stumbled word logs, and learning reports. You can sign up again anytime with this email.
+            </p>
+            <form onSubmit={(e) => void handleSelfDeleteAccount(e)} className="space-y-4 font-switzer">
+              <div>
+                <label className="block text-[11px] font-bold text-gray-700 text-left mb-1 font-switzer">
+                  Type <strong>DELETE</strong> to confirm:
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmInput}
+                  onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                  placeholder="DELETE"
+                  className="w-full px-4 py-2.5 rounded-2xl border border-rose-200 bg-rose-50/50 text-center text-xs font-black focus:outline-none focus:ring-2 focus:ring-rose-400 font-switzer"
+                  autoFocus
+                />
+              </div>
+
+              {accountDeleteError && (
+                <p className="text-xs font-bold text-rose-700 bg-rose-50 py-2 px-3 rounded-xl font-switzer">
+                  {accountDeleteError}
+                </p>
+              )}
+
+              <div className="flex gap-2 pt-2 font-switzer">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAccountDeleteModal(false);
+                    setDeleteConfirmInput("");
+                    setAccountDeleteError("");
+                  }}
+                  className="flex-1 py-2.5 rounded-2xl border border-gray-200 text-xs font-bold text-gray-600 font-switzer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={deletingAccount || deleteConfirmInput.trim().toUpperCase() !== "DELETE"}
+                  className="flex-1 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold disabled:opacity-40 font-switzer"
+                >
+                  {deletingAccount ? "Deleting..." : "Permanently Delete"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </main>
   );
 }
