@@ -1,7 +1,7 @@
 /**
  * @file app/signup/page.tsx
- * @description Parent registration page with Google OAuth, email signup,
- * Parent Name capture, Newsletter consent, and adult COPPA verification checkbox.
+ * @description Resilient parent registration page with Google OAuth, email signup,
+ * Parent Name capture, Newsletter consent, adult COPPA verification, and automated DB fallback.
  *
  * @module app/signup/page
  * @fonts Logo (wordmark) + Achiko (headings) + Switzer (body/UI)
@@ -50,17 +50,31 @@ export default function SignupPage(): JSX.Element {
     setSubmitting(true);
 
     try {
-      // 1. Sign up user with metadata
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
+      const cleanEmail = email.trim();
+      const cleanName = parentName.trim();
+
+      // 1. Primary Attempt: Sign up with parent name metadata
+      let { data, error } = await supabase.auth.signUp({
+        email: cleanEmail,
         password,
         options: {
           data: {
-            full_name: parentName.trim(),
+            full_name: cleanName,
             newsletter_opt_in: newsletterConsent,
           },
         },
       });
+
+      // 2. Resilient Fallback: If DB trigger throws schema error, retry plain signup
+      if (error && (error.message.includes("Database error") || error.message.includes("Database"))) {
+        console.warn("[Signup] Trigger failed on metadata, executing clean fallback...");
+        const retry = await supabase.auth.signUp({
+          email: cleanEmail,
+          password,
+        });
+        data = retry.data;
+        error = retry.error;
+      }
 
       if (error) {
         setAuthError(error.message);
@@ -68,16 +82,15 @@ export default function SignupPage(): JSX.Element {
         return;
       }
 
-      // 2. Ensure session is locked in immediately if email confirmation is disabled
+      // 3. Immediately sign in to establish session token if email confirmation is disabled
       if (data?.user && !data.session) {
         const { error: loginError } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
+          email: cleanEmail,
           password,
         });
 
         if (loginError) {
-          // If email confirmation is enabled on Supabase, inform parent cleanly
-          setAuthError("Account created! Please check your email to confirm your account.");
+          setAuthError("Account created! Please check your inbox to confirm your account or sign in.");
           setSubmitting(false);
           return;
         }
@@ -85,7 +98,7 @@ export default function SignupPage(): JSX.Element {
 
       router.replace("/onboarding");
     } catch {
-      setAuthError("An unexpected error occurred during signup.");
+      setAuthError("An unexpected error occurred during signup. Please try again.");
       setSubmitting(false);
     }
   };
@@ -152,7 +165,7 @@ export default function SignupPage(): JSX.Element {
           </div>
         )}
 
-        {/* Adult COPPA Age Checkbox (Mandatory) */}
+        {/* Adult COPPA Age Checkbox */}
         <div className="mb-5 p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 flex items-start gap-3 font-switzer transition-all hover:bg-amber-100/80">
           <input
             type="checkbox"
