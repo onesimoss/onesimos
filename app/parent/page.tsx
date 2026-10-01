@@ -1,9 +1,8 @@
 /**
  * @file app/parent/page.tsx
- * @description Parent Dashboard : multi-child summary cards with academic snapshots,
+ * @description Parent Dashboard — multi-child summary cards with academic snapshots,
  *              live stumbled vocabulary preview, Paystack subscription status,
- *              and clean metric displays without fake fallbacks or dashes.
- *              Greets parent by name or nickname.
+ *              clean metric displays, and title-cased parent name greeting.
  *
  * @fonts Achiko (headings) + Switzer (body/UI/stat numbers)
  * @module app/parent/page
@@ -38,6 +37,16 @@ import {
 } from "@/lib/payments";
 
 // ─── Section 1: Helpers & Badges ───
+
+/** Title-case a name: "onesimos" → "Onesimos", "mama david" → "Mama David" */
+function toTitleCase(str: string): string {
+  if (!str) return "Parent";
+  return str
+    .toLowerCase()
+    .split(/[\s._-]+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
 
 function renderStatusBadge(status: DetailedReportCardStats["progressStatus"]) {
   switch (status) {
@@ -270,13 +279,17 @@ function ParentDashboardContent() {
 
   const isPaidSubscriber =
     subscription?.status === "active" &&
-    (subscription.plan === "premium_monthly" || subscription.plan === "premium_annual");
+    (subscription.plan === "premium_monthly" ||
+      subscription.plan === "premium_annual" ||
+      subscription.plan === "family_monthly" ||
+      subscription.plan === "family_annual");
 
-  // Extract custom Parent Name, Google name, or email prefix
-  const parentName =
+  // Title-cased parent name (works for new signups, Google, and old email accounts)
+  const rawName =
     user.user_metadata?.full_name ||
     user.email?.split("@")[0] ||
     "Parent";
+  const parentName = toTitleCase(rawName);
 
   return (
     <main className="min-h-screen bg-[#FDFBF7] font-switzer pb-16">
@@ -318,7 +331,7 @@ function ParentDashboardContent() {
               <div>
                 <p className="font-black text-sm">Welcome to Onesimos Premium!</p>
                 <p className="text-xs text-amber-100">
-                  Unlimited stories and AI Living Chapters are now unlocked for all your children.
+                  Unlimited stories and Living Chapters are now unlocked for all your children.
                 </p>
               </div>
             </div>
@@ -354,7 +367,7 @@ function ParentDashboardContent() {
           </div>
         )}
 
-        {/* Action Header with Personalized Name Greeting */}
+        {/* Action Header with Title-Cased Name */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8 font-switzer">
           <div>
             <h1 className="font-achiko text-3xl md:text-4xl text-gray-900">
@@ -392,7 +405,7 @@ function ParentDashboardContent() {
           </div>
         )}
 
-        {/* Children Grid */}
+        {/* Children Grid — 100% preserved */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {children.map((child) => {
             const avatar = getAvatarById(child.avatar_id);
@@ -488,7 +501,7 @@ function ParentDashboardContent() {
                   </div>
                 </div>
 
-                {/* Stumbled Words Preview Box */}
+                {/* Stumbled Words Preview */}
                 <div className="mb-4 min-h-[3rem] font-switzer">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
                     Tricky Words Logged:
