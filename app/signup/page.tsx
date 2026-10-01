@@ -1,300 +1,274 @@
 /**
- * @file app/page.tsx
- * @description Landing Page for Onesimos.
- * Updated with Instagram social media link and SVG icon in the footer.
+ * @file app/signup/page.tsx
+ * @description Parent registration page with Google OAuth, email signup,
+ * Parent Name capture, Newsletter consent, and adult COPPA verification checkbox.
  *
- * @fonts Achiko (headings/logo) + Switzer (body/UI)
- * @module app/page
+ * @module app/signup/page
+ * @fonts Logo (wordmark) + Achiko (headings) + Switzer (body/UI)
  */
 
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabaseClient";
 
-const FEATURES = [
-  {
-    icon: "📖",
-    title: "Interactive Stories",
-    desc: "Kids read aloud while Onesimos listens, gently helps with tricky words, and celebrates every page turned.",
-    color: "bg-sky-light",
-  },
-  {
-    icon: "🎯",
-    title: "Personalized Learning",
-    desc: "Every child gets their own stories, tailored to their level, interests, and the words they're still learning.",
-    color: "bg-gold-light",
-  },
-  {
-    icon: "🧩",
-    title: "Comprehension Quests",
-    desc: "After each story, playful questions make sure your child truly understood the adventure.",
-    color: "bg-mint-light",
-  },
-  {
-    icon: "🏆",
-    title: "Streaks & Badges",
-    desc: "Daily reading streaks, achievement badges, and a growing word bank keep motivation soaring.",
-    color: "bg-sky-light",
-  },
-];
+export default function SignupPage(): JSX.Element {
+  const { user, loading } = useAuth();
+  const router = useRouter();
 
-const STEPS = [
-  { num: "1", emoji: "👨‍👩‍👧", title: "Create a Profile", desc: "Set up your child's avatar, age, and reading level in under a minute." },
-  { num: "2", emoji: "📚", title: "Pick a Story", desc: "Choose from themed adventures: dinosaurs, space, fantasy, and more." },
-  { num: "3", emoji: "🎙️", title: "Read Aloud", desc: "Your child reads while Onesimos listens and gently guides them." },
-  { num: "4", emoji: "🎉", title: "Celebrate!", desc: "Earn badges, unlock new stories, and watch confidence soar." },
-];
-
-export default function LandingPage(): JSX.Element {
-  const [scrolled, setScrolled] = useState(false);
+  const [parentName, setParentName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isAdultConfirmed, setIsAdultConfirmed] = useState(false);
+  const [newsletterConsent, setNewsletterConsent] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 50);
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+    if (!loading && user) {
+      router.replace("/onboarding");
+    }
+  }, [user, loading, router]);
+
+  const handleEmailSignup = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    setAuthError(null);
+
+    if (!isAdultConfirmed) {
+      setAuthError("You must confirm you are an adult (18+) to create an account.");
+      return;
+    }
+    if (!parentName.trim()) {
+      setAuthError("Please enter your name or nickname.");
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      // 1. Sign up user with metadata
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            full_name: parentName.trim(),
+            newsletter_opt_in: newsletterConsent,
+          },
+        },
+      });
+
+      if (error) {
+        setAuthError(error.message);
+        setSubmitting(false);
+        return;
+      }
+
+      // 2. Ensure session is locked in immediately if email confirmation is disabled
+      if (data?.user && !data.session) {
+        const { error: loginError } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+
+        if (loginError) {
+          // If email confirmation is enabled on Supabase, inform parent cleanly
+          setAuthError("Account created! Please check your email to confirm your account.");
+          setSubmitting(false);
+          return;
+        }
+      }
+
+      router.replace("/onboarding");
+    } catch {
+      setAuthError("An unexpected error occurred during signup.");
+      setSubmitting(false);
+    }
+  };
+
+  const handleGoogleSignup = async (): Promise<void> => {
+    setAuthError(null);
+
+    if (!isAdultConfirmed) {
+      setAuthError("Please check the box confirming you are an adult (18+).");
+      return;
+    }
+
+    setGoogleSubmitting(true);
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        setAuthError(error.message);
+        setGoogleSubmitting(false);
+      }
+    } catch {
+      setAuthError("Failed to initialize Google signup.");
+      setGoogleSubmitting(false);
+    }
+  };
+
+  if (loading || user) {
+    return (
+      <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center font-switzer">
+        <div className="text-center font-switzer">
+          <div className="w-12 h-12 border-4 border-amber-400 border-t-amber-600 rounded-full animate-spin mx-auto mb-3" />
+          <p className="font-bold text-gray-600 text-sm font-switzer">Creating account...</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
-    <main className="min-h-screen w-full overflow-x-hidden font-switzer">
-
-      {/* HERO SECTION */}
-      <section className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-berry via-purple-600 to-indigo-700">
-
-        {/* Background Illustration */}
-        <div className="absolute inset-0 z-0">
-          <Image
-            src="/background.png"
-            alt="Onesimos magical background"
-            fill
-            priority
-            className="object-cover object-center opacity-70"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-purple-900/40 via-transparent to-indigo-900/60" />
-        </div>
-
-        {/* Floating Decorations */}
-        <div className="absolute top-20 left-10 text-6xl animate-float opacity-60 hidden md:block">⭐</div>
-        <div className="absolute top-40 right-16 text-5xl animate-float-slow opacity-50 hidden md:block">🌙</div>
-        <div className="absolute bottom-32 left-20 text-4xl animate-wiggle opacity-40 hidden md:block">📚</div>
-        <div className="absolute bottom-20 right-10 text-5xl animate-float opacity-50 hidden md:block">✨</div>
-
-        {/* Navigation */}
-        <nav
-          className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-            scrolled
-              ? "bg-white/90 backdrop-blur-xl shadow-soft py-3"
-              : "bg-transparent py-5"
-          }`}
-        >
-          <div className="max-w-6xl mx-auto px-6 flex items-center justify-between">
-            <Link href="/" className="font-logo text-3xl md:text-4xl tracking-tight">
-              <span className={scrolled ? "text-coral" : "text-white"}>
-                Onesimos
-              </span>
-            </Link>
-
-            <div className="flex items-center gap-3">
-              <Link
-                href="/login"
-                className={`px-5 py-2 rounded-full font-bold text-sm transition-all ${
-                  scrolled
-                    ? "text-bark hover:bg-cream"
-                    : "text-white hover:bg-white/15"
-                }`}
-              >
-                Log In
-              </Link>
-              <Link
-                href="/signup"
-                className="btn-primary !py-2 !px-5 !text-sm font-switzer font-bold"
-              >
-                Get Started Free
-              </Link>
-            </div>
-          </div>
-        </nav>
-
-        {/* Hero Content */}
-        <div className="relative z-10 text-center px-6 max-w-5xl mx-auto mt-20 animate-fade-up">
-          <div className="inline-block mb-6 px-4 py-1.5 rounded-full glass text-white/90 text-sm font-semibold">
-            🎯 Designed for Ages 3 to 9
-          </div>
-
-          <h1 className="font-logo text-6xl sm:text-7xl md:text-8xl lg:text-9xl text-white mb-6 leading-[0.95] drop-shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
-            ONESIMOS
+    <main className="min-h-screen bg-gradient-to-b from-[#FDFBF7] via-amber-50/20 to-sky-50/30 font-switzer flex items-center justify-center p-6 py-12">
+      <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-gray-200 shadow-sm font-switzer">
+        
+        {/* Header */}
+        <div className="text-center mb-6 font-switzer">
+          <Link href="/" className="font-logo text-4xl text-amber-900 block mb-2">
+            Onesimos
+          </Link>
+          <h1 className="font-achiko text-2xl text-amber-950">
+            Start Your Reading Adventure
           </h1>
-
-          <p className="text-lg sm:text-xl md:text-2xl text-white/95 font-medium mb-10 max-w-2xl mx-auto leading-relaxed font-switzer">
-            A playful reading platform where kids unlock incredible stories,
-            conquer tricky words, and build a{" "}
-            <span className="text-gold font-bold">lifelong love for reading</span>.
+          <p className="text-xs text-gray-500 mt-1 font-switzer">
+            Free forever tier includes 5 stories/month + Phonics Lab
           </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/signup" className="btn-gold !text-lg !px-10 !py-4 font-switzer font-bold">
-              🚀 Start Reading Free
-            </Link>
-            <Link
-              href="#how-it-works"
-              className="btn-secondary !bg-white/10 !text-white !border-white/30 hover:!bg-white/20 !text-lg !px-10 !py-4 font-switzer font-bold"
-            >
-              See How It Works
-            </Link>
-          </div>
-
-          {/* Trust Badges */}
-          <div className="flex flex-wrap justify-center gap-6 mt-12 text-white/90 text-sm font-bold">
-            <span className="flex items-center gap-1.5">🛡️ Kid-Safe</span>
-            <span className="flex items-center gap-1.5">🚫 No Ads Ever</span>
-            <span className="flex items-center gap-1.5">🔒 Private & Secure</span>
-            <span className="flex items-center gap-1.5">💯 Free to Start</span>
-          </div>
         </div>
-      </section>
 
-      {/* FEATURES SECTION */}
-      <section className="py-24 px-6 bg-cream">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="font-heading text-4xl md:text-5xl font-extrabold text-bark mb-4">
-              Everything Your Child Needs to <span className="text-coral">Fall in Love</span> with Reading
-            </h2>
-            <p className="text-bark-muted text-lg max-w-2xl mx-auto">
-              Onesimos turns every reading session into a personal adventure, built around your child.
-            </p>
+        {authError && (
+          <div className="mb-4 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 font-bold text-center font-switzer">
+            {authError}
           </div>
+        )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {FEATURES.map((f, i) => (
-              <div
-                key={i}
-                className="card group hover:shadow-hover hover:-translate-y-1 transition-all duration-300"
-              >
-                <div
-                  className={`w-16 h-16 ${f.color} rounded-2xl flex items-center justify-center text-3xl mb-5 group-hover:scale-110 transition-transform`}
-                >
-                  {f.icon}
-                </div>
-                <h3 className="font-heading text-2xl font-bold text-bark mb-2">
-                  {f.title}
-                </h3>
-                <p className="text-bark-muted leading-relaxed">{f.desc}</p>
-              </div>
-            ))}
-          </div>
+        {/* Adult COPPA Age Checkbox (Mandatory) */}
+        <div className="mb-5 p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 flex items-start gap-3 font-switzer transition-all hover:bg-amber-100/80">
+          <input
+            type="checkbox"
+            id="adult-confirm"
+            checked={isAdultConfirmed}
+            onChange={(e) => setIsAdultConfirmed(e.target.checked)}
+            className="mt-0.5 w-4 h-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500 shrink-0 cursor-pointer"
+          />
+          <label htmlFor="adult-confirm" className="text-xs text-amber-950 leading-tight font-medium cursor-pointer font-switzer">
+            I confirm I am a <strong>parent, legal guardian, or educator (18+)</strong> setting up this account for a child.
+          </label>
         </div>
-      </section>
 
-      {/* HOW IT WORKS */}
-      <section id="how-it-works" className="py-24 px-6 bg-parchment">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="font-heading text-4xl md:text-5xl font-extrabold text-bark mb-4">
-              Up & Running in <span className="text-gold">4 Easy Steps</span>
-            </h2>
-          </div>
+        {/* Google OAuth Button */}
+        <button
+          type="button"
+          onClick={() => void handleGoogleSignup()}
+          disabled={googleSubmitting}
+          className="w-full py-3.5 px-4 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 font-bold text-xs shadow-2xs transition-all flex items-center justify-center gap-3 font-switzer active:scale-[0.98] disabled:opacity-60 mb-6"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+          </svg>
+          <span>{googleSubmitting ? "Connecting to Google..." : "Sign Up with Google"}</span>
+        </button>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {STEPS.map((s, i) => (
-              <div key={i} className="text-center group">
-                <div className="w-20 h-20 mx-auto mb-5 bg-cream rounded-3xl shadow-soft border border-border flex items-center justify-center text-4xl group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300">
-                  {s.emoji}
-                </div>
-                <div className="inline-block px-3 py-0.5 bg-coral text-white text-xs font-bold rounded-full mb-3">
-                  Step {s.num}
-                </div>
-                <h3 className="font-heading text-xl font-bold text-bark mb-2">
-                  {s.title}
-                </h3>
-                <p className="text-bark-muted text-sm leading-relaxed">
-                  {s.desc}
-                </p>
-              </div>
-            ))}
-          </div>
+        <div className="relative flex items-center justify-center mb-6 font-switzer">
+          <div className="border-t border-gray-200 w-full" />
+          <span className="bg-white px-3 text-[10px] uppercase font-bold text-gray-400 absolute font-switzer">
+            or email
+          </span>
         </div>
-      </section>
 
-      {/* CTA SECTION */}
-      <section className="py-24 px-6 bg-gradient-to-br from-berry to-indigo-700 relative overflow-hidden">
-        <div className="absolute top-10 left-10 text-7xl opacity-20 animate-float">📖</div>
-        <div className="absolute bottom-10 right-10 text-7xl opacity-20 animate-float-slow">🌟</div>
-
-        <div className="max-w-3xl mx-auto text-center relative z-10">
-          <h2 className="font-heading text-4xl md:text-6xl font-extrabold text-white mb-6">
-            Ready to Start the Adventure?
-          </h2>
-          <p className="text-white/80 text-xl mb-10 max-w-xl mx-auto">
-            Join families making reading the best part of their day.
-          </p>
-          
-          <div className="flex flex-col items-center justify-center">
-            <Link href="/signup" className="btn-gold !text-xl !px-12 !py-5 font-switzer font-bold">
-              🎉 Create Free Account
-            </Link>
-            <p className="text-white/70 text-xs sm:text-sm mt-8 tracking-wide font-medium">
-              No credit card required, set up in 60 seconds
-            </p>
+        {/* Email Form */}
+        <form onSubmit={(e) => void handleEmailSignup(e)} className="space-y-4 font-switzer">
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1 font-switzer">
+              Parent Name / Nickname
+            </label>
+            <input
+              type="text"
+              required
+              value={parentName}
+              onChange={(e) => setParentName(e.target.value)}
+              placeholder="e.g. Mama David, Mr. Ojo"
+              className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-xs font-switzer focus:outline-none focus:border-amber-400 bg-gray-50/50"
+            />
           </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1 font-switzer">
+              Email Address
+            </label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="parent@example.com"
+              className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-xs font-switzer focus:outline-none focus:border-amber-400 bg-gray-50/50"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1 font-switzer">
+              Create Password
+            </label>
+            <input
+              type="password"
+              required
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="At least 6 characters"
+              className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-xs font-switzer focus:outline-none focus:border-amber-400 bg-gray-50/50"
+            />
+          </div>
+
+          {/* Newsletter Consent Checkbox */}
+          <div className="flex items-start gap-2 pt-1 font-switzer">
+            <input
+              type="checkbox"
+              id="newsletter-confirm"
+              checked={newsletterConsent}
+              onChange={(e) => setNewsletterConsent(e.target.checked)}
+              className="mt-0.5 w-3.5 h-3.5 rounded border-gray-300 text-amber-600 focus:ring-amber-500 shrink-0 cursor-pointer"
+            />
+            <label htmlFor="newsletter-confirm" className="text-[10px] text-gray-500 leading-tight cursor-pointer font-switzer">
+              Send me weekly progress tips and reading advice (You can unsubscribe anytime).
+            </label>
+          </div>
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-xs transition-all active:scale-[0.98] disabled:opacity-60 font-switzer mt-2"
+          >
+            {submitting ? "Creating Account..." : "Create Parent Account →"}
+          </button>
+        </form>
+
+        <p className="text-[10px] text-gray-400 text-center mt-4 font-switzer leading-tight">
+          By signing up, you agree to Example Mirror Ltd&apos;s{" "}
+          <Link href="/terms" className="underline hover:text-gray-600">Terms of Service</Link> and{" "}
+          <Link href="/privacy" className="underline hover:text-gray-600">Privacy Policy</Link>.
+        </p>
+
+        <div className="mt-4 pt-4 border-t border-gray-100 text-center text-xs text-gray-500 font-switzer">
+          Already have an account?{" "}
+          <Link href="/login" className="font-bold text-amber-800 hover:underline font-switzer">Log In</Link>
         </div>
-      </section>
 
-      {/* FOOTER WITH INSTAGRAM */}
-      <footer className="bg-bark text-white/60 py-12 px-6 border-t border-white/10 font-switzer">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          
-          {/* Logo, Entity & Social */}
-          <div className="text-center md:text-left">
-            <div className="font-logo text-3xl text-white mb-1">
-              Onesimos
-            </div>
-            <p className="text-xs text-white/50 font-switzer mb-2">
-              A product of Example Mirror Ltd
-            </p>
-            <a
-              href="https://instagram.com/onesimosapp"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs text-amber-300 hover:text-white transition-colors font-bold font-switzer"
-            >
-              <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-              </svg>
-              <span>@onesimosapp</span>
-            </a>
-          </div>
-
-          {/* Compliance & Legal Navigation Links */}
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs font-semibold text-white/80 font-switzer">
-            <Link href="/about" className="hover:text-white transition-colors">
-              About Us
-            </Link>
-            <Link href="/terms" className="hover:text-white transition-colors">
-              Terms of Service
-            </Link>
-            <Link href="/privacy" className="hover:text-white transition-colors">
-              Privacy Policy
-            </Link>
-            <Link href="/refunds" className="hover:text-white transition-colors">
-              Refund Policy
-            </Link>
-            <Link href="/signup" className="hover:text-white transition-colors">
-              Sign Up
-            </Link>
-            <Link href="/login" className="hover:text-white transition-colors">
-              Log In
-            </Link>
-          </div>
-
-          {/* Copyright */}
-          <p className="text-xs text-white/50 text-center md:text-right font-switzer">
-            © {new Date().getFullYear()} Example Mirror Ltd. All rights reserved.
-          </p>
-
-        </div>
-      </footer>
+      </div>
     </main>
   );
 }
