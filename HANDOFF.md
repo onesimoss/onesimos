@@ -444,3 +444,64 @@ Post-Launch:
 ═══════════════════════════════════════════════════════════════════
 END OF HANDOFF (TIME CAPSULE v3.0)
 ═══════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════
+PROJECT: Onesimos, Living Reading Companion (ages 3 to 9)
+SESSION HANDOFF (ULTIMATE TIME CAPSULE — v4.0)
+Last Updated: Custom domain onesimos.app launch + Phonics Sound Lab + Legal Compliance
+═══════════════════════════════════════════════════════════════════
+
+STACK: Next.js 14 App Router · TypeScript · Tailwind · Supabase · Deepgram (STT) · ElevenLabs (Primary TTS) · Deepgram Aura (Fallback TTS) · Paystack · Vercel · Sentry
+
+FOUNDER: Mitchel · Windows · VS Code · PowerShell · GitHub · Vercel · Supabase
+LIVE URL: https://onesimos.app
+REPO: https://github.com/onesimoss/onesimos.git
+BRANCH: main
+COMPANY: Example Mirror Ltd (Abuja, Nigeria)
+
+MISSION: Teach kids ages 3 to 9 to read well AND understand well. Comprehension at approximately 80 percent is the academic success threshold this product optimizes for.
+
+MOAT (three pillars, never dilute):
+
+1. AI Living Story Book (labeled "Living Chapter" or "Personal Chapter" in UI). Personalized chapters woven from each child's stumbled words and one of 25 life skills.
+2. Speech-to-Text stumbled word capture powered by Deepgram Nova-2.
+3. 25 Core Life Skills & Virtues curriculum threaded into every generated chapter.
+
+═══════════════════════════════════════════════════════════════════
+SECTION 1: NON-NEGOTIABLE FONTS & TYPOGRAPHY (LOCKED)
+═══════════════════════════════════════════════════════════════════
+
+- ONESIMOS Wordmark: `font-logo` class. Rendered as "Onesimos" in small caps. Never apply `font-extrabold` or `tracking-wider` to `font-logo`.
+- Headings AND "Hi [Child Name]!" greeting: `font-achiko`.
+- Body, buttons, cards, badges, descriptions, STAT NUMBERS: `font-switzer`.
+- Stat numbers style: `font-switzer text-2xl font-black leading-none`. Never use `font-achiko` for numbers.
+- Reading Age format on Child Report cards: `.replace("years", "yrs")`.
+- Reading Age format everywhere else: "7 to 8 years". Never "7.0 - 8.0 years". Never use hyphen ranges.
+- NEVER use em dashes (—) or en dashes (–) anywhere in the codebase or copy.
+- Avatar always uses `.color` and `.imageUrl`. NEVER `bgColor` or `src`.
+- Print-only screens hide navigation with `print:hidden` Tailwind utility.
+
+═══════════════════════════════════════════════════════════════════
+SECTION 2: SHIPPED FEATURES & DOMAIN ARCHITECTURE (v4.0)
+═══════════════════════════════════════════════════════════════════
+✅ Custom Domain Live: `https://onesimos.app` (Vercel DNS + SSL active).
+✅ Phonics Sound Lab (`app/kid/[childId]/phonics/page.tsx`): 7 Orton-Gillingham categories, mouth shape guides, sample word cascades, local CC0 MP3 fallback handler, and Letter Sounds free-tier gating.
+✅ Legal Compliance Suite (360-degree lawsuit protection):
+
+- Terms of Service (`/terms`)
+- Privacy Policy (`/privacy` — COPPA, GDPR-K, NDPA, BIPA transient audio waiver)
+- Refund Policy (`/refunds` — 7-day guarantee, Paystack compliant)
+- About Us (`/about` — Example Mirror Ltd, Abuja HQ, global reach)
+- B2B School Proposal (`/school-proposal` — 1-page printable PDF, 30-day evaluation protocol)
+  ✅ Adult COPPA Verification & Parent Name: Parent Name captured at signup + mandatory adult confirmation checkbox on `/signup` + auto-forwarding to `/who`.
+  ✅ Parent Greeting: Parent Dashboard greets parents by custom Name/Nickname instead of raw email.
+  ✅ Paystack Multi-Tier Pricing: Single Reader, Family Plan, Daycare, Classroom Term, and Annual plans.
+  ✅ Footer Social Links: Linked to `@onesimosapp` on Instagram.
+
+═══════════════════════════════════════════════════════════════════
+SECTION 3: NEXT IMMEDIATE STEPS
+═══════════════════════════════════════════════════════════════════
+
+1. Toggle "Confirm email" OFF in Supabase Auth (Screenshot 1 above).
+2. Download/record clean CC0 MP3 files for `public/phonics/` to complete zero-cost offline phonics audio.
+3. Await Paystack compliance approval for Example Mirror Ltd to flip Paystack to Live Mode keys (`pk_live_...`).

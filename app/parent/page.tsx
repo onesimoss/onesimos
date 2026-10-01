@@ -1,15 +1,12 @@
 /**
  * @file app/parent/page.tsx
- * @description Parent Dashboard — multi-child summary cards with academic snapshots,
+ * @description Parent Dashboard : multi-child summary cards with academic snapshots,
  *              live stumbled vocabulary preview, Paystack subscription status,
  *              and clean metric displays without fake fallbacks or dashes.
+ *              Greets parent by name or nickname.
  *
  * @fonts Achiko (headings) + Switzer (body/UI/stat numbers)
- * @dependencies
- * - @/context/AuthContext
- * - @/lib/children, @/lib/avatars, @/lib/stumbledWords
- * - @/lib/sessionInsights, @/lib/parentGate, @/lib/sessionBudget
- * - @/lib/payments
+ * @module app/parent/page
  */
 
 "use client";
@@ -275,31 +272,37 @@ function ParentDashboardContent() {
     subscription?.status === "active" &&
     (subscription.plan === "premium_monthly" || subscription.plan === "premium_annual");
 
+  // Extract custom Parent Name, Google name, or email prefix
+  const parentName =
+    user.user_metadata?.full_name ||
+    user.email?.split("@")[0] ||
+    "Parent";
+
   return (
     <main className="min-h-screen bg-[#FDFBF7] font-switzer pb-16">
       {/* Top Header */}
       <header className="border-b border-gray-200 bg-white/80 backdrop-blur-md sticky top-0 z-20">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-3">
-          <Link href="/parent" className="font-achiko text-2xl text-gray-900 tracking-tight">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-3 font-switzer">
+          <Link href="/parent" className="font-logo text-3xl text-amber-900 tracking-tight">
             Onesimos
           </Link>
           <div className="flex items-center gap-2 sm:gap-4">
             <Link
               href="/parent/pricing"
-              className={`text-xs font-bold px-3 py-1.5 rounded-full border transition-all font-switzer ${
+              className={`text-xs font-bold px-3.5 py-1.5 rounded-full border transition-all font-switzer ${
                 isPaidSubscriber
                   ? "bg-amber-100/80 text-amber-900 border-amber-300 hover:bg-amber-200"
                   : "bg-amber-500 text-white border-amber-600 hover:bg-amber-600 shadow-2xs"
               }`}
             >
-              {isPaidSubscriber ? "⭐ Premium Active" : "✨ Upgrade to Unlimited"}
+              {isPaidSubscriber ? "⭐ Premium Active" : "✨ Upgrade Plan"}
             </Link>
 
-            <Link href="/who" className="text-xs sm:text-sm font-bold text-coral hover:underline font-switzer">
-              Who&apos;s reading?
+            <Link href="/who" className="text-xs sm:text-sm font-bold text-amber-800 hover:underline font-switzer">
+              Switch Reader
             </Link>
             <span className="hidden md:inline text-xs text-gray-500 font-medium font-switzer">
-              {user.email}
+              {parentName}
             </span>
             <LogoutButton />
           </div>
@@ -351,11 +354,11 @@ function ParentDashboardContent() {
           </div>
         )}
 
-        {/* Action Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
+        {/* Action Header with Personalized Name Greeting */}
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8 font-switzer">
           <div>
             <h1 className="font-achiko text-3xl md:text-4xl text-gray-900">
-              Family overview
+              Hello, {parentName}!
             </h1>
             <p className="text-gray-500 text-sm mt-1 font-switzer">
               Snapshot per child : open a full report for growth story, history, and settings.
@@ -371,7 +374,7 @@ function ParentDashboardContent() {
             </button>
             <Link
               href="/onboarding"
-              className="px-5 py-2.5 bg-coral text-white rounded-full text-xs font-bold hover:bg-coral/90 shadow-sm font-switzer"
+              className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-full text-xs font-bold shadow-sm font-switzer"
             >
               + Add child
             </Link>
@@ -433,20 +436,20 @@ function ParentDashboardContent() {
                       {renderStatusBadge(reportStats.progressStatus)}
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 font-switzer">
-                      <p className="text-xs text-gray-500 font-medium">
+                      <p className="text-xs text-gray-500 font-medium font-switzer">
                         Age {child.age} · Level {child.reading_level}
                       </p>
                       {renderAgeBandBadge(child.age)}
                     </div>
                     <p className="text-[11px] font-bold text-gray-600 mt-0.5 font-switzer">
                       Est. reading age:{" "}
-                      <span className="text-coral font-bold">{reportStats.readingAgeEstimate}</span>
+                      <span className="text-amber-800 font-bold">{reportStats.readingAgeEstimate}</span>
                     </p>
                   </div>
                 </div>
 
                 {/* Stat Box Cards */}
-                <div className="grid grid-cols-3 gap-2 mb-4">
+                <div className="grid grid-cols-3 gap-2 mb-4 font-switzer">
                   <div
                     className={`rounded-2xl px-2 py-2 text-center ${
                       isPreReader
@@ -491,7 +494,7 @@ function ParentDashboardContent() {
                     Tricky Words Logged:
                   </p>
                   {practice.length === 0 ? (
-                    <p className="text-[11px] text-gray-400 font-medium">
+                    <p className="text-[11px] text-gray-400 font-medium font-switzer">
                       Practice words appear after read-aloud sessions.
                     </p>
                   ) : (
@@ -499,13 +502,13 @@ function ParentDashboardContent() {
                       {practice.slice(0, 5).map((item) => (
                         <span
                           key={item.word}
-                          className="px-2 py-0.5 rounded-full bg-amber-100/80 text-amber-950 text-[11px] font-bold border border-amber-200"
+                          className="px-2 py-0.5 rounded-full bg-amber-100/80 text-amber-950 text-[11px] font-bold border border-amber-200 font-switzer"
                         >
                           {item.word}
                         </span>
                       ))}
                       {practice.length > 5 && (
-                        <span className="text-[11px] font-bold text-gray-400">
+                        <span className="text-[11px] font-bold text-gray-400 font-switzer">
                           +{practice.length - 5}
                         </span>
                       )}
@@ -551,7 +554,7 @@ function ParentDashboardContent() {
                       <p className="text-xs text-gray-800 mb-3 text-center font-switzer">
                         Remove <span className="font-bold">{child.name}</span>?
                       </p>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 font-switzer">
                         <button
                           type="button"
                           onClick={() => setConfirmId(null)}
@@ -602,7 +605,7 @@ function ParentDashboardContent() {
                     setNewParentPin(e.target.value.replace(/\D/g, "").slice(0, 4))
                   }
                   placeholder="••••"
-                  className="w-full px-4 py-2.5 rounded-2xl border border-gray-200 bg-gray-50 text-center text-2xl tracking-[0.4em] font-bold focus:outline-none focus:ring-2 focus:ring-yellow-400 font-switzer"
+                  className="w-full px-4 py-2.5 rounded-2xl border border-gray-200 bg-gray-50 text-center text-2xl tracking-[0.4em] font-bold focus:outline-none focus:ring-2 focus:ring-amber-400 font-switzer"
                   autoFocus
                 />
               </div>
@@ -619,7 +622,7 @@ function ParentDashboardContent() {
                     setConfirmParentPin(e.target.value.replace(/\D/g, "").slice(0, 4))
                   }
                   placeholder="••••"
-                  className="w-full px-4 py-2.5 rounded-2xl border border-gray-200 bg-gray-50 text-center text-2xl tracking-[0.4em] font-bold focus:outline-none focus:ring-2 focus:ring-yellow-400 font-switzer"
+                  className="w-full px-4 py-2.5 rounded-2xl border border-gray-200 bg-gray-50 text-center text-2xl tracking-[0.4em] font-bold focus:outline-none focus:ring-2 focus:ring-amber-400 font-switzer"
                 />
               </div>
               {parentPinError && (
@@ -647,7 +650,7 @@ function ParentDashboardContent() {
                     newParentPin.length !== 4 ||
                     confirmParentPin.length !== 4
                   }
-                  className="flex-1 py-2.5 rounded-2xl bg-[#FCE588] text-black text-xs font-bold disabled:opacity-50 font-switzer"
+                  className="flex-1 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold disabled:opacity-50 font-switzer"
                 >
                   {parentPinSaving ? "Saving..." : "Save"}
                 </button>
