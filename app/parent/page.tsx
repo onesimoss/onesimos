@@ -2,7 +2,7 @@
  * @file app/parent/page.tsx
  * @description Parent Dashboard — multi-child summary cards, academic snapshots,
  *              stumbled vocabulary preview, Paystack subscription status, title-cased parent greeting,
- *              and Dual-Option Account Deactivation / Permanent Deletion modal.
+ *              admin-only quota reset protection, and GDPR-K account deactivation/deletion modal.
  *
  * @fonts Achiko (headings) + Switzer (body/UI/stat numbers)
  * @module app/parent/page
@@ -36,6 +36,12 @@ import {
   type ParentSubscriptionRow,
 } from "@/lib/payments";
 import { supabase } from "@/lib/supabaseClient";
+
+const ADMIN_EMAILS = new Set([
+  "crux@onesimos.app",
+  "examplemirrorltd@gmail.com",
+  "baiceconsulting@gmail.com",
+]);
 
 function toTitleCase(str: string): string {
   if (!str) return "Parent";
@@ -133,7 +139,6 @@ function ParentDashboardContent() {
   const [parentPinSaving, setParentPinSaving] = useState(false);
   const [parentPinError, setParentPinError] = useState("");
 
-  // Dual-Option Account Modal States (Deactivate vs Delete)
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [accountAction, setAccountAction] = useState<"deactivate" | "delete">("deactivate");
   const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
@@ -144,6 +149,7 @@ function ParentDashboardContent() {
   const [error, setError] = useState("");
 
   const paymentSuccess = searchParams.get("payment") === "success";
+  const isAdmin = !!(user?.email && ADMIN_EMAILS.has(user.email.toLowerCase()));
 
   useEffect(() => {
     if (!loading && !user) {
@@ -242,6 +248,7 @@ function ParentDashboardContent() {
   };
 
   const handleResetTestData = async (child: ChildProfile) => {
+    if (!isAdmin) return;
     setResettingId(child.id);
     setError("");
     setMessage("");
@@ -269,7 +276,7 @@ function ParentDashboardContent() {
 
     setReportStatsByChild((prev) => ({ ...prev, [child.id]: emptyStats }));
     setPracticeByChild((prev) => ({ ...prev, [child.id]: [] }));
-    setMessage(`Test data reset for ${child.name}.`);
+    setMessage(`Admin quota reset for ${child.name}.`);
   };
 
   const handleAccountActionSubmit = async (e: React.FormEvent) => {
@@ -315,7 +322,6 @@ function ParentDashboardContent() {
         return;
       }
 
-      // Permanent Delete: Sign out and take to login
       await supabase.auth.signOut();
       router.replace("/login");
     } catch {
@@ -592,14 +598,21 @@ function ParentDashboardContent() {
                         Open kid view
                       </Link>
                       <div className="flex justify-between items-center px-1 font-switzer">
-                        <button
-                          type="button"
-                          disabled={isResetting}
-                          onClick={() => void handleResetTestData(child)}
-                          className="text-[11px] font-bold text-gray-400 hover:text-amber-700 disabled:opacity-50 font-switzer"
-                        >
-                          {isResetting ? "Resetting..." : "Reset test quota"}
-                        </button>
+                        {/* Reset Quota Button: ADMIN ONLY */}
+                        {isAdmin ? (
+                          <button
+                            type="button"
+                            disabled={isResetting}
+                            onClick={() => void handleResetTestData(child)}
+                            className="text-[11px] font-bold text-amber-700 hover:text-amber-900 disabled:opacity-50 font-switzer"
+                          >
+                            {isResetting ? "Resetting..." : "Admin Reset Quota"}
+                          </button>
+                        ) : (
+                          <span className="text-[10px] text-gray-400 font-medium font-switzer">
+                            Reader Profile
+                          </span>
+                        )}
                         <button
                           type="button"
                           onClick={() => setConfirmId(child.id)}
@@ -747,7 +760,7 @@ function ParentDashboardContent() {
         </div>
       )}
 
-      {/* Dual-Option Account Modal (Pause vs Permanent Delete) */}
+      {/* Dual-Option Account Modal */}
       {showAccountModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-6 font-switzer">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl border border-gray-100 font-switzer">
@@ -757,7 +770,6 @@ function ParentDashboardContent() {
               Manage Account Status
             </h3>
 
-            {/* Selector Tabs: Deactivate vs Delete */}
             <div className="grid grid-cols-2 gap-1 p-1 bg-gray-100 rounded-2xl mb-4 font-switzer">
               <button
                 type="button"
@@ -808,7 +820,7 @@ function ParentDashboardContent() {
                   <p className="text-[11px] text-rose-900 font-switzer leading-relaxed">
                     Completely purges parent profile, child readers, stumbled word logs, and reports. <strong>This cannot be undone.</strong>
                   </p>
-                  <div className="mt-3">
+                  <div className="mt-3 font-switzer">
                     <label className="block text-[10px] uppercase font-bold text-rose-800 mb-1 font-switzer">
                       Type <strong>DELETE</strong> to confirm:
                     </label>
