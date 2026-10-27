@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file app/api/generate-living-story/route.ts
  * @description Server-side Living Chapter generator for Onesimos.
  * Provider chain (first success wins):
@@ -7,7 +7,7 @@
  *   3. OpenRouter  (OPENROUTER_API_KEY)
  *   4. Dynamic 25-Virtue Offline Matrix (no key required)
  *
- * Never put raw API keys in source. Keys live only in env vars.
+ * Includes deactivation hard-blocks and 15-second duplicate generation lock.
  *
  * @module app/api/generate-living-story/route
  */
@@ -15,7 +15,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
 import { getRecentStumbledWords } from "@/lib/stumbledWords";
-import { getRandomLifeSkill, getLifeSkillById, type LifeSkill } from "@/lib/lifeSkills";
+import { getRandomLifeSkill, type LifeSkill } from "@/lib/lifeSkills";
 import type {
   SampleStory,
   StoryPage,
@@ -25,7 +25,7 @@ import type {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// ─── TYPES ──────────────────────────────────────────────────────────────────
+// SECTION 1: TYPES
 
 interface GenerateBody {
   childId: string;
@@ -47,9 +47,9 @@ interface LlmStoryPayload {
   }>;
 }
 
-type EngineName = "groq" | "gemini" | "openrouter" | "offline";
+type EngineName = "groq" | "gemini" | "openrouter" | "offline" | "cached";
 
-// ─── HELPERS ────────────────────────────────────────────────────────────────
+// SECTION 2: HELPERS
 
 function capitalize(name: string): string {
   const t = name.trim();
@@ -77,7 +77,7 @@ function buildPrompt(params: {
   const { childName, level, words, skill } = params;
   const wordList =
     words.length > 0 ? words.join(", ") : "kindness, patience, brave";
-  
+
   const randomSetting = STORY_SETTINGS[Math.floor(Math.random() * STORY_SETTINGS.length)];
 
   return `You write short, creative children's reading chapters for African and diaspora families (ages 3-9).
@@ -113,7 +113,7 @@ RULES:
 }`;
 }
 
-// ─── DYNAMIC 25-VIRTUE OFFLINE MATRIX ───────────────────────────────────────
+// SECTION 3: DYNAMIC 25-VIRTUE OFFLINE MATRIX
 
 function getSkillTemplateScenario(skillId: number, name: string, w: string[]): {
   title: string;
@@ -325,11 +325,9 @@ function parseJsonPayload(raw: string): LlmStoryPayload | null {
   }
 }
 
-// ─── PROVIDERS ──────────────────────────────────────────────────────────────
+// SECTION 4: PROVIDERS
 
-async function generateWithGroq(
-  prompt: string
-): Promise<LlmStoryPayload | null> {
+async function generateWithGroq(prompt: string): Promise<LlmStoryPayload | null> {
   const key = process.env.GROQ_API_KEY;
   if (!key) return null;
 
@@ -347,8 +345,7 @@ async function generateWithGroq(
         messages: [
           {
             role: "system",
-            content:
-              "You are a creative children's literacy author. Return only valid JSON.",
+            content: "You are a creative children's literacy author. Return only valid JSON.",
           },
           { role: "user", content: prompt },
         ],
@@ -370,9 +367,7 @@ async function generateWithGroq(
   }
 }
 
-async function generateWithGemini(
-  prompt: string
-): Promise<LlmStoryPayload | null> {
+async function generateWithGemini(prompt: string): Promise<LlmStoryPayload | null> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
 
@@ -408,14 +403,11 @@ async function generateWithGemini(
   }
 }
 
-async function generateWithOpenRouter(
-  prompt: string
-): Promise<LlmStoryPayload | null> {
+async function generateWithOpenRouter(prompt: string): Promise<LlmStoryPayload | null> {
   const key = process.env.OPENROUTER_API_KEY;
   if (!key) return null;
 
-  const model =
-    process.env.OPENROUTER_MODEL || "meta-llama/llama-3.3-70b-instruct:free";
+  const model = process.env.OPENROUTER_MODEL || "meta-llama/llama-3.3-70b-instruct:free";
 
   try {
     const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -423,7 +415,7 @@ async function generateWithOpenRouter(
       headers: {
         Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "https://onesimos.vercel.app",
+        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "https://onesimos.app",
         "X-Title": "Onesimos Living Story",
       },
       body: JSON.stringify({
@@ -432,8 +424,7 @@ async function generateWithOpenRouter(
         messages: [
           {
             role: "system",
-            content:
-              "You are a children's literacy author. Return only valid JSON, no markdown.",
+            content: "You are a children's literacy author. Return only valid JSON, no markdown.",
           },
           { role: "user", content: prompt },
         ],
@@ -441,11 +432,7 @@ async function generateWithOpenRouter(
     });
 
     if (!res.ok) {
-      console.error(
-        "[living-story] OpenRouter HTTP",
-        res.status,
-        await res.text()
-      );
+      console.error("[living-story] OpenRouter HTTP", res.status, await res.text());
       return null;
     }
 
@@ -542,7 +529,7 @@ async function generateWithFailover(
   return { payload: null, engine: "offline" };
 }
 
-// ─── ROUTE ──────────────────────────────────────────────────────────────────
+// SECTION 5: ROUTE ENTRY POINT
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -552,6 +539,47 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         { error: "childId and childName required" },
         { status: 400 }
       );
+    }
+
+    // 1. Hard-block generation if parent subscription status is deactivated or paused
+    const { data: childRow } = await supabase
+      .from("children")
+      .select("parent_id")
+      .eq("id", body.childId)
+      .maybeSingle();
+
+    if (childRow?.parent_id) {
+      const { data: subRow } = await supabase
+        .from("parent_subscriptions")
+        .select("status")
+        .eq("parent_id", childRow.parent_id)
+        .maybeSingle();
+
+      if (subRow?.status === "deactivated" || subRow?.status === "paused") {
+        return NextResponse.json(
+          { error: "Parent account is currently deactivated." },
+          { status: 403 }
+        );
+      }
+    }
+
+    // 2. Prevent duplicate creation: check if a story was generated for this child in the last 15 seconds
+    const fifteenSecsAgo = new Date(Date.now() - 15000).toISOString();
+    const { data: recentStory } = await supabase
+      .from("generated_stories")
+      .select("story_data, target_words")
+      .eq("child_id", body.childId)
+      .gte("created_at", fifteenSecsAgo)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (recentStory?.story_data) {
+      return NextResponse.json({
+        story: recentStory.story_data as SampleStory,
+        targetWords: (recentStory.target_words as string[]) || [],
+        engine: "cached",
+      });
     }
 
     const level =
@@ -608,12 +636,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
 
     if (error) {
-      console.error("[living-story] save error", error);
+      console.error("[living-story] Save error:", error);
     }
-
-    console.log(
-      `[living-story] engine=${engine} child=${body.childId.slice(0, 8)} words=${words.length}`
-    );
 
     return NextResponse.json({
       story,
@@ -627,7 +651,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       engine,
     });
   } catch (err) {
-    console.error("[living-story] Unhandled", err);
+    console.error("[living-story] Unhandled error:", err);
     return NextResponse.json({ error: "Generation failed" }, { status: 500 });
   }
 }

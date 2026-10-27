@@ -39,9 +39,6 @@ export interface MonthlyUsageStatus {
 
 // SECTION 2: DAILY READING TIMER AND LOCAL BUDGET
 
-/**
- * Generates a local storage key for daily timed reading budget.
- */
 function getTodayLocalKey(childId: string): string {
   const now = new Date();
   const y = now.getFullYear();
@@ -50,13 +47,6 @@ function getTodayLocalKey(childId: string): string {
   return `onesimos_budget_${childId}_${y}-${m}-${d}`;
 }
 
-/**
- * Retrieves remaining seconds for a child's daily reading session allowance.
- *
- * @param childId - Target child profile UUID
- * @param allowedMinutes - Daily minute budget set by parent (default: 20 min)
- * @returns Remaining time in seconds
- */
 export function getDailyBudgetSeconds(
   childId: string,
   allowedMinutes: SessionMinutes | number
@@ -81,24 +71,12 @@ export function getDailyBudgetSeconds(
   return Math.min(left, maxSeconds);
 }
 
-/**
- * Persists updated remaining seconds for today's reading session.
- *
- * @param childId - Target child profile UUID
- * @param secondsLeft - Remaining seconds left
- */
 export function setDailyBudgetSeconds(childId: string, secondsLeft: number): void {
   if (typeof window === "undefined") return;
   const key = getTodayLocalKey(childId);
   window.localStorage.setItem(key, String(Math.max(0, Math.floor(secondsLeft))));
 }
 
-/**
- * Formats total seconds into MM:SS display string.
- *
- * @param totalSeconds - Time in seconds
- * @returns Formatted time string (e.g. "14:30")
- */
 export function formatMMSS(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));
   const m = Math.floor(s / 60);
@@ -108,17 +86,6 @@ export function formatMMSS(totalSeconds: number): string {
 
 // SECTION 3: MONTHLY STORY LIMIT AND SUBSCRIPTION GATING
 
-/**
- * Evaluates whether a child is allowed to start a new reading story.
- * 1. Checks Admin email bypass.
- * 2. Checks parent deactivation status (hard block if deactivated/paused).
- * 3. Checks if Parent has an active paid subscription in Supabase.
- * 4. If Free Tier, checks if child has completed fewer than 5 stories this calendar month.
- *
- * @param childId - Target child profile UUID
- * @param parentEmail - Optional parent email for admin verification
- * @returns MonthlyUsageStatus object
- */
 export async function checkMonthlyStoryLimit(
   childId: string,
   parentEmail?: string | null
@@ -153,25 +120,21 @@ export async function checkMonthlyStoryLimit(
       .maybeSingle();
 
     if (childData?.parent_id) {
-      // Check parent status in profiles table
-      const { data: parentProfile } = await supabase
-        .from("profiles")
-        .select("subscription_status, account_status")
-        .eq("id", childData.parent_id)
+      // Query parent_subscriptions for status
+      const { data: sub } = await supabase
+        .from("parent_subscriptions")
+        .select("status")
+        .eq("parent_id", childData.parent_id)
         .maybeSingle();
 
-      // Hard block if parent account status is deactivated or paused
-      if (
-        parentProfile?.subscription_status === "deactivated" ||
-        parentProfile?.account_status === "deactivated" ||
-        parentProfile?.account_status === "paused"
-      ) {
+      // Hard block if parent subscription status is deactivated or paused
+      if (sub?.status === "deactivated" || sub?.status === "paused") {
         return {
           allowed: false,
           used: FREE_MONTHLY_STORY_LIMIT,
           limit: FREE_MONTHLY_STORY_LIMIT,
           isPaidPlan: false,
-          error: "Parent account is currently deactivated. Please reactivate your account to continue reading.",
+          error: "Parent account is currently deactivated. Please ask your parent to reactivate the account.",
         };
       }
 
@@ -199,7 +162,6 @@ export async function checkMonthlyStoryLimit(
 
     if (error) {
       console.error("Error querying monthly story sessions:", error);
-      // Fallback: don't block reader on database lookup failures
       return {
         allowed: true,
         used: 0,
@@ -233,17 +195,10 @@ export async function checkMonthlyStoryLimit(
 
 // SECTION 4: TESTING AND DEMO RESET HELPERS
 
-/**
- * Resets a child's reading session history and local daily budget keys for testing.
- *
- * @param childId - Target child profile UUID
- * @returns Object with error status
- */
 export async function resetChildStoryQuota(childId: string): Promise<{ error: string | null }> {
   if (!childId) return { error: "Missing child ID" };
 
   try {
-    // 1. Clear local storage daily budget keys for this child
     if (typeof window !== "undefined") {
       Object.keys(window.localStorage).forEach((key) => {
         if (key.startsWith(`onesimos_budget_${childId}`)) {
@@ -252,7 +207,6 @@ export async function resetChildStoryQuota(childId: string): Promise<{ error: st
       });
     }
 
-    // 2. Delete test reading sessions from Supabase
     const { error } = await supabase
       .from("reading_sessions")
       .delete()

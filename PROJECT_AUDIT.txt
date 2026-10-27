@@ -1,0 +1,152 @@
+﻿ONESIMOS PROJECT AUDIT
+Generated: 2026-10-27 23:57:48
+
+This report is an inventory only. Nothing is deleted by this command.
+
+============================================================
+ROOT FILES
+============================================================
+
+Name               Length LastWriteTime         
+----               ------ -------------         
+.env.local            659 9/16/2026 1:12:18 PM  
+.gitignore            376 9/3/2026 5:24:38 PM   
+.vercelignore          97 9/3/2026 5:25:10 PM   
+ALD.md               5115 10/1/2026 10:27:25 PM 
+HANDOFF.md           1670 10/1/2026 10:27:58 PM 
+middleware.ts        1249 9/4/2026 12:39:12 PM  
+next.config.js        140 9/3/2026 4:56:00 PM   
+next-env.d.ts         233 9/3/2026 6:47:21 PM   
+package.json          706 9/4/2026 7:50:09 PM   
+package-lock.json  152853 9/4/2026 8:02:35 PM   
+postcss.config.js      92 9/3/2026 4:56:00 PM   
+PROJECT_AUDIT.txt     263 10/27/2026 11:57:48 PM
+tailwind.config.js   2196 9/7/2026 6:54:27 PM   
+TESTERS.md           3957 9/9/2026 7:48:35 PM   
+tsconfig.json         626 9/7/2026 2:57:36 PM   
+vercel.json           108 9/3/2026 4:56:02 PM   
+
+
+
+
+============================================================
+APP ROUTES
+============================================================
+.\app
+.\app\about
+.\app\auth\callback
+.\app\character
+.\app\dashboard
+.\app\forgot-password
+.\app\kid\[childId]
+.\app\kid\[childId]\phonics
+.\app\kid\[childId]\read\[storyId]
+.\app\kid\[childId]\spell
+.\app\kid\[childId]\summary
+.\app\kid\dashboard
+.\app\kid-login
+.\app\login
+.\app\onboarding
+.\app\parent
+.\app\parent\child\[childId]
+.\app\parent\login
+.\app\parent\pricing
+.\app\phonics
+.\app\privacy
+.\app\read
+.\app\refunds
+.\app\reset-password
+.\app\school-proposal
+.\app\signup
+.\app\terms
+.\app\test-supabase
+.\app\welcome
+.\app\who
+
+
+============================================================
+API ROUTES
+============================================================
+.\app\api\generate-living-story\route.ts
+.\app\api\parent\delete-account\route.ts
+.\app\api\paystack\initialize\route.ts
+.\app\api\paystack\verify\route.ts
+.\app\api\transcribe\route.ts
+.\app\api\tts\route.ts
+
+
+============================================================
+LIBRARY FILES
+============================================================
+.\lib\ageModes.ts
+.\lib\avatars.ts
+.\lib\children.ts
+.\lib\dailyProgress.ts
+.\lib\fonts.ts
+.\lib\geoNames.ts
+.\lib\lifeSkills.ts
+.\lib\livingStory.ts
+.\lib\parentGate.ts
+.\lib\payments.ts
+.\lib\readingUtils.ts
+.\lib\reminders.ts
+.\lib\sampleStories.ts
+.\lib\sessionBudget.ts
+.\lib\sessionInsights.ts
+.\lib\stumbledWords.ts
+.\lib\supabaseClient.ts
+.\lib\themes.ts
+
+
+============================================================
+POSSIBLY UNUSED TOP-LEVEL DIRECTORIES
+Inventory only. Do not delete from this list automatically.
+============================================================
+
+Name       LastWriteTime      
+----       -------------      
+context    9/8/2026 7:07:16 AM
+middleware 9/4/2026 2:07:44 PM
+
+
+
+
+============================================================
+PACKAGE SCRIPTS AND DEPENDENCIES
+============================================================
+{
+  "name": "onsimos",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@deepgram/sdk": "^5.10.0",
+    "@sentry/nextjs": "^10.73.0",
+    "@supabase/ssr": "^0.12.6",
+    "@supabase/supabase-js": "^2.115.0",
+    "@vercel/analytics": "^2.0.1",
+    "next": "^14.2.35",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.0.1",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5"
+  }
+}
+
+
+============================================================
+CURRENT GIT STATUS
+============================================================
+?? PROJECT_AUDIT.txt
