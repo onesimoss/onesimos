@@ -1,9 +1,10 @@
-/**
+﻿/**
  * @file lib/sessionBudget.ts
  * @description Session Budget & Plan Quota Enforcement Engine for Onesimos.
  * Manages daily timed reading sessions and enforces the Free Tier quota
- * (3 stories per calendar month per child) while recognizing active
- * parent subscriptions (Paystack) and admin bypass privileges.
+ * (5 stories per calendar month per child) while recognizing active
+ * parent subscriptions (Paystack), hard-blocking deactivated accounts,
+ * and honoring admin bypass privileges.
  *
  * @dependencies
  * - @/lib/supabaseClient
@@ -13,15 +14,18 @@
 import { supabase } from "./supabaseClient";
 import { hasActivePaidPlan } from "./payments";
 
-// ─── Section 1: Types & Configuration Constants ───
+// SECTION 1: TYPES AND CONFIGURATION CONSTANTS
 
 export type SessionMinutes = 20 | 30 | 45;
 
 /** Maximum free stories allowed per child profile per calendar month */
-export const FREE_MONTHLY_STORY_LIMIT = 3;
+export const FREE_MONTHLY_STORY_LIMIT = 5;
 
 /** Admin email accounts that bypass free story quotas for testing and demoing */
 export const ADMIN_EMAILS: readonly string[] = [
+  "crux@onesimos.app",
+  "examplemirrorltd@gmail.com",
+  "baiceconsulting@gmail.com",
   "onesimos@examplemirror.com",
 ];
 
@@ -33,7 +37,7 @@ export interface MonthlyUsageStatus {
   error: string | null;
 }
 
-// ─── Section 2: Daily Reading Timer & Local Budget ───
+// SECTION 2: DAILY READING TIMER AND LOCAL BUDGET
 
 /**
  * Generates a local storage key for daily timed reading budget.
@@ -102,13 +106,14 @@ export function formatMMSS(totalSeconds: number): string {
   return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
 }
 
-// ─── Section 3: Monthly Story Limit & Subscription Gating ───
+// SECTION 3: MONTHLY STORY LIMIT AND SUBSCRIPTION GATING
 
 /**
  * Evaluates whether a child is allowed to start a new reading story.
  * 1. Checks Admin email bypass.
- * 2. Checks if Parent has an active paid subscription in Supabase.
- * 3. If Free Tier, checks if child has completed fewer than 3 stories this calendar month.
+ * 2. Checks parent deactivation status (hard block if deactivated/paused).
+ * 3. Checks if Parent has an active paid subscription in Supabase.
+ * 4. If Free Tier, checks if child has completed fewer than 5 stories this calendar month.
  *
  * @param childId - Target child profile UUID
  * @param parentEmail - Optional parent email for admin verification
@@ -140,7 +145,7 @@ export async function checkMonthlyStoryLimit(
   }
 
   try {
-    // 2. Fetch parent_id from child record to check subscription
+    // 2. Fetch parent_id from child record to check subscription & status
     const { data: childData } = await supabase
       .from("children")
       .select("parent_id")
@@ -148,6 +153,28 @@ export async function checkMonthlyStoryLimit(
       .maybeSingle();
 
     if (childData?.parent_id) {
+      // Check parent status in profiles table
+      const { data: parentProfile } = await supabase
+        .from("profiles")
+        .select("subscription_status, account_status")
+        .eq("id", childData.parent_id)
+        .maybeSingle();
+
+      // Hard block if parent account status is deactivated or paused
+      if (
+        parentProfile?.subscription_status === "deactivated" ||
+        parentProfile?.account_status === "deactivated" ||
+        parentProfile?.account_status === "paused"
+      ) {
+        return {
+          allowed: false,
+          used: FREE_MONTHLY_STORY_LIMIT,
+          limit: FREE_MONTHLY_STORY_LIMIT,
+          isPaidPlan: false,
+          error: "Parent account is currently deactivated. Please reactivate your account to continue reading.",
+        };
+      }
+
       const isSubscribed = await hasActivePaidPlan(childData.parent_id);
       if (isSubscribed) {
         return {
@@ -190,7 +217,7 @@ export async function checkMonthlyStoryLimit(
       used,
       limit: FREE_MONTHLY_STORY_LIMIT,
       isPaidPlan: false,
-      error: null,
+      error: allowed ? null : "You have reached your free monthly limit of 5 stories. Ask your parent to upgrade for unlimited stories!",
     };
   } catch (err) {
     console.error("Unexpected error checking monthly story limit:", err);
@@ -204,7 +231,7 @@ export async function checkMonthlyStoryLimit(
   }
 }
 
-// ─── Section 4: Testing & Demo Reset Helpers ───
+// SECTION 4: TESTING AND DEMO RESET HELPERS
 
 /**
  * Resets a child's reading session history and local daily budget keys for testing.

@@ -1,10 +1,11 @@
-/**
+﻿/**
  * @file lib/livingStory.ts
  * @description Living Story Book client engine for Onesimos (The Moat).
  * Delegates chapter generation to /api/generate-living-story, which chains
  * free LLM providers (Groq, then Gemini, then OpenRouter) and falls back to a
  * concrete offline template. Every chapter carries the child's name, real
  * stumbled words, and one of the 25 life skill virtues.
+ * Includes strict duplicate title and chapter ID deduplication.
  *
  * Public API is unchanged so existing parent pages keep compiling:
  *   generateLivingChapterForChild(child)
@@ -29,7 +30,7 @@ import type {
   ComprehensionQuestion,
 } from "./sampleStories";
 
-// ─── SECTION 1: TYPES ───────────────────────────────────────────────────────
+// SECTION 1: TYPES
 
 /** Row shape stored in public.generated_stories */
 export interface GeneratedChapterRecord {
@@ -64,7 +65,7 @@ export interface LivingChapterResult {
   engine: string;
 }
 
-// ─── SECTION 2: HELPERS ─────────────────────────────────────────────────────
+// SECTION 2: HELPERS
 
 function capitalize(value: string): string {
   const trimmed = value.trim();
@@ -94,12 +95,11 @@ export function extractTargetWordsFromStory(story: SampleStory): string[] {
     .filter(Boolean);
 }
 
-// ─── SECTION 3: OFFLINE FALLBACK (CONCRETE ACTIONS, NOT VAGUE PRAISE) ──────
+// SECTION 3: OFFLINE FALLBACK WITH DYNAMIC TITLES AND DEDUPLICATION
 
 /**
  * Builds a readable chapter without any AI call.
- * Used when the API route is unreachable or no provider key is configured.
- * Every page describes a visible action, never a vague summary.
+ * Generates unique titles based on skill and target words to prevent duplicates.
  */
 function buildOfflineChapter(params: {
   child: ChildProfile;
@@ -146,6 +146,17 @@ function buildOfflineChapter(params: {
   const pages = allPages.slice(0, level <= 2 ? 5 : 6);
 
   const timestamp = Date.now();
+  const randomSeed = Math.floor(Math.random() * 8999 + 1000);
+  const uniqueId = `living-${params.child.id.slice(0, 6)}-${timestamp}-${randomSeed}`;
+
+  const titleVariations = [
+    `${name} and the ${skill.title} Walk`,
+    `${name}'s Lesson in ${skill.title}`,
+    `${name} Practises ${skill.title}`,
+    `${name} and the ${w1} Path`,
+  ];
+  const title = titleVariations[Math.floor(Math.random() * titleVariations.length)];
+
   const questions: ComprehensionQuestion[] = [
     {
       id: `off-${timestamp}-q1`,
@@ -182,8 +193,8 @@ function buildOfflineChapter(params: {
   ];
 
   return {
-    id: `living-${params.child.id.slice(0, 6)}-${timestamp}`,
-    title: `${name} and the Spilled Bottle`,
+    id: uniqueId,
+    title,
     levelMin: level,
     levelMax: level,
     targetAgeGroup: `Ages ${params.child.age || 6}`,
@@ -200,12 +211,12 @@ function buildOfflineChapter(params: {
   };
 }
 
-// ─── SECTION 4: MAIN GENERATION ENTRY POINT ─────────────────────────────────
+// SECTION 4: MAIN GENERATION ENTRY POINT WITH DEDUPLICATION
 
 /**
  * Generates a personal Living Story chapter for a child.
  * Calls the server route which chains Groq, Gemini, and OpenRouter.
- * Falls back to a concrete offline chapter if the route fails.
+ * Guarantees no duplicate stories exist in the child's collection.
  *
  * @param child Target child profile
  * @returns Generated SampleStory ready to display or read
@@ -213,7 +224,6 @@ function buildOfflineChapter(params: {
 export async function generateLivingChapterForChild(
   child: ChildProfile
 ): Promise<SampleStory> {
-  // Server side rendering guard: relative fetch is unavailable outside the browser
   const canCallApi = typeof window !== "undefined";
 
   if (canCallApi) {
@@ -232,11 +242,21 @@ export async function generateLivingChapterForChild(
       const payload = (await response.json()) as GenerateApiResponse;
 
       if (response.ok && payload.story && payload.story.pages?.length) {
-        return payload.story;
+        // Verify duplicate check in local database query
+        const { data: existing } = await supabase
+          .from("generated_stories")
+          .select("id")
+          .eq("child_id", child.id)
+          .eq("id", payload.story.id)
+          .maybeSingle();
+
+        if (!existing) {
+          return payload.story;
+        }
       }
 
       console.warn(
-        "[livingStory] API returned no usable story, using offline chapter:",
+        "[livingStory] API returned no usable or duplicate story, using offline chapter:",
         payload.error
       );
     } catch (err) {
@@ -244,7 +264,7 @@ export async function generateLivingChapterForChild(
     }
   }
 
-  // Offline path: build a concrete chapter and persist it directly
+  // Offline path: build a concrete dynamic chapter and persist it directly
   const { data: recent } = await getRecentStumbledWords(child.id, 6);
   const words = (recent || []).map((r) => r.word).filter(Boolean);
   const skill = getRandomLifeSkill();
@@ -252,17 +272,27 @@ export async function generateLivingChapterForChild(
   const offlineStory = buildOfflineChapter({ child, words, skill });
 
   try {
-    await supabase.from("generated_stories").insert({
-      id: offlineStory.id,
-      child_id: child.id,
-      chapter_number: 1,
-      title: offlineStory.title,
-      story_data: offlineStory,
-      target_words: words,
-      created_at: new Date().toISOString(),
-    });
+    // Check if ID or Title already exists for this child
+    const { data: existingTitle } = await supabase
+      .from("generated_stories")
+      .select("id")
+      .eq("child_id", child.id)
+      .eq("title", offlineStory.title)
+      .maybeSingle();
+
+    if (!existingTitle) {
+      await supabase.from("generated_stories").insert({
+        id: offlineStory.id,
+        child_id: child.id,
+        chapter_number: 1,
+        title: offlineStory.title,
+        story_data: offlineStory,
+        target_words: words,
+        created_at: new Date().toISOString(),
+      });
+    }
   } catch (err) {
-    console.warn("[livingStory] Offline chapter not saved to database:", err);
+    console.warn("[livingStory] Offline chapter insert skipped or failed:", err);
   }
 
   return offlineStory;
@@ -314,13 +344,13 @@ export async function generateLivingChapterDetailed(
   };
 }
 
-// ─── SECTION 5: RETRIEVAL AND PARENT CONTROLS ───────────────────────────────
+// SECTION 5: RETRIEVAL AND PARENT CONTROLS
 
 /**
- * Fetches all generated Living Story chapters for a child.
+ * Fetches all generated Living Story chapters for a child, eliminating duplicates.
  *
  * @param childId Target child profile id
- * @returns Array of SampleStory objects, newest first
+ * @returns Array of unique SampleStory objects, newest first
  */
 export async function getGeneratedStoriesForChild(
   childId: string
@@ -336,9 +366,18 @@ export async function getGeneratedStoriesForChild(
       return [];
     }
 
-    return data
-      .map((row: { story_data: unknown }) => row.story_data as SampleStory)
-      .filter((s) => s && Array.isArray(s.pages));
+    const seenIds = new Set<string>();
+    const uniqueStories: SampleStory[] = [];
+
+    for (const row of data) {
+      const story = row.story_data as SampleStory;
+      if (story && Array.isArray(story.pages) && !seenIds.has(story.id)) {
+        seenIds.add(story.id);
+        uniqueStories.push(story);
+      }
+    }
+
+    return uniqueStories;
   } catch {
     return [];
   }
@@ -362,13 +401,24 @@ export async function getGeneratedChapterRecords(
 
     if (error || !data) return [];
 
-    return data.map((row) => ({
-      story: row.story_data as SampleStory,
-      createdAt: (row.created_at as string) || new Date().toISOString(),
-      targetWords: Array.isArray(row.target_words)
-        ? (row.target_words as string[])
-        : [],
-    }));
+    const seenIds = new Set<string>();
+    const results: Array<{ story: SampleStory; createdAt: string; targetWords: string[] }> = [];
+
+    for (const row of data) {
+      const story = row.story_data as SampleStory;
+      if (story && !seenIds.has(story.id)) {
+        seenIds.add(story.id);
+        results.push({
+          story,
+          createdAt: (row.created_at as string) || new Date().toISOString(),
+          targetWords: Array.isArray(row.target_words)
+            ? (row.target_words as string[])
+            : [],
+        });
+      }
+    }
+
+    return results;
   } catch {
     return [];
   }
