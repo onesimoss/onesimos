@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "Onesimos",
+    "slug": "onesimos",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./public/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./public/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FDFBF7"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.onesimos.mobile",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Onesimos requires microphone access to evaluate real-time oral reading accuracy and phonics pronunciation for children."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./public/adaptive-icon.png",
+        "backgroundColor": "#FDFBF7"
+      },
+      "package": "app.onesimos.mobile",
+      "permissions": [
+        "RECORD_AUDIO",
+        "INTERNET",
+        "MODIFY_AUDIO_SETTINGS"
+      ]
+    },
+    "web": {
+      "favicon": "./public/favicon.ico"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "onesimos-app-mobile"
+      }
+    }
+  }
+}
