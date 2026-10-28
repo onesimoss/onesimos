@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file app/kid/[childId]/read/[storyId]/page.tsx
  * @description Kid Active Reading Screen with Pip the Parrot tab-focus and
  *              app-backgrounding detection. Automatically pauses story timer and
@@ -164,9 +164,8 @@ export default function KidReadPage() {
 
   const finishReading = useCallback(() => {
     const finalSeconds = Math.max(1, elapsedSeconds);
-    router.push(
-      /kid//summary?storyId=&pages=&duration=
-    );
+    const destination = '/kid/' + childId + '/summary?storyId=' + storyId + '&pages=' + (pageIndex + 1) + '&duration=' + finalSeconds;
+    router.push(destination);
   }, [childId, storyId, pageIndex, elapsedSeconds, router]);
 
   const handleMicResult = useCallback(
@@ -247,7 +246,7 @@ export default function KidReadPage() {
             See My Stars ⭐
           </button>
           <Link
-            href={/kid/}
+            href={'/kid/' + childId}
             className="block text-xs font-bold text-gray-400 hover:text-gray-600 font-switzer"
           >
             Back Home
@@ -272,7 +271,7 @@ export default function KidReadPage() {
       {/* Reader Top Navigation Bar */}
       <header className="px-6 py-4 flex items-center justify-between gap-4 border-b border-gray-100 bg-white/70 backdrop-blur-sm sticky top-0 z-20 font-switzer">
         <Link
-          href={/kid/}
+          href={'/kid/' + childId}
           className="text-xs font-bold text-gray-500 hover:text-gray-900 flex items-center gap-1 font-switzer"
         >
           <span>←</span> Back
@@ -283,8 +282,8 @@ export default function KidReadPage() {
           </p>
           <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden border border-gray-200/50">
             <div
-              className={h-full rounded-full transition-all duration-300 }
-              style={{ width: ${progressPercent}% }}
+              className={'h-full rounded-full transition-all duration-300 ' + (isPreReader ? 'bg-emerald-500' : 'bg-coral')}
+              style={{ width: progressPercent + '%' }}
             />
           </div>
         </div>
@@ -304,7 +303,7 @@ export default function KidReadPage() {
         <div className="bg-white rounded-3xl p-6 sm:p-10 border border-gray-100 shadow-xl my-auto text-center flex flex-col items-center">
           {/* Story Visual / Illustration Frame */}
           <div
-            className={w-full max-w-sm rounded-2xl bg-amber-50/60 border border-amber-100/60 overflow-hidden mb-6 flex items-center justify-center shadow-inner }
+            className={'w-full max-w-sm rounded-2xl bg-amber-50/60 border border-amber-100/60 overflow-hidden mb-6 flex items-center justify-center shadow-inner ' + (isPreReader ? 'h-56 sm:h-72 text-8xl' : 'h-48 sm:h-64 text-7xl')}
           >
             {pageImage ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -316,7 +315,7 @@ export default function KidReadPage() {
 
           {/* Story Page Text Adaptively Sized by Age Band */}
           <div
-            className={ont-bold text-gray-900 leading-relaxed tracking-wide max-w-xl mb-6 font-switzer }
+            className={'font-bold text-gray-900 leading-relaxed tracking-wide max-w-xl mb-6 font-switzer ' + (isPreReader ? 'text-2xl sm:text-3xl md:text-4xl leading-loose font-extrabold' : 'text-xl sm:text-2xl')}
           >
             {renderPageText(currentPage.text, highlightWords)}
           </div>
@@ -338,7 +337,7 @@ export default function KidReadPage() {
             type="button"
             disabled={pageIndex === 0}
             onClick={() => setPageIndex((prev) => Math.max(0, prev - 1))}
-            className={ounded-2xl border border-gray-200 bg-white font-bold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-30 disabled:hover:bg-white font-switzer }
+            className={'rounded-2xl border border-gray-200 bg-white font-bold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-30 disabled:hover:bg-white font-switzer ' + (isPreReader ? 'px-6 py-3.5 text-sm' : 'px-5 py-3 text-xs')}
           >
             ← Previous
           </button>
@@ -351,7 +350,7 @@ export default function KidReadPage() {
             <button
               type="button"
               onClick={() => setPageIndex((prev) => Math.min(totalPages - 1, prev + 1))}
-              className={ounded-2xl bg-gray-900 text-white font-black hover:bg-black transition-colors shadow-sm font-switzer }
+              className={'rounded-2xl bg-gray-900 text-white font-black hover:bg-black transition-colors shadow-sm font-switzer ' + (isPreReader ? 'px-7 py-3.5 text-sm' : 'px-6 py-3 text-xs')}
             >
               Next Page →
             </button>
@@ -359,7 +358,7 @@ export default function KidReadPage() {
             <button
               type="button"
               onClick={finishReading}
-              className={ounded-2xl bg-coral text-white font-black hover:bg-coral/90 transition-all shadow-md flex items-center gap-1.5 active:scale-95 font-switzer }
+              className={'rounded-2xl bg-coral text-white font-black hover:bg-coral/90 transition-all shadow-md flex items-center gap-1.5 active:scale-95 font-switzer ' + (isPreReader ? 'px-7 py-4 text-sm' : 'px-6 py-3.5 text-xs')}
             >
               <span>Finish Story</span>
               <span>⭐</span>
