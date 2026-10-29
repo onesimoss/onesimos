@@ -1,14 +1,13 @@
 /**
  * @file app/kid/[childId]/read/[storyId]/page.tsx
- * @description Kid Active Reading Screen with Pip the Parrot tab-focus and
- *              app-backgrounding detection. Automatically pauses story timer and
- *              speech synthesis evaluation when tab loses focus or app enters background.
+ * @description Kid Active Reading Screen with Pip the Parrot active 3D companion,
+ *              tab-focus detection, and real-time speech evaluation.
  *
  * @fonts Achiko (headings/logo) + Switzer (body/UI/stats)
  * @dependencies
  * - @/context/AuthContext
  * - @/lib/sampleStories, @/lib/avatars, @/lib/stumbledWords, @/lib/children
- * - @/components/ReadingTimer, @/components/ReadAloudMic
+ * - @/components/ReadingTimer, @/components/ReadAloudMic, @/components/PipCompanion
  */
 
 "use client";
@@ -71,7 +70,9 @@ export default function KidReadPage() {
 
   // Tab focus & app backgrounding state
   const [isTabPaused, setIsTabPaused] = useState(false);
-  const [pipSeeds, setPipSeeds] = useState(0);
+
+  // Pip Seed Currency
+  const [pipSeeds, setPipSeeds] = useState(3);
 
   // Listen to tab visibility and window focus changes
   useEffect(() => {
@@ -97,7 +98,7 @@ export default function KidReadPage() {
     if (!loading && !user) router.replace("/parent/login");
   }, [user, loading, router]);
 
-  // Load Child Profile & Resolve Story (Static Catalog or Supabase DB)
+  // Load Child Profile & Resolve Story
   useEffect(() => {
     async function loadReaderData() {
       if (!user || !childId || !storyId) return;
@@ -117,7 +118,7 @@ export default function KidReadPage() {
       }
       setChild(childData as ChildProfile);
 
-      // 2. Resolve Story (Check static catalog first)
+      // 2. Resolve Story
       const catalogStory = getStoryById(storyId);
       if (catalogStory) {
         setStory(catalogStory);
@@ -125,7 +126,7 @@ export default function KidReadPage() {
         return;
       }
 
-      // 3. If not in catalog, check generated_stories in DB
+      // 3. DB story check
       const { data: dbStory, error: dbErr } = await supabase
         .from("generated_stories")
         .select("story_data")
@@ -144,7 +145,7 @@ export default function KidReadPage() {
     void loadReaderData();
   }, [user, childId, storyId, router]);
 
-  // Track Real Elapsed Reading Time (Paused when tab is backgrounded)
+  // Track Real Elapsed Reading Time
   useEffect(() => {
     if (fetching || sessionEnded || !child || storyNotFound || isTabPaused) return;
 
@@ -155,9 +156,10 @@ export default function KidReadPage() {
     return () => clearInterval(timer);
   }, [fetching, sessionEnded, child, storyNotFound, isTabPaused]);
 
-  // Reset highlights on page turn
+  // Reset highlights on page turn & earn a seed
   useEffect(() => {
     setHighlightWords([]);
+    setPipSeeds((s) => s + 1);
   }, [pageIndex]);
 
   const handleTimeUp = useCallback(() => {
@@ -172,12 +174,14 @@ export default function KidReadPage() {
 
   const handleMicResult = useCallback(
     (result: { transcript: string; stumbled: string[] }) => {
-      if (!childId || !result.stumbled.length) return;
-      setHighlightWords((prev) => Array.from(new Set([...prev, ...result.stumbled])));
-
-      result.stumbled.forEach((word) => {
-        void saveStumbledWord({ childId, storyId, word });
-      });
+      if (!childId) return;
+      setPipSeeds((s) => s + 2); // Earn 2 seeds for reading out loud
+      if (result.stumbled.length) {
+        setHighlightWords((prev) => Array.from(new Set([...prev, ...result.stumbled])));
+        result.stumbled.forEach((word) => {
+          void saveStumbledWord({ childId, storyId, word });
+        });
+      }
     },
     [childId, storyId]
   );
@@ -301,8 +305,19 @@ export default function KidReadPage() {
       </header>
 
       {/* Reader Main Content Canvas */}
-      <div className="flex-1 max-w-3xl w-full mx-auto p-4 sm:p-6 flex flex-col justify-between font-switzer">
-        <div className="bg-white rounded-3xl p-6 sm:p-10 border border-gray-100 shadow-xl my-auto text-center flex flex-col items-center">
+      <div className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 flex flex-col justify-between font-switzer relative">
+        <div className="bg-white rounded-3xl p-6 sm:p-10 border border-gray-100 shadow-xl my-auto text-center flex flex-col items-center relative">
+          
+          {/* Pip Companion - Prominently Positioned on Upper Right of Card */}
+          <div className="absolute right-3 top-3 sm:right-6 sm:top-6 z-30">
+            <PipCompanion
+              childName={child.name}
+              isPaused={isTabPaused}
+              seeds={pipSeeds}
+              onFeed={() => setPipSeeds((s) => Math.max(0, s - 1))}
+            />
+          </div>
+
           {/* Story Visual / Illustration Frame */}
           <div
             className={'w-full max-w-sm rounded-2xl bg-amber-50/60 border border-amber-100/60 overflow-hidden mb-6 flex items-center justify-center shadow-inner ' + (isPreReader ? 'h-56 sm:h-72 text-8xl' : 'h-48 sm:h-64 text-7xl')}

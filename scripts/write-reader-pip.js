@@ -1,0 +1,397 @@
+﻿const fs = require('fs');
+const path = require('path');
+
+const targetPath = path.join(process.cwd(), 'app', 'kid', '[childId]', 'read', '[storyId]', 'page.tsx');
+
+const content = `/**
+ * @file app/kid/[childId]/read/[storyId]/page.tsx
+ * @description Kid Active Reading Screen with Pip the Parrot active 3D companion,
+ *              tab-focus detection, and real-time speech evaluation.
+ *
+ * @fonts Achiko (headings/logo) + Switzer (body/UI/stats)
+ * @dependencies
+ * - @/context/AuthContext
+ * - @/lib/sampleStories, @/lib/avatars, @/lib/stumbledWords, @/lib/children
+ * - @/components/ReadingTimer, @/components/ReadAloudMic, @/components/PipCompanion
+ */
+
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabaseClient";
+import { getAvatarById } from "@/lib/avatars";
+import { getAgeBand, type ChildProfile } from "@/lib/children";
+import { getStoryById, type SampleStory } from "@/lib/sampleStories";
+import { saveStumbledWord } from "@/lib/stumbledWords";
+import ReadingTimer from "@/components/ReadingTimer";
+import ReadAloudMic from "@/components/ReadAloudMic";
+import PipCompanion from "@/components/PipCompanion";
+
+// ─── Section 1: Helper Text Highlights ───
+
+function renderPageText(text: string, softWords: string[]): React.ReactNode {
+  if (!softWords.length) return text;
+  const lowerSet = new Set(softWords.map((w) => w.toLowerCase()));
+  const tokens = text.split(/(\\s+)/);
+
+  return tokens.map((part, index) => {
+    const cleaned = part.toLowerCase().replace(/[^\\w'-]/g, "");
+    if (cleaned && lowerSet.has(cleaned)) {
+      return (
+        <span
+          key={index}
+          className="rounded-lg bg-amber-100 px-1.5 py-0.5 border border-amber-300/80 font-black text-amber-950 shadow-2xs font-switzer"
+        >
+          {part}
+        </span>
+      );
+    }
+    return <span key={index}>{part}</span>;
+  });
+}
+
+// ─── Section 2: Reader Component ───
+
+export default function KidReadPage() {
+  const { childId, storyId } = useParams<{ childId: string; storyId: string }>();
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  // Story & Child Data States
+  const [child, setChild] = useState<ChildProfile | null>(null);
+  const [story, setStory] = useState<SampleStory | null>(null);
+  const [fetching, setFetching] = useState(true);
+
+  const [pageIndex, setPageIndex] = useState(0);
+  const [sessionEnded, setSessionEnded] = useState(false);
+  const [highlightWords, setHighlightWords] = useState<string[]>([]);
+  const [storyNotFound, setStoryNotFound] = useState(false);
+
+  // Real Duration Tracking (in seconds)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  // Tab focus & app backgrounding state
+  const [isTabPaused, setIsTabPaused] = useState(false);
+
+  // Pip Seed Currency
+  const [pipSeeds, setPipSeeds] = useState(3);
+
+  // Listen to tab visibility and window focus changes
+  useEffect(() => {
+    const handleVisibility = () => {
+      setIsTabPaused(document.hidden);
+    };
+    const handleBlur = () => setIsTabPaused(true);
+    const handleFocus = () => setIsTabPaused(false);
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("blur", handleBlur);
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, []);
+
+  // Auth Protection
+  useEffect(() => {
+    if (!loading && !user) router.replace("/parent/login");
+  }, [user, loading, router]);
+
+  // Load Child Profile & Resolve Story
+  useEffect(() => {
+    async function loadReaderData() {
+      if (!user || !childId || !storyId) return;
+      setFetching(true);
+
+      // 1. Load Child
+      const { data: childData, error: childErr } = await supabase
+        .from("children")
+        .select("*")
+        .eq("id", childId)
+        .eq("parent_id", user.id)
+        .single();
+
+      if (childErr || !childData) {
+        router.replace("/who");
+        return;
+      }
+      setChild(childData as ChildProfile);
+
+      // 2. Resolve Story
+      const catalogStory = getStoryById(storyId);
+      if (catalogStory) {
+        setStory(catalogStory);
+        setFetching(false);
+        return;
+      }
+
+      // 3. DB story check
+      const { data: dbStory, error: dbErr } = await supabase
+        .from("generated_stories")
+        .select("story_data")
+        .eq("id", storyId)
+        .single();
+
+      if (dbErr || !dbStory?.story_data) {
+        setStoryNotFound(true);
+      } else {
+        setStory(dbStory.story_data as SampleStory);
+      }
+
+      setFetching(false);
+    }
+
+    void loadReaderData();
+  }, [user, childId, storyId, router]);
+
+  // Track Real Elapsed Reading Time
+  useEffect(() => {
+    if (fetching || sessionEnded || !child || storyNotFound || isTabPaused) return;
+
+    const timer = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [fetching, sessionEnded, child, storyNotFound, isTabPaused]);
+
+  // Reset highlights on page turn & earn a seed
+  useEffect(() => {
+    setHighlightWords([]);
+    setPipSeeds((s) => s + 1);
+  }, [pageIndex]);
+
+  const handleTimeUp = useCallback(() => {
+    setSessionEnded(true);
+  }, []);
+
+  const finishReading = useCallback(() => {
+    const finalSeconds = Math.max(1, elapsedSeconds);
+    const destination = '/kid/' + childId + '/summary?storyId=' + storyId + '&pages=' + (pageIndex + 1) + '&duration=' + finalSeconds;
+    router.push(destination);
+  }, [childId, storyId, pageIndex, elapsedSeconds, router]);
+
+  const handleMicResult = useCallback(
+    (result: { transcript: string; stumbled: string[] }) => {
+      if (!childId) return;
+      setPipSeeds((s) => s + 2); // Earn 2 seeds for reading out loud
+      if (result.stumbled.length) {
+        setHighlightWords((prev) => Array.from(new Set([...prev, ...result.stumbled])));
+        result.stumbled.forEach((word) => {
+          void saveStumbledWord({ childId, storyId, word });
+        });
+      }
+    },
+    [childId, storyId]
+  );
+
+  // Derive age-band characteristics
+  const ageBand = useMemo(() => {
+    return child ? getAgeBand(child.age) : "emerging";
+  }, [child]);
+
+  const isPreReader = ageBand === "pre-reader";
+
+  // ─── Render States ───
+
+  if (loading || fetching || !child) {
+    return (
+      <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center font-switzer">
+        <p className="font-extrabold text-gray-500 text-lg animate-pulse font-switzer">
+          Opening your story...
+        </p>
+      </main>
+    );
+  }
+
+  if (storyNotFound || !story) {
+    return (
+      <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center p-6 font-switzer">
+        <div className="bg-white rounded-3xl p-8 border border-gray-200 shadow-md text-center max-w-md font-switzer">
+          <p className="text-gray-600 font-bold mb-4 font-switzer">Story not found.</p>
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="px-6 py-3 rounded-2xl bg-coral text-white font-bold text-xs hover:bg-coral/90 transition-colors inline-block font-switzer"
+          >
+            Go Back
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  const avatar = getAvatarById(child.avatar_id);
+  const currentPage = story.pages[pageIndex];
+  const totalPages = story.pages.length;
+  const isLastPage = pageIndex >= totalPages - 1;
+  const progressPercent = ((pageIndex + 1) / totalPages) * 100;
+
+  const pageImage =
+    (currentPage as { imageUrl?: string; image?: string }).imageUrl ||
+    (currentPage as { imageUrl?: string; image?: string }).image;
+
+  if (sessionEnded) {
+    return (
+      <main className="min-h-screen bg-gradient-to-b from-amber-50 to-[#FDFBF7] flex items-center justify-center p-6 font-switzer">
+        <div className="bg-white rounded-3xl max-w-md w-full p-8 text-center border border-gray-100 shadow-2xl font-switzer">
+          <div className="text-6xl mb-4">🌟</div>
+          <h1 className="font-achiko text-2xl text-gray-900 mb-2">
+            Time is Up for Today!
+          </h1>
+          <p className="text-gray-500 text-sm font-medium mb-6 leading-relaxed font-switzer">
+            Great reading, {child.name}. Your daily reading session is complete.
+            Come back tomorrow for new adventures!
+          </p>
+          <button
+            type="button"
+            onClick={finishReading}
+            className="w-full py-3.5 px-6 rounded-2xl bg-coral text-white text-xs font-black hover:bg-coral/90 transition-colors shadow-sm mb-3 font-switzer"
+          >
+            See My Stars ⭐
+          </button>
+          <Link
+            href={'/kid/' + childId}
+            className="block text-xs font-bold text-gray-400 hover:text-gray-600 font-switzer"
+          >
+            Back Home
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-gradient-to-b from-sky-50/50 via-[#FDFBF7] to-amber-50/30 flex flex-col font-switzer relative">
+      {/* Pip the Parrot Tab-Pause Banner Overlay */}
+      {isTabPaused && (
+        <div className="fixed inset-x-0 top-0 z-50 bg-amber-500 text-white px-4 py-2 text-center shadow-lg font-switzer flex items-center justify-center gap-2 animate-bounce">
+          <span className="text-xl">🦜</span>
+          <span className="text-xs sm:text-sm font-black tracking-wide font-switzer">
+            Pip paused the reading timer while you are away! Click back here to resume.
+          </span>
+        </div>
+      )}
+
+      {/* Reader Top Navigation Bar */}
+      <header className="px-6 py-4 flex items-center justify-between gap-4 border-b border-gray-100 bg-white/70 backdrop-blur-sm sticky top-0 z-20 font-switzer">
+        <Link
+          href={'/kid/' + childId}
+          className="text-xs font-bold text-gray-500 hover:text-gray-900 flex items-center gap-1 font-switzer"
+        >
+          <span>←</span> Back
+        </Link>
+        <div className="flex-1 max-w-xs text-center">
+          <p className="text-xs font-black text-gray-800 truncate mb-1 font-switzer">
+            {story.title}
+          </p>
+          <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden border border-gray-200/50">
+            <div
+              className={'h-full rounded-full transition-all duration-300 ' + (isPreReader ? 'bg-emerald-500' : 'bg-coral')}
+              style={{ width: progressPercent + '%' }}
+            />
+          </div>
+        </div>
+        <div className="shrink-0">
+          <ReadingTimer
+            childId={child.id}
+            allowedMinutes={child.session_minutes || 20}
+            onTimeUp={handleTimeUp}
+            age={child.age}
+            isExternalPaused={isTabPaused}
+          />
+        </div>
+      </header>
+
+      {/* Reader Main Content Canvas */}
+      <div className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 flex flex-col justify-between font-switzer relative">
+        <div className="bg-white rounded-3xl p-6 sm:p-10 border border-gray-100 shadow-xl my-auto text-center flex flex-col items-center relative">
+          
+          {/* Pip Companion - Prominently Positioned on Upper Right of Card */}
+          <div className="absolute right-3 top-3 sm:right-6 sm:top-6 z-30">
+            <PipCompanion
+              childName={child.name}
+              isPaused={isTabPaused}
+              seeds={pipSeeds}
+              onFeed={() => setPipSeeds((s) => Math.max(0, s - 1))}
+            />
+          </div>
+
+          {/* Story Visual / Illustration Frame */}
+          <div
+            className={'w-full max-w-sm rounded-2xl bg-amber-50/60 border border-amber-100/60 overflow-hidden mb-6 flex items-center justify-center shadow-inner ' + (isPreReader ? 'h-56 sm:h-72 text-8xl' : 'h-48 sm:h-64 text-7xl')}
+          >
+            {pageImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={pageImage} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <span>{currentPage.imageEmoji || story.coverEmoji || "📖"}</span>
+            )}
+          </div>
+
+          {/* Story Page Text Adaptively Sized by Age Band */}
+          <div
+            className={'font-bold text-gray-900 leading-relaxed tracking-wide max-w-xl mb-6 font-switzer ' + (isPreReader ? 'text-2xl sm:text-3xl md:text-4xl leading-loose font-extrabold' : 'text-xl sm:text-2xl')}
+          >
+            {renderPageText(currentPage.text, highlightWords)}
+          </div>
+
+          {/* Interactive Mic / Voice Recognition */}
+          <div className="pt-2 w-full">
+            <ReadAloudMic
+              childId={child.id}
+              storyId={story.id}
+              pageText={currentPage.text}
+              onResult={handleMicResult}
+            />
+          </div>
+        </div>
+
+        {/* Story Pagination Navigation Footer */}
+        <footer className="pt-4 pb-2 flex items-center justify-between gap-4 font-switzer">
+          <button
+            type="button"
+            disabled={pageIndex === 0}
+            onClick={() => setPageIndex((prev) => Math.max(0, prev - 1))}
+            className={'rounded-2xl border border-gray-200 bg-white font-bold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-30 disabled:hover:bg-white font-switzer ' + (isPreReader ? 'px-6 py-3.5 text-sm' : 'px-5 py-3 text-xs')}
+          >
+            ← Previous
+          </button>
+
+          <span className="text-xs font-bold text-gray-400 font-switzer">
+            Page {pageIndex + 1} of {totalPages}
+          </span>
+
+          {!isLastPage ? (
+            <button
+              type="button"
+              onClick={() => setPageIndex((prev) => Math.min(totalPages - 1, prev + 1))}
+              className={'rounded-2xl bg-gray-900 text-white font-black hover:bg-black transition-colors shadow-sm font-switzer ' + (isPreReader ? 'px-7 py-3.5 text-sm' : 'px-6 py-3 text-xs')}
+            >
+              Next Page →
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={finishReading}
+              className={'rounded-2xl bg-coral text-white font-black hover:bg-coral/90 transition-all shadow-md flex items-center gap-1.5 active:scale-95 font-switzer ' + (isPreReader ? 'px-7 py-4 text-sm' : 'px-6 py-3.5 text-xs')}
+            >
+              <span>Finish Story</span>
+              <span>⭐</span>
+            </button>
+          )}
+        </footer>
+      </div>
+    </main>
+  );
+}
+`;
+
+fs.writeFileSync(targetPath, content, 'utf8');
+console.log('Successfully written app/kid/[childId]/read/[storyId]/page.tsx with Pip Companion');
