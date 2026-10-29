@@ -259,7 +259,7 @@ export default function ReadAloudMic({
             type="button"
             onClick={startRecording}
             disabled={isBusy}
-            className="px-6 py-3.5 rounded-2xl bg-coral text-white font-extrabold text-xs hover:bg-coral/90 transition-all shadow-md flex items-center gap-2 active:scale-95 disabled:opacity-50 font-switzer"
+            className="clay-3d-btn-coral w-full py-4 px-8 text-base font-black flex items-center justify-center gap-2 font-switzer cursor-pointer shadow-2xl"
           >
             <span className="text-base">🎙️</span>
             {status === "done" || status === "error"
@@ -270,7 +270,7 @@ export default function ReadAloudMic({
           <button
             type="button"
             onClick={stopRecording}
-            className="px-6 py-3.5 rounded-2xl bg-coral text-white font-extrabold text-xs shadow-md flex items-center gap-2 animate-pulse active:scale-95 font-switzer"
+            className="clay-3d-btn-coral w-full py-4 px-8 text-base font-black flex items-center justify-center gap-2 font-switzer cursor-pointer shadow-2xl"
           >
             <span className="text-base">⏹️</span>
             I&apos;m Done Reading
