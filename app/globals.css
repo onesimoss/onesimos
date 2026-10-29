@@ -1,136 +1,132 @@
-
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ─── ONESIMOS MATTER-GRADE 3D CLAYMORPHIC SYSTEM ─── */
+/* ─── ONESIMOS PUFFY CLAYMORPHIC DESIGN SYSTEM ─── */
 
 :root {
-  --clay-bg: #F7F4EC;
-  --clay-surface: #FFFFFF;
+  --clay-bg: #F8F5EE;
+  --clay-text: #2D2B3D;
+  --clay-muted: #7A7689;
 }
 
-/* 3D Clay Canvas Card */
-.clay-3d-card {
-  background: linear-gradient(145deg, #ffffff 0%, #fefcf8 100%);
-  border: 3px solid rgba(255, 255, 255, 0.95);
-  box-shadow: 
-    16px 20px 40px rgba(180, 160, 120, 0.15),
-    -10px -10px 24px rgba(255, 255, 255, 1),
-    inset 3px 3px 6px rgba(255, 255, 255, 0.9),
-    inset -3px -3px 6px rgba(0, 0, 0, 0.03);
+body {
+  background-color: var(--clay-bg);
+  color: var(--clay-text);
+  font-family: var(--font-switzer), sans-serif;
+  overflow-x: hidden;
+}
+
+/* 1. Main Puffy White Canvas Card (Like the Laptop/Window in image) */
+.clay-puffy-canvas {
+  background: linear-gradient(160deg, #FFFFFF 0%, #FAFAF7 100%);
   border-radius: 36px;
+  border: 4px solid #FFFFFF;
+  box-shadow: 
+    14px 20px 40px rgba(185, 175, 155, 0.18),
+    -10px -10px 24px rgba(255, 255, 255, 1),
+    inset 4px 4px 8px rgba(255, 255, 255, 0.9),
+    inset -4px -4px 8px rgba(0, 0, 0, 0.03);
 }
 
-/* 3D Clay Frame for Illustrations */
-.clay-3d-frame {
-  background: linear-gradient(145deg, #fffcf0 0%, #fef3c7 100%);
-  border: 3px solid #fde68a;
-  box-shadow: 
-    inset 5px 5px 10px rgba(217, 119, 6, 0.12),
-    inset -5px -5px 10px rgba(255, 255, 255, 0.9),
-    0 12px 28px rgba(245, 158, 11, 0.15);
+/* 2. Puffy Pastel Frame (Like the Video Player / Green Hills in image) */
+.clay-puffy-frame {
+  background: linear-gradient(150deg, #FFF9EB 0%, #FEEFCE 100%);
   border-radius: 28px;
+  border: 3px solid #FEF3C7;
+  box-shadow: 
+    inset 4px 4px 8px rgba(251, 191, 36, 0.15),
+    inset -4px -4px 8px rgba(255, 255, 255, 0.9),
+    0 10px 24px rgba(245, 158, 11, 0.12);
 }
 
-/* Juicy 3D Tactile Buttons */
-.clay-3d-btn-coral {
-  background: linear-gradient(180deg, #ff7676 0%, #ee5252 100%);
-  box-shadow: 
-    0 8px 0 #c93b3b,
-    0 14px 25px rgba(238, 82, 82, 0.35),
-    inset 0 2px 3px rgba(255, 255, 255, 0.6);
-  border-radius: 22px;
-  color: #ffffff;
+/* 3. Puffy Pastel Button — Coral (Like the Play Button in image) */
+.clay-btn-coral {
+  background: linear-gradient(180deg, #FF8E8E 0%, #FF6B6B 100%);
+  border-radius: 24px;
+  color: #FFFFFF;
   font-weight: 900;
+  box-shadow: 
+    0 8px 0 #E85050,
+    0 14px 28px rgba(255, 107, 107, 0.35),
+    inset 0 3px 4px rgba(255, 255, 255, 0.6);
   transition: all 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.clay-3d-btn-coral:hover {
+.clay-btn-coral:hover {
   transform: translateY(-2px);
   box-shadow: 
-    0 10px 0 #c93b3b,
-    0 18px 30px rgba(238, 82, 82, 0.45),
-    inset 0 2px 3px rgba(255, 255, 255, 0.8);
+    0 10px 0 #E85050,
+    0 18px 32px rgba(255, 107, 107, 0.45),
+    inset 0 3px 4px rgba(255, 255, 255, 0.8);
 }
 
-.clay-3d-btn-coral:active {
+.clay-btn-coral:active {
   transform: translateY(6px) !important;
   box-shadow: 
-    0 2px 0 #c93b3b,
-    0 4px 10px rgba(238, 82, 82, 0.2),
-    inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+    0 2px 0 #E85050,
+    0 4px 10px rgba(255, 107, 107, 0.2),
+    inset 0 2px 3px rgba(0, 0, 0, 0.2) !important;
 }
 
-.clay-3d-btn-dark {
-  background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
-  box-shadow: 
-    0 8px 0 #0f172a,
-    0 14px 25px rgba(15, 23, 42, 0.3),
-    inset 0 2px 3px rgba(255, 255, 255, 0.3);
-  border-radius: 22px;
-  color: #ffffff;
+/* 4. Puffy Pastel Button — Dark (Like the Bottom Pill in image) */
+.clay-btn-dark {
+  background: linear-gradient(180deg, #4A4660 0%, #353248 100%);
+  border-radius: 24px;
+  color: #FFFFFF;
   font-weight: 900;
+  box-shadow: 
+    0 8px 0 #232132,
+    0 14px 28px rgba(35, 50, 72, 0.3),
+    inset 0 3px 4px rgba(255, 255, 255, 0.3);
   transition: all 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.clay-3d-btn-dark:hover {
+.clay-btn-dark:hover {
   transform: translateY(-2px);
   box-shadow: 
-    0 10px 0 #0f172a,
-    0 18px 30px rgba(15, 23, 42, 0.4),
-    inset 0 2px 3px rgba(255, 255, 255, 0.4);
+    0 10px 0 #232132,
+    0 18px 32px rgba(35, 50, 72, 0.4);
 }
 
-.clay-3d-btn-dark:active {
+.clay-btn-dark:active {
   transform: translateY(6px) !important;
-  box-shadow: 
-    0 2px 0 #0f172a,
-    0 4px 10px rgba(15, 23, 42, 0.2) !important;
+  box-shadow: 0 2px 0 #232132 !important;
 }
 
-.clay-3d-btn-white {
-  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+/* 5. Puffy White Navigation Pill */
+.clay-pill-white {
+  background: linear-gradient(180deg, #FFFFFF 0%, #F5F3ED 100%);
+  border: 2px solid #FFFFFF;
+  border-radius: 9999px;
   box-shadow: 
-    0 6px 0 #cbd5e1,
-    0 10px 20px rgba(0, 0, 0, 0.08),
+    0 6px 0 #E2DDD0,
+    0 10px 20px rgba(180, 170, 150, 0.15),
     inset 0 2px 3px rgba(255, 255, 255, 1);
-  border: 1px solid #e2e8f0;
-  border-radius: 20px;
-  color: #334155;
+  color: #3B384E;
   font-weight: 800;
   transition: all 0.12s ease;
 }
 
-.clay-3d-btn-white:hover {
+.clay-pill-white:hover {
   transform: translateY(-2px);
   box-shadow: 
-    0 8px 0 #cbd5e1,
-    0 14px 24px rgba(0, 0, 0, 0.12);
+    0 8px 0 #E2DDD0,
+    0 14px 24px rgba(180, 170, 150, 0.25);
 }
 
-.clay-3d-btn-white:active {
+.clay-pill-white:active {
   transform: translateY(4px) !important;
-  box-shadow: 0 2px 0 #cbd5e1 !important;
+  box-shadow: 0 2px 0 #E2DDD0 !important;
 }
 
-/* Pip 3D Mascot Pill */
-.clay-3d-pip-card {
-  background: linear-gradient(145deg, #fbbf24 0%, #f59e0b 100%);
-  border: 3px solid #fef08a;
-  box-shadow: 
-    0 10px 25px rgba(245, 158, 11, 0.35),
-    inset 3px 3px 6px rgba(255, 255, 255, 0.8),
-    inset -3px -3px 6px rgba(180, 83, 9, 0.3);
-  border-radius: 28px;
+/* 6. Unboxed Pip Floating Shadow */
+.pip-floating-shadow {
+  filter: drop-shadow(0px 16px 20px rgba(180, 140, 60, 0.28));
+  animation: pip-float-idle 4s ease-in-out infinite;
 }
 
-/* Ambient Floating Clay Blobs */
-@keyframes clay-float-slow {
-  0%, 100% { transform: translate(0px, 0px) rotate(0deg); }
-  50% { transform: translate(12px, -15px) rotate(3deg); }
-}
-
-.ambient-clay-blob {
-  animation: clay-float-slow 8s ease-in-out infinite;
+@keyframes pip-float-idle {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(2deg); }
 }
