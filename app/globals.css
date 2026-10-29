@@ -64,3 +64,77 @@
     @apply bg-white/15 backdrop-blur-xl border border-white/25;
   }
 }
+
+/* ─── Claymorphic / Tactile 3D Design System ─── */
+.clay-card {
+  background: linear-gradient(145deg, #ffffff, #f0f0f0);
+  box-shadow: 
+    8px 8px 16px #d1d5db,
+    -8px -8px 16px #ffffff,
+    inset 2px 2px 4px rgba(255,255,255,0.8),
+    inset -2px -2px 4px rgba(0,0,0,0.05);
+  border-radius: 24px;
+  border: 1px solid rgba(255,255,255,0.6);
+}
+
+.clay-btn {
+  background: linear-gradient(145deg, #ff6b6b, #ee5a5a);
+  box-shadow: 
+    4px 4px 8px #d1d5db,
+    -4px -4px 8px #ffffff;
+  border-radius: 16px;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.clay-btn:active {
+  box-shadow: 
+    inset 2px 2px 4px rgba(0,0,0,0.2),
+    inset -2px -2px 4px rgba(255,255,255,0.3);
+  transform: scale(0.98);
+}
+
+.clay-input {
+  background: linear-gradient(145deg, #f9fafb, #ffffff);
+  box-shadow: 
+    inset 2px 2px 4px #d1d5db,
+    inset -2px -2px 4px #ffffff;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.5);
+}
+
+.clay-avatar {
+  background: linear-gradient(145deg, #fde68a, #fcd34d);
+  box-shadow: 
+    6px 6px 12px #d1d5db,
+    -6px -6px 12px #ffffff;
+  border-radius: 50%;
+}
+
+/* Tactile Color Palette */
+:root {
+  --clay-bg: #f0f4f8;
+  --clay-surface: #ffffff;
+  --clay-shadow-light: #ffffff;
+  --clay-shadow-dark: #d1d5db;
+  --clay-accent-coral: #ff6b6b;
+  --clay-accent-mint: #4ade80;
+  --clay-accent-amber: #fbbf24;
+  --clay-accent-sky: #38bdf8;
+}
+
+/* Pip Specific Animations */
+@keyframes pip-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+.pip-floating {
+  animation: pip-float 3s ease-in-out infinite;
+}
+
+.pip-seed {
+  background: linear-gradient(145deg, #fcd34d, #fbbf24);
+  box-shadow: 2px 2px 4px #d1d5db, -2px -2px 4px #ffffff;
+  border-radius: 50%;
+}

@@ -1,5 +1,30 @@
 ﻿/** @type {import('tailwindcss').Config} */
 module.exports = {
+  // Claymorphic shadow extensions
+  theme: {
+    extend: {
+      boxShadow: {
+        'clay': '8px 8px 16px #d1d5db, -8px -8px 16px #ffffff',
+        'clay-inset': 'inset 2px 2px 4px #d1d5db, inset -2px -2px 4px #ffffff',
+        'clay-soft': '4px 4px 8px #e5e7eb, -4px -4px 8px #ffffff',
+        'pip-glow': '0 0 20px rgba(251, 191, 36, 0.4)',
+      },
+      animation: {
+        'pip-float': 'pip-float 3s ease-in-out infinite',
+        'seed-drop': 'seed-drop 0.5s ease-out',
+      },
+      keyframes: {
+        'pip-float': {
+          '0%, 100%': { transform: 'translateY(0px)' },
+          '50%': { transform: 'translateY(-8px)' },
+        },
+        'seed-drop': {
+          '0%': { transform: 'translateY(-10px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+      },
+    },
+  },
   content: ["./app/**/*.{js,ts,jsx,tsx}", "./components/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {

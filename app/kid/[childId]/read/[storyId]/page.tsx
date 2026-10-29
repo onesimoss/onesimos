@@ -24,6 +24,7 @@ import { getStoryById, type SampleStory } from "@/lib/sampleStories";
 import { saveStumbledWord } from "@/lib/stumbledWords";
 import ReadingTimer from "@/components/ReadingTimer";
 import ReadAloudMic from "@/components/ReadAloudMic";
+import PipCompanion from "@/components/PipCompanion";
 
 // ─── Section 1: Helper Text Highlights ───
 
@@ -70,6 +71,7 @@ export default function KidReadPage() {
 
   // Tab focus & app backgrounding state
   const [isTabPaused, setIsTabPaused] = useState(false);
+  const [pipSeeds, setPipSeeds] = useState(0);
 
   // Listen to tab visibility and window focus changes
   useEffect(() => {
