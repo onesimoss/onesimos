@@ -7,8 +7,8 @@ import { supabase } from '@/lib/supabaseClient'
 
 interface ChildProfile {
   id: string
-  first_name: string
-  avatar_url?: string
+  name: string
+  avatar_id?: string
   streak_count?: number
   words_learned?: number
 }
@@ -39,22 +39,22 @@ export default function KidDashboardPage() {
       try {
         const { data: childData } = await supabase
           .from('children')
-          .select('id, first_name, avatar_url, streak_count, words_learned')
+          .select('id, name, avatar_id')
           .eq('id', childId)
           .single()
 
         if (childData) {
           setChild({
             id: childData.id,
-            first_name: childData.first_name,
-            avatar_url: childData.avatar_url,
-            streak_count: childData.streak_count ?? 3,
-            words_learned: childData.words_learned ?? 24,
+            name: childData.name || 'Explorer',
+            avatar_id: childData.avatar_id,
+            streak_count: 3,
+            words_learned: 24,
           })
         } else {
           setChild({
             id: childId,
-            first_name: 'Alex',
+            name: 'Explorer',
             streak_count: 3,
             words_learned: 24,
           })
@@ -112,7 +112,7 @@ export default function KidDashboardPage() {
     void loadData()
   }, [childId])
 
-  const firstName = child?.first_name || 'Alex'
+  const firstName = (child?.name || 'Explorer').split(' ')[0]
   const streak = child?.streak_count || 3
 
   if (loading) {
