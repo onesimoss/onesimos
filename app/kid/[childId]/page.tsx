@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { createClient } from '@/lib/supabase'
+import { supabase } from '@/lib/supabaseClient'
 
 interface ChildProfile {
   id: string
@@ -36,7 +36,7 @@ export default function KidDashboardPage() {
 
     async function loadData() {
       try {
-        const supabase = createClient()
+        
 
         // Fetch child profile
         const { data: childData } = await supabase

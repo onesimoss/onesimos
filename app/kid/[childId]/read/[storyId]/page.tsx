@@ -16,7 +16,6 @@ import { getStoryById, type SampleStory } from "@/lib/sampleStories";
 import { saveStumbledWord } from "@/lib/stumbledWords";
 import ReadingTimer from "@/components/ReadingTimer";
 import ReadAloudMic from "@/components/ReadAloudMic";
-import PipCompanion from "@/components/PipCompanion";
 
 function renderPageText(text: string, softWords: string[]): React.ReactNode {
   if (!softWords.length) return text;
@@ -245,12 +244,7 @@ export default function KidReadPage() {
           
           {/* Pip Companion - Prominently Displayed 3D Tactile Pill */}
           <div className="absolute right-4 top-4 sm:right-8 sm:top-8 z-30">
-            <PipCompanion
-              childName={child.name}
-              isPaused={isTabPaused}
-              seeds={pipSeeds}
-              onFeed={() => setPipSeeds((s) => Math.max(0, s - 1))}
-            />
+            
           </div>
 
           {/* 3D Story Visual Frame */}
