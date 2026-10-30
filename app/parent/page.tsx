@@ -10,6 +10,7 @@ interface Child {
   name: string;
   age: number;
   avatar: string;
+  favorite_color?: string;
   total_points: number;
   streak_days: number;
   current_level: number;
@@ -32,7 +33,7 @@ interface Subscription {
   is_active: boolean;
 }
 
-export default function ParentDashboardPage() {
+export default function ParentGrowthCompassPage() {
   const router = useRouter();
   const supabase = createClient();
 
@@ -42,20 +43,41 @@ export default function ParentDashboardPage() {
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'children' | 'screentime' | 'milestones' | 'settings'>('dashboard');
+  // Active View Tab: 'overview' | 'screentime' | 'milestones' | 'settings'
+  const [activeTab, setActiveTab] = useState<'overview' | 'screentime' | 'milestones' | 'settings'>('overview');
 
+  // Mobile Child Selector Dropdown state
+  const [showChildDropdown, setShowChildDropdown] = useState(false);
+
+  // Modals & UI States
   const [showAddChildModal, setShowAddChildModal] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
-  const [pinAction, setPinAction] = useState<'delete' | 'pause' | 'view_billing' | null>(null);
+  const [pinAction, setPinAction] = useState<'delete' | 'pause' | 'view_billing' | 'upgrade' | null>(null);
   const [enteredPin, setEnteredPin] = useState('');
   const [pinError, setPinError] = useState('');
 
+  // Pip Chat Assistant Drawer (Mobile & Desktop)
+  const [isPipChatOpen, setIsPipChatOpen] = useState(false);
+  const [pipMessages, setPipMessages] = useState<Array<{ sender: 'pip' | 'parent'; text: string }>>([
+    { sender: 'pip', text: "Hello! I am Pip. Ask me anything about your child's learning journey or recent practice sessions." }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+
+  // Interactive Living Plant State
+  const [plantWateredCount, setPlantWateredCount] = useState(3);
+  const [plantNotice, setPlantNotice] = useState<string | null>(null);
+
+  // Screen Time Control Slider State
+  const [customScreenTimeLimit, setCustomScreenTimeLimit] = useState(45);
+
+  // Form State for Adding Child
   const [newChildName, setNewChildName] = useState('');
   const [newChildAge, setNewChildAge] = useState<number>(6);
   const [newChildAvatar, setNewChildAvatar] = useState('👧');
+  const [newChildColor, setNewChildColor] = useState('rose');
   const [isAddingChild, setIsAddingChild] = useState(false);
 
-  const [searchQuery, setSearchQuery] = useState('');
+  // Global Notice Toast
   const [actionNotice, setActionNotice] = useState<string | null>(null);
 
   useEffect(() => {
@@ -86,15 +108,11 @@ export default function ParentDashboardPage() {
       };
       setProfile(userProfile);
 
-      const { data: kidsData, error: kidsErr } = await supabase
+      const { data: kidsData } = await supabase
         .from('children')
         .select('*')
         .eq('parent_id', user.id)
         .order('created_at', { ascending: true });
-
-      if (kidsErr) {
-        console.error('Error fetching children:', kidsErr);
-      }
 
       const loadedKids: Child[] = (kidsData && kidsData.length > 0) ? kidsData : [
         {
@@ -102,17 +120,31 @@ export default function ParentDashboardPage() {
           name: 'Sia',
           age: 6,
           avatar: '👧',
+          favorite_color: 'rose',
           total_points: 480,
           streak_days: 7,
           current_level: 4,
           screen_time_limit_mins: 45,
           screen_time_used_mins: 28
+        },
+        {
+          id: 'demo-child-2',
+          name: 'Leo',
+          age: 8,
+          avatar: '🦁',
+          favorite_color: 'sky',
+          total_points: 620,
+          streak_days: 12,
+          current_level: 5,
+          screen_time_limit_mins: 60,
+          screen_time_used_mins: 35
         }
       ];
 
       setChildrenList(loadedKids);
       if (loadedKids.length > 0) {
         setSelectedChildId(loadedKids[0].id);
+        setCustomScreenTimeLimit(loadedKids[0].screen_time_limit_mins || 45);
       }
 
       const { data: subData } = await supabase
@@ -137,13 +169,66 @@ export default function ParentDashboardPage() {
         });
       }
     } catch (err) {
-      console.error('Failed to load parent dashboard:', err);
+      console.error('Failed to load Parent Space:', err);
     } finally {
       setLoading(false);
     }
   }
 
   const selectedChild = childrenList.find(c => c.id === selectedChildId) || childrenList[0];
+
+  // Accent Color Theme Map based on active child's favorite color
+  const colorThemes: Record<string, { bg: string; text: string; border: string; banner: string }> = {
+    rose: { bg: 'bg-[#FF6B7E]', text: 'text-[#FF6B7E]', border: 'border-[#FF6B7E]', banner: 'from-[#FF7E8D] to-[#FF5268]' },
+    sky: { bg: 'bg-[#38BDF8]', text: 'text-[#0284C7]', border: 'border-[#38BDF8]', banner: 'from-[#38BDF8] to-[#0284C7]' },
+    purple: { bg: 'bg-[#A855F7]', text: 'text-[#7E22CE]', border: 'border-[#A855F7]', banner: 'from-[#C084FC] to-[#7E22CE]' },
+    emerald: { bg: 'bg-[#10B981]', text: 'text-[#047857]', border: 'border-[#10B981]', banner: 'from-[#34D399] to-[#047857]' },
+    amber: { bg: 'bg-[#F59E0B]', text: 'text-[#B45309]', border: 'border-[#F59E0B]', banner: 'from-[#FBBF24] to-[#B45309]' }
+  };
+
+  const activeTheme = colorThemes[selectedChild?.favorite_color || 'rose'] || colorThemes.rose;
+
+  const handleWaterPlant = () => {
+    setPlantWateredCount(prev => prev + 1);
+    setPlantNotice(`You watered ${selectedChild?.name || 'child'}'s growth plant! Encouragement sent to Pip.`);
+    setTimeout(() => setPlantNotice(null), 3500);
+  };
+
+  const handleSendPipMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    const userText = chatInput.trim();
+    setPipMessages(prev => [...prev, { sender: 'parent', text: userText }]);
+    setChatInput('');
+
+    setTimeout(() => {
+      setPipMessages(prev => [
+        ...prev,
+        {
+          sender: 'pip',
+          text: `${selectedChild?.name || 'Your child'} is making steady progress! In their last practice, they spent most of their time on Phonics blends and showed great confidence.`
+        }
+      ]);
+    }, 1000);
+  };
+
+  const handleSaveScreenTime = async () => {
+    if (!selectedChild) return;
+    try {
+      await supabase
+        .from('children')
+        .update({ screen_time_limit_mins: customScreenTimeLimit })
+        .eq('id', selectedChild.id);
+
+      setChildrenList(prev =>
+        prev.map(c => c.id === selectedChild.id ? { ...c, screen_time_limit_mins: customScreenTimeLimit } : c)
+      );
+      triggerNotice(`Screen time limit updated to ${customScreenTimeLimit} minutes daily for ${selectedChild.name}.`);
+    } catch (err) {
+      console.error('Failed to update screen time:', err);
+    }
+  };
 
   const handleAddChild = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,6 +244,7 @@ export default function ParentDashboardPage() {
         name: newChildName.trim(),
         age: Number(newChildAge),
         avatar: newChildAvatar,
+        favorite_color: newChildColor,
         total_points: 0,
         streak_days: 1,
         current_level: 1,
@@ -171,8 +257,7 @@ export default function ParentDashboardPage() {
         .select()
         .single();
 
-      if (error) {
-        console.error('Error adding child:', error);
+      if (error || !data) {
         const localKid: Child = {
           id: 'local-' + Date.now(),
           ...newKidObj,
@@ -180,7 +265,7 @@ export default function ParentDashboardPage() {
         };
         setChildrenList(prev => [...prev, localKid]);
         setSelectedChildId(localKid.id);
-      } else if (data) {
+      } else {
         setChildrenList(prev => [...prev, data]);
         setSelectedChildId(data.id);
       }
@@ -203,11 +288,11 @@ export default function ParentDashboardPage() {
       setPinError('');
 
       if (pinAction === 'delete') {
-        triggerNotice('Account deletion request initiated. Confirmation sent via email.');
+        triggerNotice('Account deletion request initiated. Email confirmation sent.');
       } else if (pinAction === 'pause') {
         triggerNotice('Subscription and learning activity paused.');
-      } else if (pinAction === 'view_billing') {
-        triggerNotice('Redirecting to secure billing portal...');
+      } else if (pinAction === 'view_billing' || pinAction === 'upgrade') {
+        triggerNotice('Redirecting to Paystack secure checkout portal...');
       }
       setPinAction(null);
     } else {
@@ -215,8 +300,9 @@ export default function ParentDashboardPage() {
     }
   };
 
-  const handleAdminResetQuota = async () => {
-    triggerNotice('Admin Action: Learning and speech evaluation quotas reset to 100%.');
+  const triggerNotice = (msg: string) => {
+    setActionNotice(msg);
+    setTimeout(() => setActionNotice(null), 4000);
   };
 
   const handleSignOut = async () => {
@@ -224,505 +310,606 @@ export default function ParentDashboardPage() {
     router.push('/');
   };
 
-  function triggerNotice(msg: string) {
-    setActionNotice(msg);
-    setTimeout(() => setActionNotice(null), 4000);
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FAF4F4] flex flex-col justify-center items-center p-6">
         <div className="w-16 h-16 rounded-3xl bg-[#FF6B7E] animate-bounce flex items-center justify-center text-white text-2xl font-black shadow-[0_8px_0_#E55366]">
           O
         </div>
-        <p className="mt-4 font-bold text-slate-500 tracking-wide">Loading Parent Portal...</p>
+        <p className="mt-4 font-bold text-slate-500 tracking-wide">Loading Growth Compass...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF4F4] text-slate-800 font-sans flex flex-col md:flex-row">
-      {/* LEFT CORAL SIDEBAR */}
-      <aside className="w-full md:w-72 bg-[#FF6B7E] text-white p-6 flex flex-col justify-between shrink-0 shadow-[4px_0_24px_rgba(255,107,126,0.15)]">
-        <div>
-          <div className="flex flex-col items-center text-center pb-6 border-b border-white/20 mb-6">
-            <div className="relative w-24 h-24 rounded-full bg-white p-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.1),0_8px_20px_rgba(0,0,0,0.12)] mb-3">
-              <div className="w-full h-full rounded-full bg-rose-100 flex items-center justify-center text-4xl overflow-hidden">
-                {selectedChild?.avatar || '👧'}
-              </div>
-            </div>
-            <h2 className="text-xl font-black tracking-tight text-white">
-              Hi, {selectedChild?.name || profile?.full_name || 'Parent'}!
-            </h2>
-            <p className="text-xs font-bold text-rose-100 mt-0.5">Active Learner Profile</p>
-          </div>
-
-          {childrenList.length > 1 && (
-            <div className="mb-6 bg-white/15 backdrop-blur-md rounded-2xl p-2 border border-white/20">
-              <p className="text-[10px] uppercase tracking-wider font-extrabold text-rose-100 px-2 mb-1.5">Switch Child</p>
-              <div className="space-y-1">
-                {childrenList.map((kid) => (
-                  <button
-                    key={kid.id}
-                    onClick={() => setSelectedChildId(kid.id)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
-                      kid.id === selectedChildId
-                        ? 'bg-white text-[#FF6B7E] shadow-sm'
-                        : 'text-white hover:bg-white/10'
-                    }`}
-                  >
-                    <span>{kid.avatar}</span>
-                    <span className="truncate">{kid.name}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <nav className="space-y-2">
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-black text-sm transition-all ${
-                activeTab === 'dashboard'
-                  ? 'bg-white text-[#FF6B7E] shadow-[0_6px_16px_rgba(0,0,0,0.08)]'
-                  : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <span className="text-lg">🏠</span>
-              <span>Dashboard</span>
-            </button>
-
-            <button
-              onClick={() => { setActiveTab('children'); setShowAddChildModal(true); }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-black text-sm transition-all ${
-                activeTab === 'children'
-                  ? 'bg-white text-[#FF6B7E] shadow-[0_6px_16px_rgba(0,0,0,0.08)]'
-                  : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <span className="text-lg">👶</span>
-              <span>Child Profiles</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('screentime')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-black text-sm transition-all ${
-                activeTab === 'screentime'
-                  ? 'bg-white text-[#FF6B7E] shadow-[0_6px_16px_rgba(0,0,0,0.08)]'
-                  : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <span className="text-lg">⏱️</span>
-              <span>Screen Controls</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('milestones')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-black text-sm transition-all ${
-                activeTab === 'milestones'
-                  ? 'bg-white text-[#FF6B7E] shadow-[0_6px_16px_rgba(0,0,0,0.08)]'
-                  : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <span className="text-lg">🎗️</span>
-              <span>Milestones</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-black text-sm transition-all ${
-                activeTab === 'settings'
-                  ? 'bg-white text-[#FF6B7E] shadow-[0_6px_16px_rgba(0,0,0,0.08)]'
-                  : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <span className="text-lg">⚙️</span>
-              <span>Settings</span>
-            </button>
-          </nav>
-        </div>
-
-        <div className="mt-8 bg-white/95 text-slate-900 rounded-[28px] p-5 text-center shadow-[0_10px_25px_rgba(0,0,0,0.1)] border-2 border-white">
-          <div className="w-12 h-12 rounded-2xl bg-amber-100 border-2 border-amber-200 text-amber-600 font-black text-2xl mx-auto flex items-center justify-center mb-2 shadow-sm">
-            👑
-          </div>
-          <h4 className="font-black text-base text-slate-900">Let's Upgrade!</h4>
-          <p className="text-xs font-bold text-slate-500 mt-1 mb-4">
-            Unlock all personalized learning chapters and detailed voice reports.
-          </p>
-          <button
-            onClick={() => {
-              setPinAction('view_billing');
-              setShowPinModal(true);
-            }}
-            className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#FF6B7E] to-[#FF5268] text-white font-extrabold text-xs shadow-[0_4px_0_#E55366] active:translate-y-0.5 transition-all"
-          >
-            Upgrade Pass
-          </button>
-        </div>
-      </aside>
-
-      {/* MAIN DASHBOARD BODY */}
-      <main className="flex-1 p-6 md:p-8 overflow-y-auto">
-        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Dashboard</h1>
-            <p className="text-xs font-bold text-slate-400 mt-0.5">Real-time learning progress and safety controls</p>
-          </div>
-
+    <div className="min-h-screen bg-[#FAF4F4] text-slate-800 font-sans pb-24 md:pb-12">
+      {/* Top Mobile/Desktop Header */}
+      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 sm:px-8 py-3.5 shadow-sm">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search subjects, progress..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-48 sm:w-64 pl-9 pr-4 py-2.5 rounded-full bg-white border border-rose-100/80 text-xs font-bold text-slate-700 placeholder:text-slate-400 shadow-[0_4px_12px_rgba(0,0,0,0.03)] focus:outline-none focus:ring-2 focus:ring-[#FF6B7E]"
-              />
-              <span className="absolute left-3 top-2.5 text-slate-400 text-xs">🔍</span>
+            <Link href="/" className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-400 to-indigo-500 flex items-center justify-center text-white font-black text-xl shadow-md">
+                O
+              </div>
+              <span className="font-extrabold text-slate-900 tracking-tight text-lg hidden sm:inline">Onesimos</span>
+            </Link>
+
+            {/* Active View Title */}
+            <span className="text-xs font-black text-slate-400 border-l border-slate-200 pl-3">
+              Growth Compass
+            </span>
+          </div>
+
+          {/* Child Switcher (Mobile Dropdown + Desktop Pills) */}
+          <div className="flex items-center gap-3">
+            {/* Mobile Dropdown Button */}
+            <div className="relative sm:hidden">
+              <button
+                onClick={() => setShowChildDropdown(!showChildDropdown)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-xs font-black text-slate-800 shadow-sm"
+              >
+                <span>{selectedChild?.avatar}</span>
+                <span className="truncate max-w-[80px]">{selectedChild?.name}</span>
+                <span className="text-[10px]">▼</span>
+              </button>
+
+              {showChildDropdown && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl p-2 shadow-2xl border border-slate-100 z-50 animate-scale-up">
+                  <p className="text-[10px] font-black text-slate-400 px-2 py-1 uppercase tracking-wider">Switch Learner</p>
+                  {childrenList.map(kid => (
+                    <button
+                      key={kid.id}
+                      onClick={() => {
+                        setSelectedChildId(kid.id);
+                        setCustomScreenTimeLimit(kid.screen_time_limit_mins || 45);
+                        setShowChildDropdown(false);
+                      }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-extrabold text-left transition-colors ${
+                        kid.id === selectedChildId ? 'bg-rose-50 text-[#FF6B7E]' : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span>{kid.avatar}</span>
+                      <span>{kid.name}</span>
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => {
+                      setShowChildDropdown(false);
+                      setShowAddChildModal(true);
+                    }}
+                    className="w-full mt-1 pt-2 border-t border-slate-100 text-center text-xs font-black text-[#FF6B7E] hover:underline"
+                  >
+                    + Add New Profile
+                  </button>
+                </div>
+              )}
             </div>
 
-            <button className="relative w-10 h-10 rounded-full bg-white border border-rose-100/80 flex items-center justify-center text-slate-700 shadow-[0_4px_12px_rgba(0,0,0,0.03)] hover:bg-rose-50 transition-colors">
-              <span className="text-base">🔔</span>
-              <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#FF6B7E] text-white text-[9px] font-black flex items-center justify-center border-2 border-white">
-                3
-              </span>
-            </button>
+            {/* Desktop Child Switcher Pills */}
+            <div className="hidden sm:flex items-center gap-1.5 bg-slate-100/80 p-1 rounded-2xl border border-slate-200/60">
+              {childrenList.map(kid => (
+                <button
+                  key={kid.id}
+                  onClick={() => {
+                    setSelectedChildId(kid.id);
+                    setCustomScreenTimeLimit(kid.screen_time_limit_mins || 45);
+                  }}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
+                    kid.id === selectedChildId
+                      ? 'bg-white text-slate-900 shadow-sm scale-105'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <span>{kid.avatar}</span>
+                  <span>{kid.name}</span>
+                </button>
+              ))}
+              <button
+                onClick={() => setShowAddChildModal(true)}
+                className="w-7 h-7 rounded-xl bg-white hover:bg-rose-50 text-[#FF6B7E] font-black text-sm flex items-center justify-center border border-slate-200 shadow-sm"
+                title="Add Child Profile"
+              >
+                +
+              </button>
+            </div>
 
+            {/* Account & Sign Out */}
             <button
               onClick={handleSignOut}
-              className="w-10 h-10 rounded-full bg-[#FF6B7E]/10 border border-[#FF6B7E]/20 flex items-center justify-center text-[#FF6B7E] font-black text-xs shadow-sm hover:bg-[#FF6B7E] hover:text-white transition-all"
-              title="Sign Out"
+              className="text-xs font-extrabold text-slate-500 hover:text-rose-600 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 transition-colors"
             >
-              👤
+              Sign Out
             </button>
           </div>
-        </header>
+        </div>
+      </header>
 
+      {/* Main Container */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-8 pt-6">
+        {/* Global Toast Notice */}
         {actionNotice && (
-          <div className="mb-6 p-4 rounded-2xl bg-emerald-500 text-white font-bold text-sm shadow-[0_6px_0_#059669] flex items-center justify-between">
+          <div className="mb-6 p-4 rounded-2xl bg-emerald-500 text-white font-bold text-sm shadow-md flex items-center justify-between">
             <span>{actionNotice}</span>
             <button onClick={() => setActionNotice(null)} className="text-white font-black">✕</button>
           </div>
         )}
 
-        {/* Hero Greeting Banner */}
-        <section className="bg-gradient-to-r from-[#FF7E8D] to-[#FF5268] rounded-[32px] p-6 sm:p-8 text-white shadow-[0_12px_30px_rgba(255,107,126,0.25)] border-2 border-white/50 relative overflow-hidden mb-8">
+        {/* Hero Banner with Active Child Theme & Living Plant */}
+        <section className={`bg-gradient-to-r ${activeTheme.banner} rounded-[32px] p-6 sm:p-8 text-white shadow-xl relative overflow-hidden mb-6 transition-all duration-500`}>
           <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-            <div className="max-w-md">
-              <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
-                Good morning, {selectedChild?.name || 'Sia'}
-              </h2>
-              <p className="text-rose-100 font-medium text-xs sm:text-sm mt-1">
-                Let's start new days with updated real-time speech evaluation data!
+            <div className="max-w-xl">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-bold mb-3 border border-white/30">
+                <span>🛡️</span>
+                <span>Active Learner: {selectedChild?.name}</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
+                {selectedChild?.name}'s Journey
+              </h1>
+              <p className="text-white/90 font-medium text-xs sm:text-sm mt-1">
+                Real-time growth progress, speech recognition updates, and encouragement.
               </p>
 
-              <div className="mt-4 flex items-center gap-3 flex-wrap">
+              <div className="mt-5 flex items-center gap-3 flex-wrap">
                 <button
                   onClick={() => setActiveTab('screentime')}
-                  className="px-4 py-2.5 rounded-2xl bg-white/20 backdrop-blur-md hover:bg-white text-white hover:text-[#FF5268] font-extrabold text-xs border border-white/40 shadow-sm transition-all flex items-center gap-2"
+                  className="px-4 py-2.5 rounded-2xl bg-white/20 backdrop-blur-md hover:bg-white text-white hover:text-slate-900 font-extrabold text-xs border border-white/40 shadow-sm transition-all flex items-center gap-2"
                 >
                   <span>⏱️</span>
-                  <span>Screen Duration: {selectedChild?.screen_time_limit_mins || 45}m</span>
+                  <span>Daily Limit: {selectedChild?.screen_time_limit_mins || 45}m</span>
                 </button>
 
                 <Link
                   href={`/kid/${selectedChild?.id || 'demo'}`}
-                  className="px-4 py-2.5 rounded-2xl bg-white text-[#FF5268] font-black text-xs shadow-[0_4px_0_#FFE4E8] active:translate-y-0.5 transition-all hover:bg-rose-50"
+                  className="px-5 py-2.5 rounded-2xl bg-white text-slate-900 font-black text-xs shadow-md hover:bg-slate-50 transition-all"
                 >
-                  Enter Kid Portal →
+                  Enter {selectedChild?.name}'s Space
                 </Link>
               </div>
             </div>
 
-            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-white/10 backdrop-blur-md border border-white/30 flex flex-col items-center justify-center text-[48px] shrink-0 shadow-inner">
-              🪴
+            {/* Interactive Living Growth Plant */}
+            <div className="bg-white/15 backdrop-blur-md border border-white/30 rounded-3xl p-4 flex flex-col items-center justify-center text-center shrink-0 w-36 sm:w-40 shadow-inner">
+              <div className="text-5xl mb-1 animate-pulse">🪴</div>
+              <span className="text-xs font-black text-white">Growth Plant</span>
+              <span className="text-[10px] font-extrabold text-white/80">Watered {plantWateredCount} times</span>
+              <button
+                onClick={handleWaterPlant}
+                className="mt-2.5 px-3 py-1 rounded-xl bg-white text-slate-900 font-black text-[11px] shadow-sm hover:bg-rose-50 transition-all active:scale-95"
+              >
+                💧 Water Plant
+              </button>
             </div>
           </div>
         </section>
 
-        {/* Row 1 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.03)] border border-rose-50/80 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center font-bold text-lg">💬</div>
-                <h3 className="font-extrabold text-slate-800 text-sm">Pip Assistant</h3>
-              </div>
-              <h4 className="text-lg font-black text-slate-900 mt-2">Talk to your Pip Assistant</h4>
-              <p className="text-xs text-slate-400 font-medium mt-1">
-                Ask questions about custom speech recognition reports or chapter hints.
-              </p>
-            </div>
-            <div className="mt-6">
-              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/80 rounded-2xl p-2.5">
-                <input type="text" placeholder="Type your message..." className="w-full bg-transparent text-xs font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none" />
-                <button className="w-8 h-8 rounded-xl bg-[#FF6B7E] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">➤</button>
-              </div>
-            </div>
+        {plantNotice && (
+          <div className="mb-6 p-3 rounded-2xl bg-amber-400 text-slate-900 font-extrabold text-xs shadow-sm text-center animate-fade-in">
+            {plantNotice}
           </div>
+        )}
 
-          <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.03)] border border-rose-50/80">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center font-bold text-lg">🍴</div>
-              <h3 className="font-extrabold text-slate-800 text-sm">Subject Focus Breakdown</h3>
-            </div>
-            <div className="flex flex-col items-center justify-center my-2">
-              <div className="relative w-32 h-32 rounded-full border-8 border-purple-100 flex items-center justify-center bg-gradient-to-tr from-rose-50 to-purple-50">
-                <div className="text-center">
-                  <span className="block font-black text-slate-900 text-base">180 Chapters</span>
-                  <span className="block text-[10px] font-bold text-slate-400">Total Completed</span>
+        {/* Clean Top View Tabs (Overview / Screen Controls / Milestones / Settings) */}
+        <nav className="flex items-center gap-2 mb-8 border-b border-slate-200/80 pb-3 overflow-x-auto">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm whitespace-nowrap transition-all ${
+              activeTab === 'overview'
+                ? `bg-white ${activeTheme.text} shadow-md border-2 ${activeTheme.border}`
+                : 'text-slate-500 hover:text-slate-900 hover:bg-white/60'
+            }`}
+          >
+            📊 Growth Overview
+          </button>
+
+          <button
+            onClick={() => setActiveTab('screentime')}
+            className={`px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm whitespace-nowrap transition-all ${
+              activeTab === 'screentime'
+                ? `bg-white ${activeTheme.text} shadow-md border-2 ${activeTheme.border}`
+                : 'text-slate-500 hover:text-slate-900 hover:bg-white/60'
+            }`}
+          >
+            ⏱️ Screen Time & Limits
+          </button>
+
+          <button
+            onClick={() => setActiveTab('milestones')}
+            className={`px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm whitespace-nowrap transition-all ${
+              activeTab === 'milestones'
+                ? `bg-white ${activeTheme.text} shadow-md border-2 ${activeTheme.border}`
+                : 'text-slate-500 hover:text-slate-900 hover:bg-white/60'
+            }`}
+          >
+            🏆 Milestones & Badges
+          </button>
+
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm whitespace-nowrap transition-all ${
+              activeTab === 'settings'
+                ? `bg-white ${activeTheme.text} shadow-md border-2 ${activeTheme.border}`
+                : 'text-slate-500 hover:text-slate-900 hover:bg-white/60'
+            }`}
+          >
+            ⚙️ Account & Security
+          </button>
+        </nav>
+
+        {/* TAB 1: OVERVIEW */}
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            {/* Subject Multi-Ring & Skill Confidence */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Card 1: Multi-Subject Engagement Rings */}
+              <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100">
+                <h3 className="font-extrabold text-slate-800 text-sm mb-1">Subject Engagement</h3>
+                <p className="text-xs text-slate-400 font-medium mb-4">Time and interest per topic</p>
+
+                <div className="flex flex-col items-center justify-center my-4">
+                  <div className="relative w-36 h-36 rounded-full border-[10px] border-indigo-100 flex items-center justify-center bg-indigo-50/50">
+                    <div className="text-center">
+                      <span className="block font-black text-slate-900 text-xl">180</span>
+                      <span className="block text-[10px] font-bold text-slate-400">Chapters Completed</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-[11px] font-extrabold text-slate-600 mt-2">
+                  <div className="bg-slate-50 p-2 rounded-xl flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Phonics Lab
+                  </div>
+                  <div className="bg-slate-50 p-2 rounded-xl flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span> Stories
+                  </div>
+                  <div className="bg-slate-50 p-2 rounded-xl flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Math Quest
+                  </div>
+                  <div className="bg-slate-50 p-2 rounded-xl flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Stay Strong
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Skill Confidence Across Subjects */}
+              <div className="md:col-span-2 bg-white rounded-[32px] p-6 shadow-sm border border-slate-100">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="font-extrabold text-slate-800 text-sm">Skill Confidence</h3>
+                    <p className="text-xs text-slate-400 font-medium">Evaluation from speech and practice sessions</p>
+                  </div>
+                  <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
+                    Level {selectedChild?.current_level || 4}
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between text-xs font-extrabold text-slate-700 mb-1">
+                      <span>Phonics Pronunciation Accuracy</span>
+                      <span>85%</span>
+                    </div>
+                    <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-emerald-400 rounded-full w-[85%]"></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs font-extrabold text-slate-700 mb-1">
+                      <span>Interactive Story Comprehension</span>
+                      <span>72%</span>
+                    </div>
+                    <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-purple-400 rounded-full w-[72%]"></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs font-bold text-slate-700 mb-1">
+                      <span>Math Quest Visual Addition</span>
+                      <span>90%</span>
+                    </div>
+                    <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-amber-400 rounded-full w-[90%]"></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs font-bold text-slate-700 mb-1">
+                      <span>Stay Strong Self-Worth Assertiveness</span>
+                      <span>80%</span>
+                    </div>
+                    <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-sky-400 rounded-full w-[80%]"></div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-            <div className="flex items-center justify-around text-[11px] font-bold text-slate-500 mt-2">
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500"></span> Phonics</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400"></span> Stories</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-400"></span> Math</span>
-            </div>
-          </div>
 
-          <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.03)] border border-rose-50/80 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-lg">📈</div>
-                  <h3 className="font-extrabold text-slate-800 text-sm">Reading Growth</h3>
+            {/* Target Progress Banner */}
+            <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center text-3xl shrink-0">
+                  🚀
                 </div>
-                <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                  Level {selectedChild?.current_level || 4}
-                </span>
-              </div>
-              <div className="space-y-2.5 mt-4">
                 <div>
-                  <div className="flex justify-between text-xs font-bold text-slate-600 mb-1">
-                    <span>Pronunciation Accuracy</span>
-                    <span>85%</span>
-                  </div>
-                  <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-400 rounded-full w-[85%]"></div>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-xs font-bold text-slate-600 mb-1">
-                    <span>Speech Recognition Speed</span>
-                    <span>70%</span>
-                  </div>
-                  <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-sky-400 rounded-full w-[70%]"></div>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-xs font-bold text-slate-600 mb-1">
-                    <span>Story Comprehension</span>
-                    <span>60%</span>
-                  </div>
-                  <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-purple-400 rounded-full w-[60%]"></div>
-                  </div>
+                  <h4 className="font-black text-slate-900 text-base">
+                    {selectedChild?.name} reached 85% of her weekly discovery goal!
+                  </h4>
+                  <p className="text-xs font-bold text-amber-600 mt-0.5">
+                    🔥 {selectedChild?.streak_days || 7} day active practice streak
+                  </p>
                 </div>
               </div>
+
+              <button
+                onClick={() => setIsPipChatOpen(true)}
+                className="px-5 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs shadow-sm transition-all shrink-0"
+              >
+                Ask Pip About Progress
+              </button>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Row 2 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          <div className="md:col-span-2 bg-white rounded-[32px] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.03)] border border-rose-50/80">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center font-bold text-lg">⏱️</div>
-              <h3 className="font-extrabold text-slate-800 text-sm">Screen & Practice Time Summary</h3>
-            </div>
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-              <div className="relative w-36 h-36 rounded-full border-[10px] border-amber-200 flex items-center justify-center bg-amber-50 shrink-0">
-                <div className="text-center">
-                  <span className="block font-black text-slate-900 text-xl">
-                    {selectedChild?.screen_time_used_mins || 28}m
-                  </span>
-                  <span className="block text-[10px] font-bold text-slate-400">
-                    of {selectedChild?.screen_time_limit_mins || 45}m today
-                  </span>
-                </div>
-              </div>
-              <div className="flex-1 space-y-3 w-full">
-                <div className="flex items-center justify-between text-xs font-bold">
-                  <span className="flex items-center gap-2 text-slate-600">
-                    <span className="w-2.5 h-2.5 rounded-full bg-rose-400"></span> Active Phonics Practice
-                  </span>
-                  <span className="text-slate-900">72%</span>
-                </div>
-                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-rose-400 rounded-full w-[72%]"></div>
-                </div>
-                <div className="flex items-center justify-between text-xs font-bold">
-                  <span className="flex items-center gap-2 text-slate-600">
-                    <span className="w-2.5 h-2.5 rounded-full bg-purple-400"></span> Interactive Stories
-                  </span>
-                  <span className="text-slate-900">19%</span>
-                </div>
-                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-purple-400 rounded-full w-[19%]"></div>
-                </div>
-                <div className="flex items-center justify-between text-xs font-bold">
-                  <span className="flex items-center gap-2 text-slate-600">
-                    <span className="w-2.5 h-2.5 rounded-full bg-sky-400"></span> Stay Strong Drills
-                  </span>
-                  <span className="text-slate-900">9%</span>
-                </div>
-                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-sky-400 rounded-full w-[9%]"></div>
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* TAB 2: SCREEN TIME & LIMITS */}
+        {activeTab === 'screentime' && (
+          <div className="bg-white rounded-[32px] p-6 sm:p-8 shadow-sm border border-slate-100">
+            <h3 className="text-lg font-black text-slate-900 mb-1">Screen Time Allowance</h3>
+            <p className="text-xs text-slate-400 font-medium mb-6">
+              Set healthy daily screen time limits for {selectedChild?.name}.
+            </p>
 
-          <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.03)] border border-rose-50/80 flex flex-col items-center justify-center text-center">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-rose-100 to-amber-100 border-2 border-white flex items-center justify-center text-4xl shadow-sm mb-3">
-              🚀
-            </div>
-            <h3 className="text-3xl font-black text-slate-900">85%</h3>
-            <p className="text-xs font-bold text-slate-400 mt-1">of your weekly target archived</p>
-            <p className="text-xs font-black text-amber-600 mt-2">🔥 {selectedChild?.streak_days || 7} day streak</p>
-          </div>
-        </div>
-
-        {/* Row 3 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.03)] border border-rose-50/80">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl bg-rose-100 text-[#FF6B7E] flex items-center justify-center font-bold text-lg">📋</div>
-                <h3 className="font-extrabold text-slate-800 text-sm">Subject Tracker</h3>
-              </div>
-              <span className="text-xs font-bold text-rose-500">View All →</span>
-            </div>
-            <p className="text-xs font-bold text-rose-500 mb-3">Next Up: Phonics Level 2 Chapter</p>
-            <div className="space-y-2 text-xs font-bold text-slate-600">
-              <div className="p-2.5 bg-slate-50 rounded-xl flex items-center justify-between border border-slate-100">
-                <div className="flex items-center gap-2">
-                  <input type="checkbox" defaultChecked className="accent-[#FF6B7E] rounded" />
-                  <span>Vowel Blend Drills</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+              {/* Gauge */}
+              <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 text-center">
+                <div className="relative w-40 h-40 mx-auto rounded-full border-[12px] border-sky-200 flex items-center justify-center bg-white shadow-sm mb-4">
+                  <div>
+                    <span className="block text-3xl font-black text-slate-900">
+                      {selectedChild?.screen_time_used_mins || 28}m
+                    </span>
+                    <span className="block text-xs font-extrabold text-slate-400">
+                      used of {customScreenTimeLimit}m today
+                    </span>
+                  </div>
                 </div>
-                <span className="text-slate-400 font-medium">Done</span>
-              </div>
-              <div className="p-2.5 bg-slate-50 rounded-xl flex items-center justify-between border border-slate-100">
-                <div className="flex items-center gap-2">
-                  <input type="checkbox" defaultChecked className="accent-[#FF6B7E] rounded" />
-                  <span>Math Addition to 20</span>
-                </div>
-                <span className="text-slate-400 font-medium">Done</span>
-              </div>
-              <div className="p-2.5 bg-slate-50 rounded-xl flex items-center justify-between border border-slate-100">
-                <div className="flex items-center gap-2">
-                  <input type="checkbox" className="accent-[#FF6B7E] rounded" />
-                  <span>Stay Strong Assertiveness</span>
-                </div>
-                <span className="text-slate-400 font-medium">In Progress</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.03)] border border-rose-50/80">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-lg">🏆</div>
-                <h3 className="font-extrabold text-slate-800 text-sm">Milestones Achieved</h3>
-              </div>
-              <span className="text-xs font-bold text-slate-400">{selectedChild?.total_points || 480} pts</span>
-            </div>
-            <div className="space-y-2.5 text-xs font-bold text-slate-600">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                <span>First Spoken Chapter</span>
-                <span className="text-slate-400 font-medium">1 month ago</span>
-              </div>
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                <span>5-Day Practice Streak</span>
-                <span className="text-slate-400 font-medium">2 weeks ago</span>
-              </div>
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                <span>Completed "Bully Shield" Module</span>
-                <span className="text-slate-400 font-medium">3 days ago</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Mastered Initial Blends</span>
-                <span className="text-slate-400 font-medium">Yesterday</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Settings Tab Content (PIN, Billing, Admin) */}
-        {activeTab === 'settings' && (
-          <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_24px_rgba(0,0,0,0.03)] border border-rose-50/80 mb-8">
-            <h3 className="font-black text-slate-900 text-lg mb-4 flex items-center gap-2">
-              <span>🔒</span>
-              <span>Parent Security & Account</span>
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
-                <p className="font-extrabold text-slate-800 text-sm">{subscription?.plan_name}</p>
-                <p className="text-xs text-slate-500 font-medium mt-1">
-                  Status: {subscription?.is_active ? 'Active' : 'Trial'} · Renews {subscription?.current_period_end}
+                <p className="text-xs font-bold text-slate-600">
+                  {Math.max(0, customScreenTimeLimit - (selectedChild?.screen_time_used_mins || 28))} minutes remaining today
                 </p>
+              </div>
+
+              {/* Controls */}
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-700 mb-2">
+                    Daily Limit Slider: <span className="text-sky-600 font-black">{customScreenTimeLimit} Minutes</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="15"
+                    max="120"
+                    step="5"
+                    value={customScreenTimeLimit}
+                    onChange={(e) => setCustomScreenTimeLimit(Number(e.target.value))}
+                    className="w-full accent-sky-500 h-2 bg-slate-200 rounded-lg cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] font-extrabold text-slate-400 mt-1">
+                    <span>15 mins</span>
+                    <span>45 mins</span>
+                    <span>120 mins</span>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    onClick={handleSaveScreenTime}
+                    className="w-full py-3 rounded-2xl bg-sky-500 hover:bg-sky-600 text-white font-extrabold text-xs shadow-md transition-all"
+                  >
+                    Save Screen Limit for {selectedChild?.name}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: MILESTONES & BADGES */}
+        {activeTab === 'milestones' && (
+          <div className="bg-white rounded-[32px] p-6 sm:p-8 shadow-sm border border-slate-100">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-black text-slate-900">Milestones Achieved</h3>
+                <p className="text-xs text-slate-400 font-medium">Automatic badges earned during practice sessions</p>
+              </div>
+              <span className="text-xs font-black text-purple-700 bg-purple-50 px-3 py-1 rounded-full border border-purple-100">
+                ⭐ {selectedChild?.total_points || 480} Total Points
+              </span>
+            </div>
+
+            <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🎙️</span>
+                  <div>
+                    <h4 className="font-extrabold text-slate-800 text-sm">First Spoken Chapter</h4>
+                    <p className="text-xs text-slate-400">Speech evaluation completed with 85%+ accuracy</p>
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-slate-400">1 month ago</span>
+              </div>
+
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🔥</span>
+                  <div>
+                    <h4 className="font-extrabold text-slate-800 text-sm">5-Day Practice Streak</h4>
+                    <p className="text-xs text-slate-400">Consistent daily discovery sessions</p>
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-slate-400">2 weeks ago</span>
+              </div>
+
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🛡️</span>
+                  <div>
+                    <h4 className="font-extrabold text-slate-800 text-sm">Stay Strong Mastery</h4>
+                    <p className="text-xs text-slate-400">Completed assertiveness and bullying awareness drills</p>
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-slate-400">3 days ago</span>
+              </div>
+
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🔤</span>
+                  <div>
+                    <h4 className="font-extrabold text-slate-800 text-sm">Initial Blend Champion</h4>
+                    <p className="text-xs text-slate-400">Mastered vowel sounds in Phonics Lab</p>
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-slate-400">Yesterday</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: ACCOUNT & SECURITY */}
+        {activeTab === 'settings' && (
+          <div className="bg-white rounded-[32px] p-6 sm:p-8 shadow-sm border border-slate-100">
+            <h3 className="text-lg font-black text-slate-900 mb-1">Parent Security & Subscription</h3>
+            <p className="text-xs text-slate-400 font-medium mb-6">
+              Manage parent PIN security, Paystack billing, and account options.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Subscription Card */}
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="font-extrabold text-slate-800 text-sm">{subscription?.plan_name}</span>
+                  <span className="text-[10px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                    {subscription?.is_active ? 'ACTIVE' : 'TRIAL'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 font-medium mb-4">
+                  Renews on {subscription?.current_period_end} via Paystack
+                </p>
+
                 <button
-                  onClick={() => { setPinAction('view_billing'); setShowPinModal(true); }}
-                  className="mt-3 w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-[0_4px_0_#3730a3] active:translate-y-0.5 transition-all"
+                  onClick={() => {
+                    setPinAction('upgrade');
+                    setShowPinModal(true);
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-[#FF6B7E] hover:bg-[#FF5268] text-white font-black text-xs shadow-md transition-all"
                 >
-                  Manage Billing
+                  Upgrade Pass or Manage Subscription
                 </button>
               </div>
-              <div className="space-y-2">
+
+              {/* Security Actions */}
+              <div className="space-y-3">
                 <button
-                  onClick={() => { setPinAction('pause'); setShowPinModal(true); }}
-                  className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-200 transition-colors text-left"
+                  onClick={() => {
+                    setPinAction('pause');
+                    setShowPinModal(true);
+                  }}
+                  className="w-full py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-200 transition-colors text-left flex items-center justify-between"
                 >
-                  ⏸️ Pause Account & Subscription
+                  <span>⏸️ Pause Account Activity</span>
+                  <span>Authorize</span>
                 </button>
+
                 <button
-                  onClick={() => { setPinAction('delete'); setShowPinModal(true); }}
-                  className="w-full py-2.5 px-4 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs border border-rose-200 transition-colors text-left"
+                  onClick={() => {
+                    setPinAction('delete');
+                    setShowPinModal(true);
+                  }}
+                  className="w-full py-3 px-4 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs border border-rose-200 transition-colors text-left flex items-center justify-between"
                 >
-                  ⚠️ Delete Account Permanently
+                  <span>⚠️ Delete Account Permanently</span>
+                  <span>Authorize</span>
                 </button>
+
                 {profile?.is_admin && (
                   <button
-                    onClick={handleAdminResetQuota}
-                    className="w-full py-2.5 px-4 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-800 font-bold text-xs border border-purple-200 transition-colors text-left"
+                    onClick={() => triggerNotice('Admin Action: Learning quota reset to 100%.')}
+                    className="w-full py-3 px-4 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-800 font-bold text-xs border border-purple-200 transition-colors text-left flex items-center justify-between"
                   >
-                    ⚡ Admin: Reset Learning Quota
+                    <span>⚡ Admin: Reset Learning Quotas</span>
+                    <span>Reset</span>
                   </button>
                 )}
               </div>
             </div>
           </div>
         )}
-
-        {/* Bottom Promo Banner */}
-        <section className="bg-[#FF6B7E] rounded-[32px] p-6 text-white shadow-[0_8px_24px_rgba(255,107,126,0.2)] flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-amber-300 text-slate-900 flex items-center justify-center text-3xl shrink-0 shadow-md">⭐</div>
-            <div>
-              <h4 className="font-black text-lg">Discover The New Features</h4>
-              <p className="text-xs font-medium text-rose-100">See the full analytics view that we think you'll love.</p>
-            </div>
-          </div>
-          <button
-            onClick={() => { setPinAction('view_billing'); setShowPinModal(true); }}
-            className="px-6 py-3 rounded-2xl bg-white text-[#FF6B7E] font-black text-xs shadow-[0_4px_0_#FFE4E8] active:translate-y-0.5 transition-all shrink-0 hover:bg-rose-50"
-          >
-            Upgrade Plan
-          </button>
-        </section>
       </main>
 
-      {/* ADD CHILD MODAL */}
+      {/* Floating Pip Chat Assistant Drawer (Bottom Right) */}
+      <div className="fixed bottom-4 right-4 z-40">
+        {!isPipChatOpen ? (
+          <button
+            onClick={() => setIsPipChatOpen(true)}
+            className="flex items-center gap-2 px-4 py-3 rounded-full bg-slate-900 text-white font-black text-xs shadow-2xl hover:scale-105 transition-all border-2 border-slate-700"
+          >
+            <span className="text-base">💬</span>
+            <span>Talk to Pip</span>
+          </button>
+        ) : (
+          <div className="bg-white rounded-3xl w-80 sm:w-96 shadow-2xl border-2 border-slate-200 overflow-hidden animate-scale-up">
+            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🐣</span>
+                <div>
+                  <h4 className="font-extrabold text-xs">Pip Companion Assistant</h4>
+                  <p className="text-[10px] text-slate-300">Positive growth updates for {selectedChild?.name}</p>
+                </div>
+              </div>
+              <button onClick={() => setIsPipChatOpen(false)} className="text-white hover:text-slate-300 font-black text-sm">
+                ✕
+              </button>
+            </div>
+
+            <div className="p-4 h-64 overflow-y-auto space-y-3 text-xs">
+              {pipMessages.map((msg, i) => (
+                <div
+                  key={i}
+                  className={`p-3 rounded-2xl max-w-[85%] font-medium ${
+                    msg.sender === 'parent'
+                      ? 'bg-rose-50 text-rose-900 ml-auto border border-rose-100'
+                      : 'bg-slate-100 text-slate-800 border border-slate-200'
+                  }`}
+                >
+                  {msg.text}
+                </div>
+              ))}
+            </div>
+
+            <form onSubmit={handleSendPipMessage} className="p-3 border-t border-slate-100 flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Ask Pip a question..."
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                className="flex-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold focus:outline-none"
+              />
+              <button type="submit" className="px-3 py-2 rounded-xl bg-slate-900 text-white font-black text-xs">
+                Send
+              </button>
+            </form>
+          </div>
+        )}
+      </div>
+
+      {/* MODAL: ADD CHILD */}
       {showAddChildModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-[32px] max-w-md w-full p-6 shadow-2xl border-4 border-white">
+          <div className="bg-white rounded-[32px] max-w-md w-full p-6 shadow-2xl border-4 border-white animate-scale-up">
             <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
-              <h3 className="text-xl font-black text-slate-900">Add New Child Profile</h3>
-              <button onClick={() => setShowAddChildModal(false)} className="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
+              <h3 className="text-xl font-black text-slate-900">Add Learner Profile</h3>
+              <button onClick={() => setShowAddChildModal(false)} className="text-slate-400 font-bold text-lg">✕</button>
             </div>
+
             <form onSubmit={handleAddChild} className="space-y-4">
               <div>
                 <label className="block text-xs font-extrabold text-slate-700 mb-1">Child's Name</label>
@@ -732,9 +919,10 @@ export default function ParentDashboardPage() {
                   placeholder="e.g. Maya"
                   value={newChildName}
                   onChange={(e) => setNewChildName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-200 text-sm font-bold text-slate-800 focus:outline-none focus:border-[#FF6B7E]"
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-200 text-sm font-bold text-slate-800 focus:outline-none focus:border-rose-400"
                 />
               </div>
+
               <div>
                 <label className="block text-xs font-extrabold text-slate-700 mb-1">Age</label>
                 <input
@@ -743,21 +931,20 @@ export default function ParentDashboardPage() {
                   max="14"
                   value={newChildAge}
                   onChange={(e) => setNewChildAge(Number(e.target.value))}
-                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-200 text-sm font-bold text-slate-800 focus:outline-none focus:border-[#FF6B7E]"
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-200 text-sm font-bold text-slate-800 focus:outline-none focus:border-rose-400"
                 />
               </div>
+
               <div>
                 <label className="block text-xs font-extrabold text-slate-700 mb-1">Select Avatar</label>
-                <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
                   {['👧', '👦', '🐻', '🦁', '🐰', '🦊'].map((emoji) => (
                     <button
                       key={emoji}
                       type="button"
                       onClick={() => setNewChildAvatar(emoji)}
-                      className={`w-12 h-12 rounded-2xl text-2xl flex items-center justify-center border-2 transition-transform ${
-                        newChildAvatar === emoji
-                          ? 'border-[#FF6B7E] bg-rose-50 scale-110 shadow-sm'
-                          : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
+                      className={`w-11 h-11 rounded-2xl text-xl flex items-center justify-center border-2 transition-transform ${
+                        newChildAvatar === emoji ? 'border-rose-500 bg-rose-50 scale-110' : 'border-slate-200 bg-slate-50'
                       }`}
                     >
                       {emoji}
@@ -765,10 +952,43 @@ export default function ParentDashboardPage() {
                   ))}
                 </div>
               </div>
+
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 mb-1">Favorite Accent Color</label>
+                <div className="flex items-center gap-2">
+                  {[
+                    { id: 'rose', bg: 'bg-[#FF6B7E]' },
+                    { id: 'sky', bg: 'bg-[#38BDF8]' },
+                    { id: 'purple', bg: 'bg-[#A855F7]' },
+                    { id: 'emerald', bg: 'bg-[#10B981]' },
+                    { id: 'amber', bg: 'bg-[#F59E0B]' }
+                  ].map(c => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setNewChildColor(c.id)}
+                      className={`w-8 h-8 rounded-full ${c.bg} border-2 ${
+                        newChildColor === c.id ? 'border-slate-900 scale-110' : 'border-transparent'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+
               <div className="pt-4 flex items-center justify-end gap-3">
-                <button type="button" onClick={() => setShowAddChildModal(false)} className="px-4 py-2.5 rounded-xl text-slate-500 font-bold text-xs hover:bg-slate-100">Cancel</button>
-                <button type="submit" disabled={isAddingChild} className="px-5 py-2.5 rounded-xl bg-[#FF6B7E] hover:bg-[#FF5268] text-white font-extrabold text-xs shadow-[0_4px_0_#E55366] active:translate-y-0.5 transition-all">
-                  {isAddingChild ? 'Creating...' : 'Save Profile'}
+                <button
+                  type="button"
+                  onClick={() => setShowAddChildModal(false)}
+                  className="px-4 py-2.5 rounded-xl text-slate-500 font-bold text-xs hover:bg-slate-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isAddingChild}
+                  className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs shadow-md"
+                >
+                  {isAddingChild ? 'Saving...' : 'Save Learner Profile'}
                 </button>
               </div>
             </form>
@@ -776,25 +996,50 @@ export default function ParentDashboardPage() {
         </div>
       )}
 
-      {/* PIN MODAL */}
+      {/* MODAL: PARENT PIN SECURITY */}
       {showPinModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-[32px] max-w-sm w-full p-6 shadow-2xl border-4 border-white text-center">
-            <div className="w-12 h-12 rounded-2xl bg-rose-100 border-2 border-rose-200 mx-auto flex items-center justify-center text-[#FF6B7E] font-bold text-xl mb-3">🔒</div>
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 border-2 border-rose-200 mx-auto flex items-center justify-center text-[#FF6B7E] font-bold text-xl mb-3">
+              🔒
+            </div>
+
             <h3 className="text-xl font-black text-slate-900 mb-1">Enter Parent PIN</h3>
-            <p className="text-xs text-slate-500 font-medium mb-4">Default PIN is 1234. Authorize access to subscription management.</p>
+            <p className="text-xs text-slate-500 font-medium mb-4">
+              Default PIN is 1234. Authorize action.
+            </p>
+
             <input
               type="password"
               maxLength={4}
               autoFocus
               value={enteredPin}
-              onChange={(e) => { setEnteredPin(e.target.value); setPinError(''); }}
+              onChange={(e) => {
+                setEnteredPin(e.target.value);
+                setPinError('');
+              }}
               className="w-36 mx-auto text-center tracking-[0.5em] text-2xl font-black px-4 py-3 rounded-2xl bg-slate-50 border-2 border-slate-200 focus:border-[#FF6B7E] focus:outline-none mb-2"
             />
+
             {pinError && <p className="text-xs text-rose-500 font-bold mb-3">{pinError}</p>}
+
             <div className="mt-4 flex items-center justify-center gap-3">
-              <button onClick={() => { setShowPinModal(false); setEnteredPin(''); setPinError(''); }} className="px-4 py-2.5 rounded-xl text-slate-500 font-bold text-xs hover:bg-slate-100">Cancel</button>
-              <button onClick={handlePinSubmit} className="px-5 py-2.5 rounded-xl bg-[#FF6B7E] hover:bg-[#FF5268] text-white font-extrabold text-xs shadow-[0_4px_0_#E55366] active:translate-y-0.5 transition-all">Verify & Proceed</button>
+              <button
+                onClick={() => {
+                  setShowPinModal(false);
+                  setEnteredPin('');
+                  setPinError('');
+                }}
+                className="px-4 py-2.5 rounded-xl text-slate-500 font-bold text-xs hover:bg-slate-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePinSubmit}
+                className="px-5 py-2.5 rounded-xl bg-[#FF6B7E] hover:bg-[#FF5268] text-white font-extrabold text-xs shadow-md"
+              >
+                Verify & Proceed
+              </button>
             </div>
           </div>
         </div>
