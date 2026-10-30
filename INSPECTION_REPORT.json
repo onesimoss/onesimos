@@ -1,0 +1,63 @@
+[
+  {
+    "path": "tailwind.config.js",
+    "exists": true,
+    "sizeBytes": 3031,
+    "lines": 94,
+    "hasClayColors": false,
+    "hasClayPuffyClass": false,
+    "hasPipImport": false
+  },
+  {
+    "path": "app/globals.css",
+    "exists": true,
+    "sizeBytes": 3496,
+    "lines": 132,
+    "hasClayColors": false,
+    "hasClayPuffyClass": true,
+    "hasPipImport": false
+  },
+  {
+    "path": "components/PipCompanion.tsx",
+    "exists": true,
+    "sizeBytes": 4754,
+    "lines": 143,
+    "hasClayColors": false,
+    "hasClayPuffyClass": false,
+    "hasPipImport": true
+  },
+  {
+    "path": "app/kid/[childId]/layout.tsx",
+    "exists": false,
+    "sizeBytes": 0,
+    "lines": 0,
+    "summary": "FILE MISSING"
+  },
+  {
+    "path": "app/kid/[childId]/page.tsx",
+    "exists": true,
+    "sizeBytes": 34391,
+    "lines": 796,
+    "hasClayColors": false,
+    "hasClayPuffyClass": false,
+    "hasPipImport": false
+  },
+  {
+    "path": "app/kid/[childId]/read/[storyId]/page.tsx",
+    "exists": true,
+    "sizeBytes": 11829,
+    "lines": 320,
+    "hasClayColors": false,
+    "hasClayPuffyClass": false,
+    "hasPipImport": true
+  },
+  {
+    "path": "app/kid/[childId]/phonics/page.tsx",
+    "exists": true,
+    "sizeBytes": 31812,
+    "lines": 720,
+    "hasClayColors": false,
+    "hasClayPuffyClass": false,
+    "hasPipImport": false
+  }
+]
