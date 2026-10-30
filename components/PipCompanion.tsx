@@ -103,129 +103,140 @@ function playChirp(ctx: AudioContext, master: GainNode) {
   noise.stop(now + 0.07)
 }
 
+function MatteClayMaterial({ color, roughness = 0.82 }: { color: string; roughness?: number }) {
+  return (
+    <meshPhysicalMaterial
+      color={color}
+      roughness={roughness}
+      metalness={0.0}
+      clearcoat={0.15}
+      clearcoatRoughness={0.4}
+      sheen={0.4}
+      sheenColor="#FFFFFF"
+      sheenRoughness={0.5}
+    />
+  )
+}
+
 function Clay3DMesh({ mood, isSleeping }: { mood: PipMood; isSleeping: boolean }) {
   const bodySquash = mood === 'eating' ? 0.92 : mood === 'excited' ? 1.08 : 1
 
   return (
     <group scale={[bodySquash, bodySquash, bodySquash]}>
-      {/* Lights inside the 3D Canvas */}
-      <ambientLight intensity={0.9} />
-      <directionalLight position={[4, 8, 5]} intensity={1.4} color="#FFFFFF" />
-      <pointLight position={[-4, -2, -3]} intensity={0.6} color="#FFE8D6" />
+      {/* Studio Clay Lighting */}
+      <ambientLight intensity={1.2} color="#FFF8F0" />
+      <directionalLight position={[5, 8, 5]} intensity={1.5} color="#FFFFFF" />
+      <directionalLight position={[-5, 3, -3]} intensity={0.5} color="#B8E0D2" />
+      <pointLight position={[0, -2, 2]} intensity={0.4} color="#FFE8D6" />
 
-      {/* Body */}
-      <mesh position={[0, -0.2, 0]}>
-        <sphereGeometry args={[0.8, 32, 32]} />
-        <meshPhysicalMaterial
-          color="#B8E0D2"
-          roughness={0.22}
-          metalness={0.02}
-          clearcoat={0.35}
-          clearcoatRoughness={0.1}
-        />
+      {/* Main Doughy Body */}
+      <mesh position={[0, -0.25, 0]}>
+        <sphereGeometry args={[0.78, 32, 32]} />
+        <MatteClayMaterial color="#B8E0D2" roughness={0.8} />
       </mesh>
 
-      {/* Belly Patch */}
-      <mesh position={[0, -0.25, 0.45]}>
-        <sphereGeometry args={[0.48, 32, 32]} />
-        <meshPhysicalMaterial
-          color="#FFE8D6"
-          roughness={0.3}
-          clearcoat={0.2}
-        />
+      {/* Soft Belly Patch */}
+      <mesh position={[0, -0.28, 0.44]}>
+        <sphereGeometry args={[0.46, 32, 32]} />
+        <MatteClayMaterial color="#FFE8D6" roughness={0.85} />
       </mesh>
 
-      {/* Head */}
-      <mesh position={[0, 0.65, 0.05]}>
-        <sphereGeometry args={[0.65, 32, 32]} />
-        <meshPhysicalMaterial
-          color="#B8E0D2"
-          roughness={0.2}
-          metalness={0.02}
-          clearcoat={0.4}
-          clearcoatRoughness={0.08}
-        />
+      {/* Puffy Head */}
+      <mesh position={[0, 0.62, 0.04]}>
+        <sphereGeometry args={[0.62, 32, 32]} />
+        <MatteClayMaterial color="#B8E0D2" roughness={0.78} />
       </mesh>
 
-      {/* Crest Feathers */}
-      <mesh position={[-0.1, 1.3, 0]}>
+      {/* Rosy Blush Cheek Dots */}
+      <mesh position={[-0.38, 0.52, 0.42]}>
+        <sphereGeometry args={[0.1, 16, 16]} />
+        <MatteClayMaterial color="#F4A6A6" roughness={0.9} />
+      </mesh>
+      <mesh position={[0.38, 0.52, 0.42]}>
+        <sphereGeometry args={[0.1, 16, 16]} />
+        <MatteClayMaterial color="#F4A6A6" roughness={0.9} />
+      </mesh>
+
+      {/* Feather Crest */}
+      <mesh position={[-0.1, 1.25, 0]}>
         <coneGeometry args={[0.08, 0.35, 16]} />
-        <meshPhysicalMaterial color="#CBBBEA" roughness={0.25} />
+        <MatteClayMaterial color="#CBBBEA" roughness={0.8} />
       </mesh>
-      <mesh position={[0, 1.38, 0.02]}>
+      <mesh position={[0, 1.32, 0.02]}>
         <coneGeometry args={[0.09, 0.42, 16]} />
-        <meshPhysicalMaterial color="#F4A6A6" roughness={0.25} />
+        <MatteClayMaterial color="#F4A6A6" roughness={0.8} />
       </mesh>
-      <mesh position={[0.1, 1.3, 0]}>
+      <mesh position={[0.1, 1.25, 0]}>
         <coneGeometry args={[0.08, 0.35, 16]} />
-        <meshPhysicalMaterial color="#A8C5E8" roughness={0.25} />
+        <MatteClayMaterial color="#A8C5E8" roughness={0.8} />
       </mesh>
 
       {/* Eyes */}
       {!isSleeping ? (
         <>
-          {/* Left Eye Base */}
-          <mesh position={[-0.24, 0.72, 0.52]}>
-            <sphereGeometry args={[0.14, 24, 24]} />
-            <meshPhysicalMaterial color="#FDF6F0" roughness={0.1} />
+          <mesh position={[-0.22, 0.7, 0.5]}>
+            <sphereGeometry args={[0.13, 24, 24]} />
+            <MatteClayMaterial color="#FDF6F0" roughness={0.5} />
           </mesh>
-          {/* Left Pupil */}
-          <mesh position={[-0.22, 0.72, 0.62]}>
-            <sphereGeometry args={[0.07, 24, 24]} />
-            <meshPhysicalMaterial color="#3D3D5C" roughness={0.1} />
+          <mesh position={[-0.2, 0.7, 0.6]}>
+            <sphereGeometry args={[0.065, 24, 24]} />
+            <meshBasicMaterial color="#3D3D5C" />
+          </mesh>
+          <mesh position={[-0.18, 0.73, 0.65]}>
+            <sphereGeometry args={[0.02, 12, 12]} />
+            <meshBasicMaterial color="#FFFFFF" />
           </mesh>
 
-          {/* Right Eye Base */}
-          <mesh position={[0.24, 0.72, 0.52]}>
-            <sphereGeometry args={[0.14, 24, 24]} />
-            <meshPhysicalMaterial color="#FDF6F0" roughness={0.1} />
+          <mesh position={[0.22, 0.7, 0.5]}>
+            <sphereGeometry args={[0.13, 24, 24]} />
+            <MatteClayMaterial color="#FDF6F0" roughness={0.5} />
           </mesh>
-          {/* Right Pupil */}
-          <mesh position={[0.22, 0.72, 0.62]}>
-            <sphereGeometry args={[0.07, 24, 24]} />
-            <meshPhysicalMaterial color="#3D3D5C" roughness={0.1} />
+          <mesh position={[0.2, 0.7, 0.6]}>
+            <sphereGeometry args={[0.065, 24, 24]} />
+            <meshBasicMaterial color="#3D3D5C" />
+          </mesh>
+          <mesh position={[0.22, 0.73, 0.65]}>
+            <sphereGeometry args={[0.02, 12, 12]} />
+            <meshBasicMaterial color="#FFFFFF" />
           </mesh>
         </>
       ) : (
         <>
-          {/* Sleeping Closed Eye Lines */}
-          <mesh position={[-0.24, 0.72, 0.55]} rotation={[0, 0, 0]}>
-            <boxGeometry args={[0.2, 0.03, 0.04]} />
+          <mesh position={[-0.22, 0.7, 0.54]}>
+            <boxGeometry args={[0.18, 0.03, 0.03]} />
             <meshBasicMaterial color="#3D3D5C" />
           </mesh>
-          <mesh position={[0.24, 0.72, 0.55]} rotation={[0, 0, 0]}>
-            <boxGeometry args={[0.2, 0.03, 0.04]} />
+          <mesh position={[0.22, 0.7, 0.54]}>
+            <boxGeometry args={[0.18, 0.03, 0.03]} />
             <meshBasicMaterial color="#3D3D5C" />
           </mesh>
         </>
       )}
 
-      {/* Beak */}
-      <mesh position={[0, 0.52, 0.62]} rotation={[0.4, 0, 0]}>
-        <coneGeometry args={[0.14, 0.28, 16]} />
-        <meshPhysicalMaterial color="#F2A488" roughness={0.2} clearcoat={0.3} />
+      {/* Doughy Beak */}
+      <mesh position={[0, 0.5, 0.6]} rotation={[0.3, 0, 0]}>
+        <coneGeometry args={[0.13, 0.26, 16]} />
+        <MatteClayMaterial color="#F2A488" roughness={0.75} />
       </mesh>
 
-      {/* Left Wing */}
-      <mesh position={[-0.78, -0.1, 0]} rotation={[0, 0, 0.3]}>
-        <sphereGeometry args={[0.32, 24, 24]} />
-        <meshPhysicalMaterial color="#A8C5E8" roughness={0.25} />
+      {/* Soft Wings */}
+      <mesh position={[-0.75, -0.12, 0]} rotation={[0, 0, 0.25]}>
+        <sphereGeometry args={[0.3, 24, 24]} />
+        <MatteClayMaterial color="#A8C5E8" roughness={0.8} />
       </mesh>
-
-      {/* Right Wing */}
-      <mesh position={[0.78, -0.1, 0]} rotation={[0, 0, -0.3]}>
-        <sphereGeometry args={[0.32, 24, 24]} />
-        <meshPhysicalMaterial color="#A8C5E8" roughness={0.25} />
+      <mesh position={[0.75, -0.12, 0]} rotation={[0, 0, -0.25]}>
+        <sphereGeometry args={[0.3, 24, 24]} />
+        <MatteClayMaterial color="#A8C5E8" roughness={0.8} />
       </mesh>
 
       {/* Feet */}
-      <mesh position={[-0.25, -1.0, 0.1]}>
-        <boxGeometry args={[0.2, 0.08, 0.3]} />
-        <meshPhysicalMaterial color="#F2A488" roughness={0.3} />
+      <mesh position={[-0.22, -0.98, 0.1]}>
+        <boxGeometry args={[0.18, 0.08, 0.28]} />
+        <MatteClayMaterial color="#F2A488" roughness={0.85} />
       </mesh>
-      <mesh position={[0.25, -1.0, 0.1]}>
-        <boxGeometry args={[0.2, 0.08, 0.3]} />
-        <meshPhysicalMaterial color="#F2A488" roughness={0.3} />
+      <mesh position={[0.22, -0.98, 0.1]}>
+        <boxGeometry args={[0.18, 0.08, 0.28]} />
+        <MatteClayMaterial color="#F2A488" roughness={0.85} />
       </mesh>
     </group>
   )
@@ -625,7 +636,7 @@ export default function PipCompanion({
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
       role="complementary"
-      aria-label="Pip the 3D parrot companion"
+      aria-label="Pip the 3D matte clay parrot"
     >
       {/* Speech Bubble */}
       {showBubble && bubbleText && (
@@ -665,22 +676,22 @@ export default function PipCompanion({
         />
       ))}
 
-      {/* 3D WebGL Canvas for Pip */}
+      {/* 3D WebGL Canvas */}
       <div
-        className="relative mx-auto h-[100px] w-[100px]"
+        className="relative mx-auto h-[105px] w-[105px]"
         onDoubleClick={() => feed()}
       >
-        <Canvas camera={{ position: [0, 0, 3.2], fov: 45 }}>
+        <Canvas camera={{ position: [0, 0, 3.1], fov: 45 }}>
           <Float
-            speed={reducedMotion || isSleeping ? 0 : 3}
-            rotationIntensity={reducedMotion || isSleeping ? 0 : 0.2}
-            floatIntensity={reducedMotion || isSleeping ? 0 : 0.4}
+            speed={reducedMotion || isSleeping ? 0 : 2.5}
+            rotationIntensity={reducedMotion || isSleeping ? 0 : 0.15}
+            floatIntensity={reducedMotion || isSleeping ? 0 : 0.35}
           >
             <Clay3DMesh mood={mood} isSleeping={isSleeping} />
           </Float>
         </Canvas>
 
-        {/* Soft Ground Shadow */}
+        {/* Diffuse Ground Shadow */}
         <div
           className="pip-floating-shadow absolute bottom-0 left-1/2 -translate-x-1/2"
           style={{
@@ -703,11 +714,6 @@ export default function PipCompanion({
             feed()
           }}
           className="font-switzer clay-pill-white flex h-8 items-center gap-1 px-2.5 text-[10px] font-bold text-clay-text transition hover:scale-105 active:scale-95"
-          style={{
-            borderRadius: 999,
-            boxShadow: '0 4px 12px rgba(61, 61, 92, 0.1), inset 0 1px 0 rgba(255,255,255,0.9)',
-            background: 'linear-gradient(145deg, #FFFFFF 0%, #FFE8D6 100%)',
-          }}
           aria-label="Feed Pip a seed"
           title="Feed Pip"
         >
@@ -723,10 +729,8 @@ export default function PipCompanion({
               event.stopPropagation()
               snooze()
             }}
-            className="font-switzer flex h-8 items-center gap-1 px-2.5 text-[10px] font-bold text-clay-text transition hover:scale-105 active:scale-95"
+            className="font-switzer clay-pill-white flex h-8 items-center gap-1 px-2.5 text-[10px] font-bold text-clay-text transition hover:scale-105 active:scale-95"
             style={{
-              borderRadius: 999,
-              boxShadow: '0 4px 12px rgba(61, 61, 92, 0.1), inset 0 1px 0 rgba(255,255,255,0.85)',
               background: 'linear-gradient(145deg, #E8EEFA 0%, #CBBBEA 100%)',
             }}
             aria-label="Let Pip take a 20 minute break"
@@ -743,10 +747,8 @@ export default function PipCompanion({
               event.stopPropagation()
               wake()
             }}
-            className="font-switzer flex h-8 items-center gap-1 px-2.5 text-[10px] font-bold text-clay-text transition hover:scale-105 active:scale-95"
+            className="font-switzer clay-pill-white flex h-8 items-center gap-1 px-2.5 text-[10px] font-bold text-clay-text transition hover:scale-105 active:scale-95"
             style={{
-              borderRadius: 999,
-              boxShadow: '0 4px 12px rgba(61, 61, 92, 0.1), inset 0 1px 0 rgba(255,255,255,0.85)',
               background: 'linear-gradient(145deg, #FFF6D6 0%, #FFE8D6 100%)',
             }}
             aria-label="Wake Pip"
@@ -766,10 +768,8 @@ export default function PipCompanion({
             chirp()
             setMoodFor('happy', 600)
           }}
-          className="font-switzer flex h-8 w-8 items-center justify-center text-sm transition hover:scale-110 active:scale-95"
+          className="font-switzer clay-pill-white flex h-8 w-8 items-center justify-center text-sm transition hover:scale-110 active:scale-95"
           style={{
-            borderRadius: 999,
-            boxShadow: '0 4px 12px rgba(61, 61, 92, 0.1), inset 0 1px 0 rgba(255,255,255,0.85)',
             background: 'linear-gradient(145deg, #E5F6FF 0%, #A8C5E8 100%)',
           }}
           aria-label="Make Pip chirp"
