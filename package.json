@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "audit:pages": "node scripts/generate-page-audit.mjs"
   },
   "dependencies": {
     "@deepgram/sdk": "^5.10.0",
