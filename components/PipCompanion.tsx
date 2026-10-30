@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
+import { Canvas } from '@react-three/fiber'
+import { Float } from '@react-three/drei'
 
 type PipMood = 'idle' | 'happy' | 'eating' | 'speaking' | 'sleeping' | 'excited'
 
@@ -28,7 +30,6 @@ const CHIRP_MAX_GAP_MS = 12000
 
 function preferHighVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
   const englishVoices = voices.filter((voice) => /en(-(US|GB|NG|AU))?/i.test(voice.lang))
-
   const preferred =
     englishVoices.find((voice) =>
       /female|samantha|victoria|karen|moira|tessa|zira|google us english/i.test(voice.name)
@@ -88,7 +89,6 @@ function playChirp(ctx: AudioContext, master: GainNode) {
   const noiseGain = ctx.createGain()
 
   noise.buffer = noiseBuffer
-
   noiseFilter.type = 'highpass'
   noiseFilter.frequency.value = 2500
 
@@ -103,17 +103,135 @@ function playChirp(ctx: AudioContext, master: GainNode) {
   noise.stop(now + 0.07)
 }
 
-function ClaySeed({
-  x,
-  y,
-  emoji,
-  onDone,
-}: {
-  x: number
-  y: number
-  emoji: string
-  onDone: () => void
-}) {
+function Clay3DMesh({ mood, isSleeping }: { mood: PipMood; isSleeping: boolean }) {
+  const bodySquash = mood === 'eating' ? 0.92 : mood === 'excited' ? 1.08 : 1
+
+  return (
+    <group scale={[bodySquash, bodySquash, bodySquash]}>
+      {/* Lights inside the 3D Canvas */}
+      <ambientLight intensity={0.9} />
+      <directionalLight position={[4, 8, 5]} intensity={1.4} color="#FFFFFF" />
+      <pointLight position={[-4, -2, -3]} intensity={0.6} color="#FFE8D6" />
+
+      {/* Body */}
+      <mesh position={[0, -0.2, 0]}>
+        <sphereGeometry args={[0.8, 32, 32]} />
+        <meshPhysicalMaterial
+          color="#B8E0D2"
+          roughness={0.22}
+          metalness={0.02}
+          clearcoat={0.35}
+          clearcoatRoughness={0.1}
+        />
+      </mesh>
+
+      {/* Belly Patch */}
+      <mesh position={[0, -0.25, 0.45]}>
+        <sphereGeometry args={[0.48, 32, 32]} />
+        <meshPhysicalMaterial
+          color="#FFE8D6"
+          roughness={0.3}
+          clearcoat={0.2}
+        />
+      </mesh>
+
+      {/* Head */}
+      <mesh position={[0, 0.65, 0.05]}>
+        <sphereGeometry args={[0.65, 32, 32]} />
+        <meshPhysicalMaterial
+          color="#B8E0D2"
+          roughness={0.2}
+          metalness={0.02}
+          clearcoat={0.4}
+          clearcoatRoughness={0.08}
+        />
+      </mesh>
+
+      {/* Crest Feathers */}
+      <mesh position={[-0.1, 1.3, 0]}>
+        <coneGeometry args={[0.08, 0.35, 16]} />
+        <meshPhysicalMaterial color="#CBBBEA" roughness={0.25} />
+      </mesh>
+      <mesh position={[0, 1.38, 0.02]}>
+        <coneGeometry args={[0.09, 0.42, 16]} />
+        <meshPhysicalMaterial color="#F4A6A6" roughness={0.25} />
+      </mesh>
+      <mesh position={[0.1, 1.3, 0]}>
+        <coneGeometry args={[0.08, 0.35, 16]} />
+        <meshPhysicalMaterial color="#A8C5E8" roughness={0.25} />
+      </mesh>
+
+      {/* Eyes */}
+      {!isSleeping ? (
+        <>
+          {/* Left Eye Base */}
+          <mesh position={[-0.24, 0.72, 0.52]}>
+            <sphereGeometry args={[0.14, 24, 24]} />
+            <meshPhysicalMaterial color="#FDF6F0" roughness={0.1} />
+          </mesh>
+          {/* Left Pupil */}
+          <mesh position={[-0.22, 0.72, 0.62]}>
+            <sphereGeometry args={[0.07, 24, 24]} />
+            <meshPhysicalMaterial color="#3D3D5C" roughness={0.1} />
+          </mesh>
+
+          {/* Right Eye Base */}
+          <mesh position={[0.24, 0.72, 0.52]}>
+            <sphereGeometry args={[0.14, 24, 24]} />
+            <meshPhysicalMaterial color="#FDF6F0" roughness={0.1} />
+          </mesh>
+          {/* Right Pupil */}
+          <mesh position={[0.22, 0.72, 0.62]}>
+            <sphereGeometry args={[0.07, 24, 24]} />
+            <meshPhysicalMaterial color="#3D3D5C" roughness={0.1} />
+          </mesh>
+        </>
+      ) : (
+        <>
+          {/* Sleeping Closed Eye Lines */}
+          <mesh position={[-0.24, 0.72, 0.55]} rotation={[0, 0, 0]}>
+            <boxGeometry args={[0.2, 0.03, 0.04]} />
+            <meshBasicMaterial color="#3D3D5C" />
+          </mesh>
+          <mesh position={[0.24, 0.72, 0.55]} rotation={[0, 0, 0]}>
+            <boxGeometry args={[0.2, 0.03, 0.04]} />
+            <meshBasicMaterial color="#3D3D5C" />
+          </mesh>
+        </>
+      )}
+
+      {/* Beak */}
+      <mesh position={[0, 0.52, 0.62]} rotation={[0.4, 0, 0]}>
+        <coneGeometry args={[0.14, 0.28, 16]} />
+        <meshPhysicalMaterial color="#F2A488" roughness={0.2} clearcoat={0.3} />
+      </mesh>
+
+      {/* Left Wing */}
+      <mesh position={[-0.78, -0.1, 0]} rotation={[0, 0, 0.3]}>
+        <sphereGeometry args={[0.32, 24, 24]} />
+        <meshPhysicalMaterial color="#A8C5E8" roughness={0.25} />
+      </mesh>
+
+      {/* Right Wing */}
+      <mesh position={[0.78, -0.1, 0]} rotation={[0, 0, -0.3]}>
+        <sphereGeometry args={[0.32, 24, 24]} />
+        <meshPhysicalMaterial color="#A8C5E8" roughness={0.25} />
+      </mesh>
+
+      {/* Feet */}
+      <mesh position={[-0.25, -1.0, 0.1]}>
+        <boxGeometry args={[0.2, 0.08, 0.3]} />
+        <meshPhysicalMaterial color="#F2A488" roughness={0.3} />
+      </mesh>
+      <mesh position={[0.25, -1.0, 0.1]}>
+        <boxGeometry args={[0.2, 0.08, 0.3]} />
+        <meshPhysicalMaterial color="#F2A488" roughness={0.3} />
+      </mesh>
+    </group>
+  )
+}
+
+function ClaySeed({ x, y, emoji, onDone }: { x: number; y: number; emoji: string; onDone: () => void }) {
   return (
     <span
       className="pointer-events-none absolute z-[60] select-none"
@@ -154,7 +272,6 @@ function ClayHeart({ x, y, onDone }: { x: number; y: number; onDone: () => void 
 export default function PipCompanion({
   childName,
   isPaused = false,
-  seeds: externalSeeds,
   onFeed: externalOnFeed,
   reducedMotion = false,
   onSpeakReady,
@@ -166,11 +283,8 @@ export default function PipCompanion({
   const [bubbleText, setBubbleText] = useState('')
   const [seedList, setSeedList] = useState<{ id: number; x: number; y: number; emoji: string }[]>([])
   const [hearts, setHearts] = useState<{ id: number; x: number; y: number }[]>([])
-  const [wingPhase, setWingPhase] = useState(0)
-  const [blink, setBlink] = useState(false)
   const [pos, setPos] = useState({ x: 24, y: 24 })
   const [isDragging, setIsDragging] = useState(false)
-  const [feedCount, setFeedCount] = useState(0)
   const [snoozeLeft, setSnoozeLeft] = useState(0)
 
   const rootRef = useRef<HTMLDivElement>(null)
@@ -183,7 +297,6 @@ export default function PipCompanion({
   const moodTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const bubbleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const chirpTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const blinkTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const snoozeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const snoozeTick = useRef<ReturnType<typeof setInterval> | null>(null)
   const wakeAt = useRef(0)
@@ -213,9 +326,7 @@ export default function PipCompanion({
     if (moodTimer.current) {
       clearTimeout(moodTimer.current)
     }
-
     setMood(nextMood)
-
     moodTimer.current = setTimeout(() => {
       if (!isSleepingRef.current) {
         setMood('idle')
@@ -224,71 +335,50 @@ export default function PipCompanion({
   }, [])
 
   const clearSnoozeClocks = useCallback(() => {
-    if (snoozeTimer.current) {
-      clearTimeout(snoozeTimer.current)
-    }
-
-    if (snoozeTick.current) {
-      clearInterval(snoozeTick.current)
-    }
-
+    if (snoozeTimer.current) clearTimeout(snoozeTimer.current)
+    if (snoozeTick.current) clearInterval(snoozeTick.current)
     snoozeTimer.current = null
     snoozeTick.current = null
   }, [])
 
   const ensureAudio = useCallback(() => {
     if (typeof window === 'undefined') return null
-
     if (!audioCtxRef.current) {
       const AudioCtor = window.AudioContext ?? (window as WindowWithAudio).webkitAudioContext
-
       if (!AudioCtor) return null
-
       const ctx = new AudioCtor()
       const master = ctx.createGain()
-
       master.gain.value = 0.55
       master.connect(ctx.destination)
-
       audioCtxRef.current = ctx
       masterGainRef.current = master
     }
-
     if (audioCtxRef.current.state === 'suspended') {
       void audioCtxRef.current.resume()
     }
-
     return audioCtxRef.current
   }, [])
 
   const chirp = useCallback(
     (force = false) => {
       if (!force && (isSleepingRef.current || reducedMotion || isPaused)) return
-
       const ctx = ensureAudio()
-
       if (!ctx || !masterGainRef.current) return
-
       playChirp(ctx, masterGainRef.current)
     },
     [ensureAudio, isPaused, reducedMotion]
   )
 
   const scheduleChirp = useCallback(() => {
-    if (chirpTimer.current) {
-      clearTimeout(chirpTimer.current)
-    }
-
+    if (chirpTimer.current) clearTimeout(chirpTimer.current)
     if (isSleepingRef.current || reducedMotion || isPaused) return
 
     const gap = CHIRP_MIN_GAP_MS + Math.random() * (CHIRP_MAX_GAP_MS - CHIRP_MIN_GAP_MS)
-
     chirpTimer.current = setTimeout(() => {
       if (!speakingLock.current && !isSleepingRef.current) {
         chirp()
         setMoodFor('happy', 700)
       }
-
       scheduleChirp()
     }, gap)
   }, [chirp, isPaused, reducedMotion, setMoodFor])
@@ -301,7 +391,6 @@ export default function PipCompanion({
 
       ensureAudio()
       clearBubbleTimer()
-
       window.speechSynthesis.cancel()
 
       speakingLock.current = true
@@ -310,7 +399,6 @@ export default function PipCompanion({
       setShowBubble(true)
 
       const utterance = new SpeechSynthesisUtterance(text)
-
       utterance.pitch = 2.0
       utterance.rate = 1.35
       utterance.volume = 1
@@ -323,18 +411,14 @@ export default function PipCompanion({
 
       utterance.onend = () => {
         speakingLock.current = false
-
         if (isSleepingRef.current) return
-
         setMoodFor('happy', 1200)
         hideBubbleAfter(1200)
       }
 
       utterance.onerror = () => {
         speakingLock.current = false
-
         if (isSleepingRef.current) return
-
         setMood('idle')
         setShowBubble(false)
       }
@@ -346,12 +430,10 @@ export default function PipCompanion({
 
   const feed = useCallback(
     (clientX?: number, clientY?: number) => {
-      if (externalOnFeed) {
-        externalOnFeed()
-      }
+      if (externalOnFeed) externalOnFeed()
 
       if (isSleepingRef.current) {
-        setBubbleText('Pip is napping... tap the sun to wake!')
+        setBubbleText('Pip is napping... tap wake to play!')
         setShowBubble(true)
         hideBubbleAfter(2000)
         return
@@ -370,53 +452,32 @@ export default function PipCompanion({
       const emoji = SEED_EMOJIS[Math.floor(Math.random() * SEED_EMOJIS.length)]
 
       seedId.current = id
-
       setSeedList((list) => [...list, { id, x: seedX - 10, y: seedY - 40, emoji }])
       setMoodFor('eating', 1400)
 
       setTimeout(() => {
         const nextHeartId = heartId.current + 1
-
         heartId.current = nextHeartId
-
         setHearts((list) => [...list, { id: nextHeartId, x: baseX + 10, y: baseY - 10 }])
         setMoodFor('excited', 900)
         chirp()
       }, 500)
-
-      setFeedCount((current) => {
-        const next = current + 1
-
-        if (next % 3 === 0) {
-          const name = childName ? `, ${childName}` : ''
-
-          setTimeout(() => {
-            speak(`Yum yum${name}! Pip loves seeds!`)
-          }, 240)
-        }
-
-        return next
-      })
     },
-    [childName, chirp, ensureAudio, externalOnFeed, hideBubbleAfter, setMoodFor, speak]
+    [chirp, ensureAudio, externalOnFeed, hideBubbleAfter, setMoodFor]
   )
 
   const wake = useCallback(() => {
     clearSnoozeClocks()
-
     wakeAt.current = 0
     isSleepingRef.current = false
-
     setIsSleeping(false)
     setSnoozeLeft(0)
     setMoodFor('happy', 1100)
     setBubbleText('Pip is awake!')
     setShowBubble(true)
-
     chirp(true)
 
     const name = childName ? ` ${childName}` : ''
-
     setTimeout(() => {
       speak(`Good morning${name}! Pip is ready to play!`, { force: true })
     }, 80)
@@ -432,10 +493,8 @@ export default function PipCompanion({
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel()
     }
-
     speakingLock.current = false
     isSleepingRef.current = true
-
     clearSnoozeClocks()
 
     if (chirpTimer.current) {
@@ -446,16 +505,14 @@ export default function PipCompanion({
     setIsSleeping(true)
     setMood('sleeping')
     setShowBubble(true)
-    setBubbleText('Pip is taking a 20 minute break... zzz')
+    setBubbleText('Pip is taking a 20 minute break...')
     setSnoozeLeft(SNOOZE_MS)
 
     wakeAt.current = Date.now() + SNOOZE_MS
 
     snoozeTick.current = setInterval(() => {
       const left = Math.max(0, wakeAt.current - Date.now())
-
       setSnoozeLeft(left)
-
       if (left <= 0 && snoozeTick.current) {
         clearInterval(snoozeTick.current)
         snoozeTick.current = null
@@ -475,38 +532,23 @@ export default function PipCompanion({
 
   useEffect(() => {
     setMounted(true)
-
     if (typeof window === 'undefined') return
-
     setPos({
-      x: Math.max(12, window.innerWidth - 150),
-      y: Math.max(12, window.innerHeight - 210),
+      x: Math.max(12, window.innerWidth - 160),
+      y: Math.max(12, window.innerHeight - 220),
     })
   }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (!window.speechSynthesis) return
-
     const synth = window.speechSynthesis
-
     const loadVoices = () => {
       const voices = synth.getVoices?.() ?? []
       voiceRef.current = preferHighVoice(voices)
     }
-
     loadVoices()
-
-    const previousHandler = synth.onvoiceschanged
     synth.onvoiceschanged = loadVoices
-
-    return () => {
-      if (synth.onvoiceschanged === loadVoices) {
-        synth.onvoiceschanged = previousHandler
-      }
-
-      synth.cancel()
-    }
   }, [])
 
   useEffect(() => {
@@ -514,112 +556,38 @@ export default function PipCompanion({
   }, [onSpeakReady, speak])
 
   useEffect(() => {
-    if (reducedMotion || isSleeping) return
-
-    const wingTimer = setInterval(() => {
-      setWingPhase((phase) => (phase + 1) % 100)
-    }, 80)
-
-    const loopBlink = () => {
-      const wait = 2200 + Math.random() * 3500
-
-      blinkTimer.current = setTimeout(() => {
-        setBlink(true)
-
-        setTimeout(() => {
-          setBlink(false)
-        }, 120)
-
-        loopBlink()
-      }, wait)
-    }
-
-    loopBlink()
-
-    return () => {
-      clearInterval(wingTimer)
-
-      if (blinkTimer.current) {
-        clearTimeout(blinkTimer.current)
-      }
-    }
-  }, [isSleeping, reducedMotion])
-
-  useEffect(() => {
     scheduleChirp()
-
     return () => {
-      if (chirpTimer.current) {
-        clearTimeout(chirpTimer.current)
-      }
+      if (chirpTimer.current) clearTimeout(chirpTimer.current)
     }
   }, [scheduleChirp])
-
-  useEffect(() => {
-    const onVisibilityChange = () => {
-      if (document.hidden) {
-        if (!isSleepingRef.current) {
-          snooze()
-        }
-
-        return
-      }
-
-      if (isSleepingRef.current && wakeAt.current > 0 && Date.now() >= wakeAt.current) {
-        wakeRef.current()
-      }
-    }
-
-    document.addEventListener('visibilitychange', onVisibilityChange)
-
-    return () => {
-      document.removeEventListener('visibilitychange', onVisibilityChange)
-    }
-  }, [snooze])
 
   useEffect(() => {
     return () => {
       clearSnoozeClocks()
       clearBubbleTimer()
-
-      if (moodTimer.current) {
-        clearTimeout(moodTimer.current)
-      }
-
-      if (chirpTimer.current) {
-        clearTimeout(chirpTimer.current)
-      }
-
-      if (blinkTimer.current) {
-        clearTimeout(blinkTimer.current)
-      }
-
-      if (audioCtxRef.current) {
-        void audioCtxRef.current.close()
-      }
+      if (moodTimer.current) clearTimeout(moodTimer.current)
+      if (chirpTimer.current) clearTimeout(chirpTimer.current)
+      if (audioCtxRef.current) void audioCtxRef.current.close()
     }
   }, [clearBubbleTimer, clearSnoozeClocks])
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if ((event.target as HTMLElement).closest('[data-pip-action]')) return
-
     setIsDragging(true)
-
     dragOffset.current = {
       x: event.clientX - pos.x,
       y: event.clientY - pos.y,
     }
-
     event.currentTarget.setPointerCapture?.(event.pointerId)
   }
 
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!isDragging) return
-
     const nextX = event.clientX - dragOffset.current.x
     const nextY = event.clientY - dragOffset.current.y
-    const maxX = window.innerWidth - 120
-    const maxY = window.innerHeight - 140
+    const maxX = window.innerWidth - 130
+    const maxY = window.innerHeight - 150
 
     setPos({
       x: Math.min(Math.max(8, nextX), maxX),
@@ -636,47 +604,40 @@ export default function PipCompanion({
     const seconds = Math.ceil(ms / 1000)
     const minutes = Math.floor(seconds / 60)
     const remainder = seconds % 60
-
     return `${minutes}:${remainder.toString().padStart(2, '0')}`
   }
-
-  const bobY = reducedMotion || isSleeping ? 0 : Math.sin(wingPhase / 10) * 5
-  const wingRot = reducedMotion || isSleeping ? 0 : Math.sin(wingPhase / 5) * 8
-  const eyeScaleY = blink || mood === 'sleeping' ? 0.12 : 1
-  const bodySquash = mood === 'eating' ? 0.92 : mood === 'excited' ? 1.06 : 1
 
   if (!mounted || typeof document === 'undefined') return null
 
   const node = (
     <div
       ref={rootRef}
-      className="fixed z-[55] touch-none"
+      className="fixed z-[55] touch-none select-none"
       style={{
         left: pos.x,
         top: pos.y,
-        width: 120,
-        height: 140,
+        width: 130,
+        height: 150,
         cursor: isDragging ? 'grabbing' : 'grab',
-        transform: `translateY(${bobY}px)`,
-        transition: isDragging ? 'none' : 'transform 0.15s ease-out',
       }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
       role="complementary"
-      aria-label="Pip the parrot companion"
+      aria-label="Pip the 3D parrot companion"
     >
+      {/* Speech Bubble */}
       {showBubble && bubbleText && (
         <div
-          className="pointer-events-none absolute -top-2 left-1/2 z-10 max-w-[160px] -translate-x-1/2 -translate-y-full px-3 py-2 text-center"
+          className="pointer-events-none absolute -top-2 left-1/2 z-10 max-w-[160px] -translate-x-1/2 -translate-y-full px-3.5 py-2 text-center"
           style={{
             background: 'linear-gradient(145deg, #FFFFFF 0%, #FDF6F0 100%)',
-            borderRadius: 18,
-            boxShadow: '0 8px 24px rgba(61, 61, 92, 0.12), inset 0 1px 0 rgba(255,255,255,0.9)',
+            borderRadius: 20,
+            boxShadow: '0 10px 28px rgba(61, 61, 92, 0.14), inset 0 1px 0 rgba(255,255,255,0.95)',
           }}
         >
-          <p className="font-switzer text-[11px] font-medium leading-snug text-clay-text">{bubbleText}</p>
+          <p className="font-switzer text-[11px] font-semibold leading-snug text-clay-text">{bubbleText}</p>
           <span
             className="absolute left-1/2 top-full -mt-px h-2.5 w-2.5 -translate-x-1/2 rotate-45"
             style={{ background: '#FDF6F0' }}
@@ -704,248 +665,35 @@ export default function PipCompanion({
         />
       ))}
 
+      {/* 3D WebGL Canvas for Pip */}
       <div
-        className="relative mx-auto"
-        style={{
-          width: 96,
-          height: 100,
-          transform: `scale(${bodySquash})`,
-          transition: 'transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1)',
-          filter:
-            'drop-shadow(0 14px 18px rgba(61, 61, 92, 0.14)) drop-shadow(0 4px 6px rgba(168, 197, 232, 0.25))',
-        }}
+        className="relative mx-auto h-[100px] w-[100px]"
         onDoubleClick={() => feed()}
       >
+        <Canvas camera={{ position: [0, 0, 3.2], fov: 45 }}>
+          <Float
+            speed={reducedMotion || isSleeping ? 0 : 3}
+            rotationIntensity={reducedMotion || isSleeping ? 0 : 0.2}
+            floatIntensity={reducedMotion || isSleeping ? 0 : 0.4}
+          >
+            <Clay3DMesh mood={mood} isSleeping={isSleeping} />
+          </Float>
+        </Canvas>
+
+        {/* Soft Ground Shadow */}
         <div
           className="pip-floating-shadow absolute bottom-0 left-1/2 -translate-x-1/2"
           style={{
-            width: isSleeping ? 52 : 64,
-            height: 14,
-            background: 'radial-gradient(ellipse at center, rgba(61,61,92,0.16) 0%, rgba(61,61,92,0) 70%)',
+            width: isSleeping ? 50 : 62,
+            height: 12,
+            background: 'radial-gradient(ellipse at center, rgba(61,61,92,0.18) 0%, rgba(61,61,92,0) 70%)',
             transition: 'width 0.4s ease',
           }}
           aria-hidden
         />
-
-        <div
-          className="absolute bottom-7 right-1"
-          style={{
-            width: 22,
-            height: 36,
-            borderRadius: '40% 60% 50% 50%',
-            background: 'linear-gradient(160deg, #F2A488 0%, #F4A6A6 55%, #CBBBEA 100%)',
-            transform: `rotate(${18 + wingRot * 0.3}deg)`,
-            boxShadow: 'inset 2px 2px 4px rgba(255,255,255,0.45), inset -2px -3px 6px rgba(61,61,92,0.08)',
-          }}
-          aria-hidden
-        />
-
-        <div
-          className="absolute left-0 top-10"
-          style={{
-            width: 28,
-            height: 34,
-            borderRadius: '60% 40% 50% 60%',
-            background: 'linear-gradient(145deg, #B8E0D2 0%, #A8C5E8 100%)',
-            transform: `rotate(${-20 - wingRot}deg)`,
-            transformOrigin: 'top right',
-            boxShadow: 'inset 2px 2px 5px rgba(255,255,255,0.55), inset -2px -2px 5px rgba(61,61,92,0.08)',
-          }}
-          aria-hidden
-        />
-
-        <div
-          className="absolute right-0 top-10"
-          style={{
-            width: 28,
-            height: 34,
-            borderRadius: '40% 60% 60% 50%',
-            background: 'linear-gradient(215deg, #B8E0D2 0%, #A8C5E8 100%)',
-            transform: `rotate(${20 + wingRot}deg)`,
-            transformOrigin: 'top left',
-            boxShadow: 'inset 2px 2px 5px rgba(255,255,255,0.55), inset -2px -2px 5px rgba(61,61,92,0.08)',
-          }}
-          aria-hidden
-        />
-
-        <div
-          className="absolute left-1/2 top-8 -translate-x-1/2"
-          style={{
-            width: 58,
-            height: 54,
-            borderRadius: '48% 48% 45% 45%',
-            background: 'linear-gradient(160deg, #C8F0E0 0%, #B8E0D2 40%, #9DD4C4 100%)',
-            boxShadow:
-              'inset 3px 4px 8px rgba(255,255,255,0.65), inset -3px -4px 8px rgba(61,61,92,0.07), 0 2px 0 rgba(255,255,255,0.25)',
-          }}
-        >
-          <div
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[40%]"
-            style={{
-              width: 28,
-              height: 26,
-              borderRadius: '50%',
-              background: 'linear-gradient(180deg, #FFE8D6 0%, #FDF6F0 100%)',
-              boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.7)',
-              opacity: 0.95,
-            }}
-            aria-hidden
-          />
-        </div>
-
-        <div
-          className="absolute left-1/2 top-0 -translate-x-1/2"
-          style={{
-            width: 52,
-            height: 48,
-            borderRadius: '50% 50% 46% 46%',
-            background: 'linear-gradient(150deg, #D4F5E8 0%, #B8E0D2 55%, #A5D8C8 100%)',
-            boxShadow: 'inset 3px 5px 10px rgba(255,255,255,0.7), inset -3px -3px 8px rgba(61,61,92,0.06)',
-          }}
-        >
-          <div
-            className="absolute left-2 top-1.5"
-            style={{
-              width: 16,
-              height: 10,
-              borderRadius: '50%',
-              background: 'linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0) 100%)',
-              opacity: 0.85,
-            }}
-            aria-hidden
-          />
-
-          <div
-            className="absolute -top-2 left-1/2 flex -translate-x-1/2 gap-0.5"
-            style={{ transform: 'translateX(-50%) rotate(-6deg)' }}
-            aria-hidden
-          >
-            {[0, 1, 2].map((item) => (
-              <span
-                key={item}
-                style={{
-                  display: 'block',
-                  width: 8 - item,
-                  height: 14 + item * 2,
-                  borderRadius: '40% 40% 30% 30%',
-                  background:
-                    item === 1
-                      ? 'linear-gradient(180deg, #F4A6A6 0%, #F2A488 100%)'
-                      : 'linear-gradient(180deg, #CBBBEA 0%, #A8C5E8 100%)',
-                  boxShadow: 'inset 1px 1px 2px rgba(255,255,255,0.55)',
-                  transform: `rotate(${(item - 1) * 12}deg) translateY(${item === 1 ? -2 : 0}px)`,
-                }}
-              />
-            ))}
-          </div>
-
-          <div className="absolute left-0 right-0 top-[18px] flex justify-center gap-3">
-            {[0, 1].map((side) => (
-              <div
-                key={side}
-                style={{
-                  width: 12,
-                  height: 12,
-                  borderRadius: '50%',
-                  background: '#FDF6F0',
-                  boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.9), 0 1px 2px rgba(61,61,92,0.08)',
-                  transform: `scaleY(${eyeScaleY})`,
-                  transition: 'transform 0.08s ease',
-                  overflow: 'hidden',
-                  position: 'relative',
-                }}
-              >
-                {!isSleeping && (
-                  <>
-                    <span
-                      style={{
-                        position: 'absolute',
-                        left: mood === 'speaking' ? 4 : 3,
-                        top: 3,
-                        width: 7,
-                        height: 7,
-                        borderRadius: '50%',
-                        background: '#3D3D5C',
-                      }}
-                    />
-                    <span
-                      style={{
-                        position: 'absolute',
-                        left: 5,
-                        top: 4,
-                        width: 2.5,
-                        height: 2.5,
-                        borderRadius: '50%',
-                        background: '#FFFFFF',
-                        opacity: 0.9,
-                      }}
-                    />
-                  </>
-                )}
-
-                {isSleeping && (
-                  <span
-                    className="absolute left-1/2 top-1/2 block h-[2px] w-2 rounded-full bg-clay-text/70"
-                    style={{ transform: 'translate(-50%, -50%) scaleY(1)' }}
-                    aria-hidden
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div
-            className="absolute left-1/2 top-[30px] -translate-x-1/2"
-            style={{
-              width: 0,
-              height: 0,
-              borderLeft: '7px solid transparent',
-              borderRight: '7px solid transparent',
-              borderTop: mood === 'eating' || mood === 'speaking' ? '10px solid #F2A488' : '8px solid #F2A488',
-              filter: 'drop-shadow(0 2px 2px rgba(61,61,92,0.1))',
-              transition: 'border-top-width 0.15s ease',
-            }}
-            aria-hidden
-          />
-
-          <div
-            className="absolute left-[4px] top-[28px] h-2 w-2.5 rounded-full"
-            style={{ background: 'rgba(244, 166, 166, 0.45)' }}
-            aria-hidden
-          />
-          <div
-            className="absolute right-[4px] top-[28px] h-2 w-2.5 rounded-full"
-            style={{ background: 'rgba(244, 166, 166, 0.45)' }}
-            aria-hidden
-          />
-        </div>
-
-        <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-3" aria-hidden>
-          {[0, 1].map((foot) => (
-            <div
-              key={foot}
-              style={{
-                width: 14,
-                height: 8,
-                borderRadius: '40% 40% 50% 50%',
-                background: 'linear-gradient(180deg, #F2A488 0%, #E8956F 100%)',
-                boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.5), 0 2px 3px rgba(61,61,92,0.1)',
-              }}
-            />
-          ))}
-        </div>
-
-        {isSleeping && (
-          <div
-            className="pointer-events-none absolute -right-1 top-0 font-switzer text-sm font-bold text-clay-lavender"
-            style={{ animation: 'pip-zzz 2s ease-in-out infinite' }}
-            aria-hidden
-          >
-            zzz
-          </div>
-        )}
       </div>
 
+      {/* Action Dock */}
       <div className="mt-1 flex items-center justify-center gap-1.5">
         <button
           type="button"
@@ -954,7 +702,7 @@ export default function PipCompanion({
             event.stopPropagation()
             feed()
           }}
-          className="font-switzer clay-pill-white flex h-8 items-center gap-1 px-2.5 text-[10px] font-semibold text-clay-text transition hover:scale-105 active:scale-95"
+          className="font-switzer clay-pill-white flex h-8 items-center gap-1 px-2.5 text-[10px] font-bold text-clay-text transition hover:scale-105 active:scale-95"
           style={{
             borderRadius: 999,
             boxShadow: '0 4px 12px rgba(61, 61, 92, 0.1), inset 0 1px 0 rgba(255,255,255,0.9)',
@@ -975,7 +723,7 @@ export default function PipCompanion({
               event.stopPropagation()
               snooze()
             }}
-            className="font-switzer flex h-8 items-center gap-1 px-2.5 text-[10px] font-semibold text-clay-text transition hover:scale-105 active:scale-95"
+            className="font-switzer flex h-8 items-center gap-1 px-2.5 text-[10px] font-bold text-clay-text transition hover:scale-105 active:scale-95"
             style={{
               borderRadius: 999,
               boxShadow: '0 4px 12px rgba(61, 61, 92, 0.1), inset 0 1px 0 rgba(255,255,255,0.85)',
@@ -995,7 +743,7 @@ export default function PipCompanion({
               event.stopPropagation()
               wake()
             }}
-            className="font-switzer flex h-8 items-center gap-1 px-2.5 text-[10px] font-semibold text-clay-text transition hover:scale-105 active:scale-95"
+            className="font-switzer flex h-8 items-center gap-1 px-2.5 text-[10px] font-bold text-clay-text transition hover:scale-105 active:scale-95"
             style={{
               borderRadius: 999,
               boxShadow: '0 4px 12px rgba(61, 61, 92, 0.1), inset 0 1px 0 rgba(255,255,255,0.85)',
@@ -1014,9 +762,7 @@ export default function PipCompanion({
           data-pip-action="chirp"
           onClick={(event) => {
             event.stopPropagation()
-
             if (isSleepingRef.current) return
-
             chirp()
             setMoodFor('happy', 600)
           }}
@@ -1061,18 +807,6 @@ export default function PipCompanion({
           100% {
             transform: translateY(-48px) scale(0.8);
             opacity: 0;
-          }
-        }
-
-        @keyframes pip-zzz {
-          0%,
-          100% {
-            transform: translate(0, 0) scale(0.9);
-            opacity: 0.5;
-          }
-          50% {
-            transform: translate(4px, -8px) scale(1.05);
-            opacity: 1;
           }
         }
       `}</style>
