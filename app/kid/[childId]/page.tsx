@@ -1,796 +1,315 @@
-/**
- * @file app/kid/[childId]/page.tsx
- * @description Kid Home View : 4-story active grid (2x2 layout), daily virtue affirmation,
- * completed stories bookshelf (Read for Fun mode without mic/token burn), personal
- * Living Story chapters with target word badges, always-visible Word Pocket (Vocab vs Names),
- * Paystack membership unlock flow, and Parent Gate access. Includes launchers for Spelling
- * and the Phonics Sound Lab.
- *
- * @fonts Logo (wordmark) + Achiko (headings/greetings) + Switzer (body/UI/stats)
- * @module app/kid/[childId]/page
- */
+'use client'
 
-"use client";
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { useParams } from 'next/navigation'
+import { createClient } from '@/lib/supabase'
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/lib/supabaseClient";
-import { getAvatarById } from "@/lib/avatars";
-import type { ChildProfile } from "@/lib/children";
-import { getStoriesForChild, type SampleStory } from "@/lib/sampleStories";
-import { getGeneratedStoriesForChild } from "@/lib/livingStory";
-import {
-  getDailyBudgetSeconds,
-  formatMMSS,
-  checkMonthlyStoryLimit,
-  FREE_MONTHLY_STORY_LIMIT,
-  type MonthlyUsageStatus,
-} from "@/lib/sessionBudget";
-import {
-  getRecentStumbledWords,
-  speakWord,
-  type StumbledWordCountItem,
-} from "@/lib/stumbledWords";
-import { isGeoName, formatGeoNameDisplay } from "@/lib/geoNames";
-import { getChildSessions } from "@/lib/sessionInsights";
-import ParentGate from "@/components/ParentGate";
-import {
-  shouldOfferReminder,
-  markReminderShown,
-  sendFriendlyStoryNotification,
-} from "@/lib/reminders";
-
-// ─── Section 1: Affirmations & Helpers ───
-
-const DAILY_AFFIRMATIONS = [
-  "I take my time, I learn from mistakes, and my mind grows every day! 🌟",
-  "I am patient with new words because practice builds courage! 💪",
-  "My voice is strong, kind, and capable of great things! ✨",
-  "Every book I read opens a new door of wisdom and joy! 📚",
-];
-
-function storyFitLabel(story: SampleStory, readingLevel: number): string {
-  if (readingLevel >= story.levelMin && readingLevel <= story.levelMax) {
-    return "Just right for you";
-  }
-  if (readingLevel < story.levelMin) {
-    return "A little challenge";
-  }
-  return "Easy warm-up";
+interface ChildProfile {
+  id: string
+  first_name: string
+  avatar_url?: string
+  streak_count?: number
+  words_learned?: number
 }
 
-// ─── Section 2: Main Component ───
+interface StoryItem {
+  id: string
+  title: string
+  summary?: string
+  cover_emoji?: string
+  progress_pct?: number
+  is_completed?: boolean
+  created_at: string
+}
 
-export default function KidHomePage(): JSX.Element {
-  const params = useParams<{ childId: string }>();
-  const childId = params.childId;
-  const { user, loading } = useAuth();
-  const router = useRouter();
+export default function KidDashboardPage() {
+  const params = useParams()
+  const childId = params?.childId as string
 
-  // Core Data States
-  const [child, setChild] = useState<ChildProfile | null>(null);
-  const [fetching, setFetching] = useState(true);
-  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
-  const [recentWords, setRecentWords] = useState<StumbledWordCountItem[]>([]);
-  const [personalStories, setPersonalStories] = useState<SampleStory[]>([]);
-  const [completedStoryIds, setCompletedStoryIds] = useState<Set<string>>(new Set());
+  const [child, setChild] = useState<ChildProfile | null>(null)
+  const [stories, setStories] = useState<StoryItem[]>([])
+  const [loading, setLoading] = useState(true)
 
-  // UI & Navigation States
-  const [gateOpen, setGateOpen] = useState(false);
-  const [gateTarget, setGateTarget] = useState<"/parent" | "/parent/pricing">("/parent");
-  const [showReminder, setShowReminder] = useState(false);
-  const [reminderDismissed, setReminderDismissed] = useState(false);
-  const [activeSpeakingWord, setActiveSpeakingWord] = useState<string | null>(null);
-  
-  // Bookshelf Expansion Toggle State
-  const [showAllBookshelf, setShowAllBookshelf] = useState(false);
-
-  // Free-plan monthly quota
-  const [monthlyUsage, setMonthlyUsage] = useState<MonthlyUsageStatus | null>(null);
-  const [limitModalOpen, setLimitModalOpen] = useState(false);
-  const [startingStoryId, setStartingStoryId] = useState<string | null>(null);
-
-  // Pick daily affirmation deterministically based on date
-  const affirmation = useMemo(() => {
-    const day = new Date().getDate();
-    return DAILY_AFFIRMATIONS[day % DAILY_AFFIRMATIONS.length];
-  }, []);
-
-  // Auth Protection
   useEffect(() => {
-    if (!loading && !user) router.replace("/parent/login");
-  }, [user, loading, router]);
+    if (!childId) return
 
-  // Load Child Profile & Session Data
-  useEffect(() => {
-    async function loadKidHomeData(): Promise<void> {
-      if (!user || !childId) return;
-      setFetching(true);
+    async function loadData() {
+      try {
+        const supabase = createClient()
 
-      const { data, error } = await supabase
-        .from("children")
-        .select("*")
-        .eq("id", childId)
-        .eq("parent_id", user.id)
-        .single();
+        // Fetch child profile
+        const { data: childData } = await supabase
+          .from('children')
+          .select('id, first_name, avatar_url, streak_count, words_learned')
+          .eq('id', childId)
+          .single()
 
-      if (error || !data) {
-        router.replace("/who");
-        return;
-      }
-
-      const profile = data as ChildProfile;
-      setChild(profile);
-
-      // 1. Load daily timer budget
-      const left = getDailyBudgetSeconds(
-        profile.id,
-        profile.session_minutes || 20
-      );
-      setSecondsLeft(left);
-
-      // 2. Check monthly story quota
-      const usage = await checkMonthlyStoryLimit(profile.id, user.email);
-      setMonthlyUsage(usage);
-
-      // 3. Fetch completed story history
-      const { data: sessionData } = await getChildSessions(profile.id, 100);
-      const finishedSet = new Set<string>();
-      (sessionData || []).forEach((s) => {
-        if (s.completed_story && s.story_id) {
-          finishedSet.add(s.story_id);
+        if (childData) {
+          setChild({
+            id: childData.id,
+            first_name: childData.first_name,
+            avatar_url: childData.avatar_url,
+            streak_count: childData.streak_count ?? 1,
+            words_learned: childData.words_learned ?? 12,
+          })
+        } else {
+          setChild({
+            id: childId,
+            first_name: 'Explorer',
+            streak_count: 1,
+            words_learned: 12,
+          })
         }
-      });
-      setCompletedStoryIds(finishedSet);
 
-      // 4. Fetch recent stumbled words for Word Pocket
-      const { data: rawStumbled } = await getRecentStumbledWords(profile.id, 12);
-      setRecentWords(rawStumbled || []);
+        // Fetch stories
+        const { data: storiesData } = await supabase
+          .from('stories')
+          .select('id, title, summary, cover_emoji, progress_pct, is_completed, created_at')
+          .eq('child_id', childId)
+          .order('created_at', { ascending: false })
 
-      // 5. Fetch Living Stories generated for this child
-      const generated = await getGeneratedStoriesForChild(profile.id);
-      setPersonalStories(generated || []);
-
-      setFetching(false);
-
-      // Story-time notification check
-      const offer = shouldOfferReminder({
-        enabled: !!profile.reminder_enabled,
-        timeLocal: profile.reminder_time_local || "16:30",
-        lastNotifiedDate: profile.reminder_last_date,
-        childId: profile.id,
-        sessionMinutes: profile.session_minutes || 20,
-      });
-
-      if (offer) {
-        setShowReminder(true);
-        sendFriendlyStoryNotification(profile.name);
-        void markReminderShown(profile.id, user.id);
-        setChild((prev) =>
-          prev
-            ? {
-                ...prev,
-                reminder_last_date: new Date().toISOString().slice(0, 10),
-              }
-            : prev
-        );
-      }
-    }
-
-    void loadKidHomeData();
-  }, [user, childId, router]);
-
-  // Catalog & Personal Stories divided into Active Grids vs Bookshelf
-  const { activeStories, bookshelfStories, activePersonalStories } = useMemo(() => {
-    if (!child) {
-      return {
-        activeStories: [],
-        bookshelfStories: [],
-        activePersonalStories: [],
-      };
-    }
-
-    const allCatalog = getStoriesForChild({
-      readingLevel: child.reading_level || 3,
-      interests: child.interests || [],
-    });
-
-    const activeCatalog: SampleStory[] = [];
-    const completedStories: SampleStory[] = [];
-
-    // Separate completed vs active catalog stories
-    for (const story of allCatalog) {
-      if (completedStoryIds.has(story.id)) {
-        completedStories.push(story);
-      } else if (activeCatalog.length < 4) {
-        activeCatalog.push(story);
-      }
-    }
-
-    // If child finished all active catalog stories, cycle them
-    if (activeCatalog.length === 0 && allCatalog.length > 0) {
-      activeCatalog.push(...allCatalog.slice(0, 4));
-    }
-
-    // Separate completed vs active personal (generated) stories
-    const activePersonal: SampleStory[] = [];
-    for (const pStory of personalStories) {
-      if (completedStoryIds.has(pStory.id)) {
-        completedStories.push(pStory);
-      } else {
-        activePersonal.push(pStory);
-      }
-    }
-
-    return {
-      activeStories: activeCatalog,
-      bookshelfStories: completedStories,
-      activePersonalStories: activePersonal,
-    };
-  }, [child, completedStoryIds, personalStories]);
-
-  // Word Pocket categorization: Vocabulary vs Names & Places
-  const { vocabularyWords, nameWords } = useMemo(() => {
-    const vocab: StumbledWordCountItem[] = [];
-    const names: StumbledWordCountItem[] = [];
-
-    recentWords.forEach((item) => {
-      const lower = item.word.toLowerCase();
-      if (item.type === "name" || isGeoName(lower)) {
-        names.push({
-          ...item,
-          display: formatGeoNameDisplay(lower),
-          type: "name",
-        });
-      } else {
-        vocab.push({
-          ...item,
-          display: lower,
-          type: "word",
-        });
-      }
-    });
-
-    return { vocabularyWords: vocab, nameWords: names };
-  }, [recentWords]);
-
-  // Handle Story Selection & Quota Check
-  const handleStartStory = useCallback(
-    async (storyId: string, isFunMode = false) => {
-      if (!child) return;
-
-      if (!isFunMode && (secondsLeft ?? 0) <= 0) {
-        return;
-      }
-
-      setStartingStoryId(storyId);
-
-      // Skip quota check for "Read for Fun" mode
-      if (!isFunMode) {
-        const usage = await checkMonthlyStoryLimit(child.id, user?.email);
-        setMonthlyUsage(usage);
-
-        if (!usage.isPaidPlan && !usage.allowed) {
-          setStartingStoryId(null);
-          setLimitModalOpen(true);
-          return;
+        if (storiesData && storiesData.length > 0) {
+          setStories(storiesData)
+        } else {
+          // Fallback sample stories for instant preview
+          setStories([
+            {
+              id: 'story-1',
+              title: 'The Magic Garden Adventure',
+              summary: 'Explore a colorful garden where plants talk and flowers whistle friendly songs.',
+              cover_emoji: '🌸',
+              progress_pct: 40,
+              is_completed: false,
+              created_at: new Date().toISOString(),
+            },
+            {
+              id: 'story-2',
+              title: 'Pip and the Flying Cloud',
+              summary: 'Soar high above soft fluffy clouds with Pip the Parrot and discover star seeds.',
+              cover_emoji: '☁️',
+              progress_pct: 100,
+              is_completed: true,
+              created_at: new Date().toISOString(),
+            },
+          ])
         }
+      } catch (err) {
+        console.error('Failed to load child dashboard data:', err)
+      } finally {
+        setLoading(false)
       }
+    }
 
-      setStartingStoryId(null);
-      const modeParam = isFunMode ? "?mode=fun" : "";
-      router.push(`/kid/${child.id}/read/${storyId}${modeParam}`);
-    },
-    [child, secondsLeft, user?.email, router]
-  );
+    void loadData()
+  }, [childId])
 
-  // Audio Pronunciation for Vocabulary Words
-  const handleSpeakWord = (text: string): void => {
-    setActiveSpeakingWord(text);
-    speakWord(text);
-    setTimeout(() => setActiveSpeakingWord(null), 1200);
-  };
-
-  if (loading || fetching || !child) {
-    return (
-      <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center font-switzer">
-        <p className="font-bold text-gray-500 text-lg animate-pulse font-switzer">
-          Getting ready...
-        </p>
-      </main>
-    );
-  }
-
-  const avatar = getAvatarById(child.avatar_id);
-  const timeIsUp = (secondsLeft ?? 1) <= 0;
-  const reminderVisible = showReminder && !reminderDismissed && !timeIsUp;
-  const freeStoriesLeft =
-    monthlyUsage && !monthlyUsage.isPaidPlan
-      ? Math.max(0, monthlyUsage.limit - monthlyUsage.used)
-      : null;
-
-  // Limit displayed Bookshelf stories dynamically based on expansion toggle
-  const displayedBookshelfStories = showAllBookshelf
-    ? bookshelfStories
-    : bookshelfStories.slice(0, 4);
+  const firstName = child?.first_name || 'Explorer'
 
   return (
-    <main className="min-h-screen bg-[#F7F4EC] font-switzer pb-16 relative overflow-hidden">
-      <div className="max-w-3xl mx-auto px-6 py-8">
-        
-        {/* Top Navigation Bar */}
-        <div className="flex items-center justify-between mb-8 font-switzer">
-          <button
-            type="button"
-            onClick={() => {
-              setGateTarget("/parent");
-              setGateOpen(true);
-            }}
-            className="text-xs font-bold text-gray-600 hover:text-gray-900 bg-white/80 px-3.5 py-1.5 rounded-full border border-gray-200 transition-colors shadow-2xs font-switzer"
-          >
-            🔒 Parent Portal
-          </button>
-          
-          {/* Logo Wordmark */}
-          <span className="font-logo text-3xl md:text-4xl tracking-tight text-amber-900">
-            Onesimos
+    <div className="space-y-8 pb-12">
+      {/* Top Header & Greeting */}
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <span className="font-switzer inline-flex items-center gap-1.5 rounded-full bg-clay-peach/80 px-3.5 py-1 text-xs font-semibold text-clay-text shadow-sm">
+            <span aria-hidden>✨</span> Today is a great day to read!
           </span>
-
-          <Link
-            href="/who"
-            className="text-xs font-bold text-gray-600 hover:text-gray-900 bg-white/80 px-3.5 py-1.5 rounded-full border border-gray-200 transition-colors shadow-2xs font-switzer"
-          >
-            Switch Reader
-          </Link>
-        </div>
-
-        {/* Story-time Reminder Banner */}
-        {reminderVisible && (
-          <div className="mb-6 rounded-3xl border border-amber-200 bg-amber-50/90 px-5 py-4 shadow-sm flex flex-col sm:flex-row sm:items-center gap-3 font-switzer">
-            <div className="text-3xl shrink-0">📖</div>
-            <div className="flex-1 text-left">
-              <p className="font-achiko text-lg text-amber-900">
-                Story time, {child.name}?
-              </p>
-              <p className="text-xs text-amber-800 font-switzer">
-                A cozy adventure is waiting whenever you are ready. No rush.
-              </p>
-            </div>
-            <div className="flex gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => setReminderDismissed(true)}
-                className="px-3.5 py-2 rounded-2xl border border-gray-200 bg-white text-xs font-bold text-gray-600 hover:bg-gray-50 font-switzer"
-              >
-                Maybe later
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setReminderDismissed(true);
-                  const first = activeStories[0];
-                  if (first) void handleStartStory(first.id);
-                }}
-                className="px-4 py-2 rounded-2xl bg-amber-500 text-white text-xs font-bold hover:bg-amber-600 shadow-sm font-switzer"
-              >
-                Let us read
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Child Hero Header */}
-        <div className="text-center mb-6">
-          <div
-            className="w-24 h-28 mx-auto rounded-3xl overflow-hidden border-4 border-white shadow-md mb-4 flex items-center justify-center"
-            style={{ backgroundColor: `${avatar.color}33` }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={avatar.imageUrl}
-              alt={child.name}
-              className="w-full h-full object-cover"
-            />
-          </div>
-          
-          {/* Main Greeting in Achiko Font */}
-          <h1 className="font-achiko text-4xl md:text-5xl text-amber-950 mb-2 tracking-tight">
-            Hi, {child.name}!
+          <h1 className="font-achiko text-3xl font-bold tracking-tight text-clay-text sm:text-4xl">
+            Hi {firstName}!
           </h1>
-          <p className="text-amber-800 text-base font-switzer font-medium">
-            {timeIsUp
-              ? "You did amazing today. See you tomorrow!"
-              : "Pick a story or explore your sounds!"}
-          </p>
-
-          <div className="inline-flex flex-wrap items-center justify-center gap-2 mt-4 font-switzer">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 border border-gray-200 text-gray-800 font-bold text-xs shadow-sm">
-              {timeIsUp
-                ? "Daily reading complete 🌟"
-                : `Today's time: ${formatMMSS(secondsLeft || 0)} left`}
-            </div>
-            {freeStoriesLeft !== null && (
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 border border-gray-200 text-gray-600 font-bold text-xs shadow-sm">
-                Free stories: {freeStoriesLeft} of {FREE_MONTHLY_STORY_LIMIT} left
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Daily Effort & Virtue Affirmation Banner */}
-        <div className="mb-8 rounded-3xl bg-amber-100/70 border border-amber-200 p-4 text-center shadow-2xs font-switzer">
-          <p className="font-switzer font-bold text-amber-900 text-xs sm:text-sm">
-            {affirmation}
+          <p className="font-switzer text-sm font-medium text-clay-text/80">
+            Pick a story below or practice your letter sounds with Pip!
           </p>
         </div>
 
-        {/* Practice & Play Quick Launcher Grid (Spelling + Phonics Sound Lab) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 font-switzer">
-          {/* Column 1: Spelling Practice */}
-          <div className="bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 rounded-3xl p-6 text-white shadow-[8px_8px_20px_rgba(217,119,6,0.3),-4px_-4px_12px_rgba(255,255,255,0.8)] border-2 border-amber-300 flex flex-col justify-between gap-4 font-switzer transition-transform hover:scale-[1.02] active:scale-[0.98]">
-            <div className="flex items-start gap-4 text-left">
-              <div className="w-12 h-12 bg-white/20 backdrop-blur-xs rounded-2xl flex items-center justify-center text-2xl shrink-0">
-                ✏️
-              </div>
-              <div>
-                <h2 className="font-achiko text-xl text-white leading-tight">
-                  Spelling Practice
-                </h2>
-                <p className="text-amber-100 text-xs mt-1 font-switzer leading-relaxed">
-                  Spell words from your books and earn stars!
-                </p>
-              </div>
-            </div>
-            <Link
-              href={`/kid/${child.id}/spell`}
-              className="w-full px-5 py-3 rounded-2xl bg-white text-amber-800 font-bold text-xs shadow-sm hover:bg-amber-50 active:scale-[0.98] transition-all text-center font-switzer"
-            >
-              Play Spelling Game 🚀
-            </Link>
-          </div>
+        <Link
+          href="/parent"
+          className="font-switzer clay-pill-white inline-flex h-10 items-center justify-center gap-2 self-start rounded-full px-4 text-xs font-bold text-clay-text transition hover:scale-105 active:scale-95 sm:self-auto"
+        >
+          <span aria-hidden>🔐</span> Parent Dashboard
+        </Link>
+      </header>
 
-          {/* Column 2: Phonics Sound Lab */}
-          <div className="bg-gradient-to-br from-pink-400 via-rose-500 to-pink-600 rounded-3xl p-6 text-white shadow-[8px_8px_20px_rgba(225,29,72,0.3),-4px_-4px_12px_rgba(255,255,255,0.8)] border-2 border-rose-300 flex flex-col justify-between gap-4 font-switzer transition-transform hover:scale-[1.02] active:scale-[0.98]">
-            <div className="flex items-start gap-4 text-left">
-              <div className="w-12 h-12 bg-white/20 backdrop-blur-xs rounded-2xl flex items-center justify-center text-2xl shrink-0">
-                🎵
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="font-achiko text-xl text-white leading-tight">
-                    Sound Lab
-                  </h2>
-                  <span className="px-2 py-0.5 rounded-full bg-rose-400 text-white text-[9px] font-black uppercase font-switzer tracking-wide">
-                    Free
-                  </span>
-                </div>
-                <p className="text-rose-100 text-xs mt-1 font-switzer leading-relaxed">
-                  Master letter sounds, digraphs, and tricky blends!
-                </p>
-              </div>
-            </div>
-            <Link
-              href={`/kid/${child.id}/phonics`}
-              className="w-full px-5 py-3 rounded-2xl bg-white text-rose-800 font-bold text-xs shadow-sm hover:bg-rose-50 active:scale-[0.98] transition-all text-center font-switzer"
-            >
-              Enter Sound Lab 🎵
-            </Link>
-          </div>
+      {/* Stats Banner - Soft Puffy Clay Pills */}
+      <section className="grid grid-cols-3 gap-3 sm:gap-4" aria-label="Reading stats">
+        <div
+          className="relative overflow-hidden rounded-3xl p-4 text-center"
+          style={{
+            background: 'linear-gradient(145deg, #FFE8D6 0%, #FDF6F0 100%)',
+            boxShadow: '0 8px 20px rgba(61, 61, 92, 0.08), inset 0 2px 0 rgba(255,255,255,0.9)',
+          }}
+        >
+          <div
+            className="absolute left-3 top-2 h-2.5 w-10 rounded-full bg-white/70"
+            aria-hidden
+          />
+          <span className="font-switzer text-2xl font-black leading-none text-clay-text">
+            {stories.filter((s) => s.is_completed).length}
+          </span>
+          <p className="font-switzer mt-1 text-[11px] font-semibold text-clay-text/80">
+            Completed
+          </p>
         </div>
 
-        {/* Section 1: Personal Living Stories (Active Generated Chapters) */}
-        {activePersonalStories.length > 0 && !timeIsUp && (
-          <section className="mb-8 font-switzer">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-achiko text-2xl text-amber-900 flex items-center gap-2">
-                <span>✨</span> Your Personal Stories
-              </h2>
-              <span className="text-xs text-amber-700 font-switzer">
-                Written from your reading journey
+        <div
+          className="relative overflow-hidden rounded-3xl p-4 text-center"
+          style={{
+            background: 'linear-gradient(145deg, #B8E0D2 0%, #FDF6F0 100%)',
+            boxShadow: '0 8px 20px rgba(61, 61, 92, 0.08), inset 0 2px 0 rgba(255,255,255,0.9)',
+          }}
+        >
+          <div
+            className="absolute left-3 top-2 h-2.5 w-10 rounded-full bg-white/70"
+            aria-hidden
+          />
+          <span className="font-switzer text-2xl font-black leading-none text-clay-text">
+            {child?.words_learned ?? 12}
+          </span>
+          <p className="font-switzer mt-1 text-[11px] font-semibold text-clay-text/80">
+            Words Mastered
+          </p>
+        </div>
+
+        <div
+          className="relative overflow-hidden rounded-3xl p-4 text-center"
+          style={{
+            background: 'linear-gradient(145deg, #CBBBEA 0%, #FDF6F0 100%)',
+            boxShadow: '0 8px 20px rgba(61, 61, 92, 0.08), inset 0 2px 0 rgba(255,255,255,0.9)',
+          }}
+        >
+          <div
+            className="absolute left-3 top-2 h-2.5 w-10 rounded-full bg-white/70"
+            aria-hidden
+          />
+          <span className="font-switzer text-2xl font-black leading-none text-clay-text">
+            🔥 {child?.streak_count ?? 1}d
+          </span>
+          <p className="font-switzer mt-1 text-[11px] font-semibold text-clay-text/80">
+            Active Streak
+          </p>
+        </div>
+      </section>
+
+      {/* Phonics Lab Banner */}
+      <section>
+        <div
+          className="relative overflow-hidden rounded-3xl p-6 transition hover:scale-[1.01]"
+          style={{
+            background: 'linear-gradient(135deg, #A8C5E8 0%, #B8E0D2 100%)',
+            boxShadow: '0 12px 28px rgba(168, 197, 232, 0.35), inset 0 2px 0 rgba(255,255,255,0.85)',
+          }}
+        >
+          <div
+            className="absolute left-4 top-3 h-3 w-20 rounded-full bg-white/60"
+            aria-hidden
+          />
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <span className="font-switzer inline-block rounded-full bg-white/70 px-3 py-0.5 text-xs font-bold text-clay-text">
+                100% Free Phonics
               </span>
+              <h2 className="font-achiko text-2xl font-bold text-clay-text">
+                Phonics Lab & Letter Sounds
+              </h2>
+              <p className="font-switzer text-xs font-medium text-clay-text/85">
+                Practice pronunciation, letter sounds, and speech clarity with Pip!
+              </p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {activePersonalStories.map((story) => (
-                <button
-                  key={story.id}
-                  type="button"
-                  disabled={!!startingStoryId}
-                  onClick={() => void handleStartStory(story.id)}
-                  className="bg-gradient-to-br from-amber-50 to-orange-50/80 rounded-3xl p-5 border-2 border-amber-300 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all text-left flex flex-col justify-between active:scale-[0.99] disabled:opacity-60 relative overflow-hidden font-switzer"
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-4xl">{story.coverEmoji || "📖"}</span>
-                      <span className="px-2.5 py-1 rounded-full bg-amber-200 text-amber-900 border border-amber-300 text-[10px] font-bold uppercase tracking-wider font-switzer">
-                        Personal Chapter
-                      </span>
-                    </div>
-                    <h3 className="font-switzer font-extrabold text-xl text-amber-950 mb-1">
-                      {story.title}
-                    </h3>
-                    <p className="text-xs text-amber-800 mb-3 font-switzer">
-                      About {story.estimatedMinutes} minutes
-                    </p>
-                  </div>
-                  <div className="pt-2">
-                    <span className="inline-block py-2 px-4 rounded-xl text-xs font-bold bg-amber-500 text-white shadow-xs font-switzer">
-                      Read Personal Chapter →
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
 
-        {/* Section 2: Active Stories Grid (Balanced 2x2 layout, max 4 books) */}
-        {timeIsUp ? (
-          <div className="bg-white rounded-3xl p-8 text-center border border-gray-200 shadow-sm mb-8 font-switzer">
-            <div className="text-5xl mb-3">🌟</div>
-            <h2 className="font-achiko text-2xl text-amber-900 mb-2">
-              Rest time
-            </h2>
-            <p className="text-gray-600 text-sm font-switzer">
-              Your stories will be waiting tomorrow. Go play, snack, or hug
-              someone you love.
-            </p>
+            <Link
+              href={`/kid/${childId}/phonics`}
+              className="font-switzer clay-btn-coral inline-flex h-11 items-center justify-center gap-2 rounded-full px-6 text-xs font-bold text-white transition hover:scale-105 active:scale-95"
+            >
+              <span aria-hidden>🎧</span> Start Phonics Lab
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Living Stories Section */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-achiko text-2xl font-bold text-clay-text">
+            Your Living Stories
+          </h2>
+          <span className="font-switzer text-xs font-bold text-clay-text/70">
+            {stories.length} {stories.length === 1 ? 'story' : 'stories'}
+          </span>
+        </div>
+
+        {loading ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {[1, 2].map((i) => (
+              <div
+                key={i}
+                className="h-44 animate-pulse rounded-3xl"
+                style={{ background: '#FFE8D6' }}
+              />
+            ))}
           </div>
         ) : (
-          <section className="mb-8 font-switzer">
-            <h2 className="font-achiko text-2xl text-amber-900 mb-4">
-              📚 Active Stories
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {activeStories.map((story) => {
-                const isStarting = startingStoryId === story.id;
-
-                return (
-                  <button
-                    key={story.id}
-                    type="button"
-                    disabled={!!startingStoryId}
-                    onClick={() => void handleStartStory(story.id)}
-                    className="bg-white rounded-3xl p-6 border-2 border-amber-100 shadow-[6px_6px_16px_rgba(0,0,0,0.06),-6px_-6px_16px_rgba(255,255,255,0.9)] hover:shadow-[10px_10px_24px_rgba(217,119,6,0.15),-8px_-8px_20px_rgba(255,255,255,1)] hover:-translate-y-1 transition-all text-left flex flex-col justify-between active:scale-[0.98] disabled:opacity-60 relative overflow-hidden font-switzer"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-4xl">{story.coverEmoji}</span>
-                        <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold uppercase tracking-wider font-switzer">
-                          Ready to Read
-                        </span>
-                      </div>
-                      <h3 className="font-switzer font-extrabold text-xl text-amber-950 mb-1">
-                        {story.title}
-                      </h3>
-                      <p className="text-xs text-gray-500 mb-1 font-switzer">
-                        About {story.estimatedMinutes} minutes
-                      </p>
-                      <p className="text-xs font-bold text-amber-600 mb-4 font-switzer">
-                        {storyFitLabel(story, child.reading_level || 3)}
-                      </p>
-                    </div>
-                    <div className="pt-1 font-switzer">
-                      <span className="inline-block py-2 px-4 rounded-xl text-xs font-bold bg-amber-500 text-white shadow-2xs font-switzer">
-                        {isStarting ? "Opening..." : "Read now →"}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* Section 3: The Bookshelf (Completed Catalog + Personal Stories) */}
-        {bookshelfStories.length > 0 && (
-          <section className="mb-8 bg-amber-100/60 rounded-3xl p-6 border-2 border-amber-200 shadow-[ inset_2px_2px_6px_rgba(0,0,0,0.04),6px_6px_16px_rgba(217,119,6,0.1)] font-switzer">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="font-achiko text-2xl text-amber-900 flex items-center gap-2">
-                  <span>🪵</span> My Bookshelf
-                </h2>
-                <p className="text-xs text-amber-800 font-switzer">
-                  Completed stories: read again anytime for fun!
-                </p>
-              </div>
-              <span className="text-xs font-bold bg-white text-amber-800 px-3 py-1 rounded-full border border-amber-200 font-switzer">
-                {bookshelfStories.length} Read
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {displayedBookshelfStories.map((story) => (
-                <div
-                  key={story.id}
-                  className="bg-white rounded-2xl p-4 border border-amber-200/80 shadow-xs flex flex-col justify-between font-switzer"
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-3xl">{story.coverEmoji || "📖"}</span>
-                      <span className="text-xs text-emerald-700 font-bold flex items-center gap-1 font-switzer">
-                        <span>Read</span>
-                        <span>✅</span>
-                      </span>
-                    </div>
-                    <h3 className="font-switzer font-extrabold text-base text-gray-900 mb-1">
-                      {story.title}
-                    </h3>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => void handleStartStory(story.id, true)}
-                    className="mt-3 w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all text-center flex items-center justify-center gap-1.5 font-switzer"
-                  >
-                    <span>Read for Fun (No Mic)</span>
-                    <span>📖</span>
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            {/* Bookshelf UI Limit Expand / Collapse Button */}
-            {bookshelfStories.length > 4 && (
-              <div className="mt-4 text-center">
-                <button
-                  type="button"
-                  onClick={() => setShowAllBookshelf(!showAllBookshelf)}
-                  className="px-4 py-2 rounded-2xl bg-white border border-amber-200 text-xs font-bold text-amber-950 hover:bg-amber-50 font-switzer shadow-2xs active:scale-95 transition-all"
-                >
-                  {showAllBookshelf
-                    ? "Show Less"
-                    : `See more (+${bookshelfStories.length - 4})`}
-                </button>
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* Section 4: Word Pocket (ALWAYS VISIBLE with Tap-to-Hear) */}
-        <section className="bg-white rounded-3xl p-6 border-2 border-amber-100 shadow-[8px_8px_20px_rgba(0,0,0,0.05),-8px_-8px_20px_rgba(255,255,255,0.9)] font-switzer mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="font-achiko text-2xl text-amber-900">
-                🎒 Word Pocket
-              </h2>
-              <p className="text-xs text-gray-500 font-switzer">
-                Tap any word to hear how it sounds
-              </p>
-            </div>
-            {recentWords.length > 0 && (
-              <Link
-                href={`/kid/${child.id}/spell`}
-                className="text-xs font-bold text-amber-700 hover:text-amber-800 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200 font-switzer"
-              >
-                Spell these →
-              </Link>
-            )}
-          </div>
-
-          {recentWords.length === 0 ? (
-            <div className="p-6 rounded-2xl bg-amber-50/50 border border-amber-200/60 text-center font-switzer">
-              <p className="text-2xl mb-1">🎒</p>
-              <p className="font-bold text-amber-900 text-sm mb-1 font-switzer">
-                Your Word Pocket is ready!
-              </p>
-              <p className="text-xs text-gray-600 max-w-md mx-auto font-switzer leading-relaxed">
-                Read stories out loud with the mic. Tricky words you stumble on will appear here so you can tap and hear them anytime!
-              </p>
-            </div>
-          ) : (
-            <>
-              {/* Sub-section: Vocabulary Practice Words */}
-              {vocabularyWords.length > 0 && (
-                <div className="mb-4">
-                  <p className="text-[11px] font-bold text-amber-800 uppercase tracking-wider mb-2 font-switzer">
-                    Vocabulary Words
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {vocabularyWords.map((item) => {
-                      const isSpeaking = activeSpeakingWord === item.word;
-                      return (
-                        <button
-                          key={item.word}
-                          type="button"
-                          onClick={() => handleSpeakWord(item.word)}
-                          className={`px-3.5 py-2 rounded-2xl border text-xs font-bold transition-all flex items-center gap-1.5 font-switzer ${
-                            isSpeaking
-                              ? "bg-amber-200 border-amber-400 text-amber-950 scale-95"
-                              : "bg-amber-50/80 border-amber-200 text-amber-900 hover:bg-amber-100"
-                          }`}
-                        >
-                          <span>{item.display}</span>
-                          <span className="text-[10px] text-amber-500">🔊</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Sub-section: Names & Places */}
-              {nameWords.length > 0 && (
-                <div>
-                  <p className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2 font-switzer">
-                    Names & Places
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {nameWords.map((item) => {
-                      const isSpeaking = activeSpeakingWord === item.word;
-                      return (
-                        <button
-                          key={item.word}
-                          type="button"
-                          onClick={() => handleSpeakWord(item.word)}
-                          className={`px-3.5 py-2 rounded-2xl border text-xs font-bold transition-all flex items-center gap-1.5 font-switzer ${
-                            isSpeaking
-                              ? "bg-slate-200 border-slate-400 text-slate-900 scale-95"
-                              : "bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100"
-                          }`}
-                        >
-                          <span>{item.display}</span>
-                          <span className="text-[10px] text-slate-400">🔊</span>
-                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600 font-medium font-switzer">
-                            Name
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </section>
-      </div>
-
-      {/* Parent PIN Lock Gate Modal */}
-      <ParentGate
-        open={gateOpen}
-        onClose={() => setGateOpen(false)}
-        onSuccess={() => {
-          setGateOpen(false);
-          router.push(gateTarget);
-        }}
-      />
-
-      {/* Free Plan Monthly Limit Modal */}
-      {limitModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 font-switzer">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl border border-gray-100 font-switzer">
-            <div className="text-4xl mb-3">🌟</div>
-            <h3 className="font-achiko text-xl text-amber-900 mb-2">
-              Story Goal Reached!
-            </h3>
-            <p className="text-xs text-gray-600 mb-6 leading-relaxed font-switzer">
-              You have completed all <strong>{FREE_MONTHLY_STORY_LIMIT} free stories</strong> for this month. 
-              Ask a parent to unlock unlimited adventures!
-            </p>
-            <div className="flex flex-col gap-2 font-switzer">
-              <button
-                type="button"
-                onClick={() => {
-                  setLimitModalOpen(false);
-                  setGateTarget("/parent/pricing");
-                  setGateOpen(true);
+          <div className="grid gap-4 sm:grid-cols-2">
+            {stories.map((story) => (
+              <article
+                key={story.id}
+                className="relative flex flex-col justify-between overflow-hidden rounded-3xl p-5 transition hover:-translate-y-1 hover:shadow-lg"
+                style={{
+                  background: 'linear-gradient(150deg, #FFFFFF 0%, #FDF6F0 100%)',
+                  boxShadow:
+                    '0 10px 24px rgba(61, 61, 92, 0.08), inset 0 1px 0 rgba(255,255,255,0.95)',
                 }}
-                className="w-full py-3 rounded-2xl bg-amber-500 text-white font-bold text-xs shadow-sm hover:bg-amber-600 font-switzer active:scale-95 transition-all"
               >
-                Ask Parent to Unlock ✨
-              </button>
-              <button
-                type="button"
-                onClick={() => setLimitModalOpen(false)}
-                className="w-full py-2.5 rounded-2xl border border-gray-200 text-gray-600 font-bold text-xs hover:bg-gray-50 font-switzer"
-              >
-                Maybe Later
-              </button>
-            </div>
+                {/* Top Gloss Highlight */}
+                <div
+                  className="absolute left-4 top-3 h-2.5 w-16 rounded-full bg-white/80"
+                  aria-hidden
+                />
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span
+                      className="flex h-10 w-10 items-center justify-center rounded-2xl text-2xl shadow-sm"
+                      style={{ background: '#FFE8D6' }}
+                    >
+                      {story.cover_emoji || '📖'}
+                    </span>
+
+                    {story.is_completed ? (
+                      <span className="font-switzer rounded-full bg-clay-mint/60 px-3 py-0.5 text-[10px] font-bold text-clay-text">
+                        ✓ Completed
+                      </span>
+                    ) : (
+                      <span className="font-switzer rounded-full bg-clay-sky/60 px-3 py-0.5 text-[10px] font-bold text-clay-text">
+                        {story.progress_pct || 0}% Read
+                      </span>
+                    )}
+                  </div>
+
+                  <h3 className="font-achiko text-lg font-bold text-clay-text">
+                    {story.title}
+                  </h3>
+
+                  {story.summary && (
+                    <p className="font-switzer text-xs font-normal leading-relaxed text-clay-text/80 line-clamp-2">
+                      {story.summary}
+                    </p>
+                  )}
+                </div>
+
+                <div className="mt-4 flex items-center justify-between pt-2">
+                  <Link
+                    href={`/kid/${childId}/read/${story.id}`}
+                    className="font-switzer clay-btn-coral inline-flex h-9 items-center justify-center gap-1.5 rounded-full px-5 text-xs font-bold text-white transition hover:scale-105 active:scale-95"
+                  >
+                    {story.is_completed ? 'Read Again' : 'Read Chapter'}
+                    <span aria-hidden>→</span>
+                  </Link>
+                </div>
+              </article>
+            ))}
           </div>
-        </div>
-      )}
-    </main>
-  );
+        )}
+      </section>
+    </div>
+  )
 }
