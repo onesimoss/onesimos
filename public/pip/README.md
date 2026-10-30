@@ -1,0 +1,1 @@
+﻿Drop the six Pip renders here: idle.png, happy.png, eating.png, speaking.png, sleeping.png, excited.png. The spec lives in PIP_ART_BRIEF.md at the repo root.
