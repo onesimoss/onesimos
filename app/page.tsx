@@ -1,38 +1,57 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
-// Inline Icons
-const SparkleStar = ({ className = "w-6 h-6" }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+// Inline Icons (Zero forbidden dependencies)
+const MenuIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="3" y1="12" x2="21" y2="12"></line>
+    <line x1="3" y1="6" x2="21" y2="6"></line>
+    <line x1="3" y1="18" x2="21" y2="18"></line>
+  </svg>
+);
+
+const CloseIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18"></line>
+    <line x1="6" y1="6" x2="18" y2="18"></line>
+  </svg>
+);
+
+const SparkleIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
     <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" />
   </svg>
 );
 
-const PlayIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-    <polygon points="5 3 19 12 5 21 5 3" />
+const CheckCircleIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#71A6EE" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+    <polyline points="22 4 12 14.01 9 11.01"></polyline>
   </svg>
 );
 
-const BellIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+const MicIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+    <line x1="12" y1="19" x2="12" y2="23"></line>
+    <line x1="8" y1="23" x2="16" y2="23"></line>
   </svg>
 );
 
-const BookIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path>
+const StarIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="#E1F18C">
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
   </svg>
 );
 
 export default function HomePage() {
   const router = useRouter();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -49,248 +68,176 @@ export default function HomePage() {
   }, [router]);
 
   return (
-    <main className="min-h-screen bg-[#D6E5FD] dark:bg-[#0F172A] p-4 sm:p-8 flex flex-col items-center justify-center relative overflow-hidden font-sans select-none">
+    <div className="min-h-screen bg-[#F4F8FF] dark:bg-[#0F172A] text-[#1C274C] dark:text-white font-sans selection:bg-[#E1F18C] selection:text-[#1C274C]">
       
-      {/* Top Header Controls (Floating Subtle Nav) */}
-      <header className="absolute top-6 left-6 right-6 z-40 flex items-center justify-between max-w-7xl mx-auto">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#1C274C] text-[#E1F18C] font-black text-xl flex items-center justify-center shadow-md">
-            O
-          </div>
-          <span className="font-black text-2xl tracking-tight text-[#1C274C] dark:text-white">
-            Onesimos
-          </span>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Link
-            href="/login"
-            className="px-5 py-2.5 rounded-full bg-white/80 hover:bg-white text-[#1C274C] font-bold text-sm backdrop-blur-sm transition-all shadow-sm"
-          >
-            Sign in
-          </Link>
-          <Link
-            href="/signup"
-            className="px-6 py-2.5 rounded-full bg-[#1C274C] hover:bg-[#141C38] text-white font-bold text-sm shadow-md transition-all"
-          >
-            Get started
-          </Link>
-        </div>
-      </header>
-
-      {/* Main Canvas Frame Container */}
-      <div className="w-full max-w-7xl min-h-[860px] rounded-[40px] bg-[#D6E5FD] dark:bg-[#0F172A] relative flex flex-col items-center justify-center pt-20 pb-12 px-4 overflow-hidden">
-        
-        {/* ========================================================= */}
-        {/* 1. TOP FLOATING WIDGET (Your AI Learning Buddy)            */}
-        {/* ========================================================= */}
-        <div className="z-20 mb-6 sm:mb-8 flex flex-col items-center transform hover:scale-105 transition-transform duration-300">
-          <div className="bg-white/95 dark:bg-[#1E293B]/95 backdrop-blur-md px-8 py-4 rounded-[28px] shadow-xl border border-white/80 dark:border-white/10 flex flex-col items-center relative">
-            
-            {/* Sparkle decorative icons around top card */}
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-[#1C274C] dark:text-[#E1F18C]">
-              <SparkleStar className="w-5 h-5" />
-            </div>
-            
-            {/* Robot Buddy Avatar */}
-            <div className="w-12 h-12 rounded-2xl bg-[#EAF2FF] dark:bg-[#0F172A] flex items-center justify-center text-2xl shadow-inner mb-2 border border-white">
-              🤖
-            </div>
-
-            {/* Pill Badge */}
-            <div className="flex items-center gap-2 text-base font-black text-[#1C274C] dark:text-white">
-              <span>Your AI</span>
-              <span className="bg-[#1C274C] text-white dark:bg-[#E1F18C] dark:text-[#1C274C] px-4 py-1.5 rounded-full text-sm font-bold shadow-sm">
-                Learning Buddy
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* ========================================================= */}
-        {/* 2. GIANT BACKDROP DISPLAY TITLE ("Onesimos")               */}
-        {/* ========================================================= */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-          <div className="relative">
-            <h1 className="text-[15vw] sm:text-[14rem] font-black text-[#7FB3F9]/40 dark:text-[#71A6EE]/15 tracking-tighter leading-none select-none">
-              Onesimos
-            </h1>
-            
-            {/* Decorative Stars placed on text */}
-            <div className="absolute top-[15%] left-[2%] text-[#1C274C] dark:text-white opacity-80">
-              <SparkleStar className="w-8 h-8 sm:w-12 sm:h-12" />
-            </div>
-            <div className="absolute top-[10%] right-[4%] text-[#1C274C] dark:text-white opacity-80">
-              <SparkleStar className="w-8 h-8 sm:w-10 sm:h-10" />
-            </div>
-          </div>
-        </div>
-
-        {/* ========================================================= */}
-        {/* 3. CENTER MOBILE PHONE MOCKUP                              */}
-        {/* ========================================================= */}
-        <div className="relative z-10 my-2">
+      {/* 1. STICKY GLASSMORPHIC NAVBAR */}
+      <nav className="sticky top-0 z-50 px-4 sm:px-8 pt-4 pb-2">
+        <div className="mx-auto max-w-6xl rounded-full bg-white/80 dark:bg-[#1E293B]/80 backdrop-blur-md border border-[#1C274C]/5 dark:border-white/10 px-6 py-3 flex items-center justify-between shadow-sm">
           
-          {/* Outer Phone Hardware Frame */}
-          <div className="w-[320px] sm:w-[370px] h-[670px] bg-black rounded-[50px] p-3 shadow-[0_25px_60px_-15px_rgba(28,39,76,0.35)] border-[4 border-black relative ring-1 ring-white/20">
-            
-            {/* Dynamic Island / Notch */}
-            <div className="absolute top-5 left-1/2 -translate-x-1/2 w-28 h-6 bg-black rounded-full z-30 flex items-center justify-end px-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-[#1C274C]/60" />
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-full bg-[#1C274C] text-[#E1F18C] font-black text-xl flex items-center justify-center shadow-sm">
+              O
             </div>
+            <span className="font-black text-xl tracking-tight text-[#1C274C] dark:text-white">
+              Onesimos
+            </span>
+          </Link>
 
-            {/* Inner Screen Viewport */}
-            <div className="w-full h-full bg-white dark:bg-[#0F172A] rounded-[40px] overflow-hidden flex flex-col justify-between pt-9 pb-6 px-4 font-sans text-left">
-              
-              {/* Phone Top Status Bar */}
-              <div className="flex justify-between items-center px-3 text-[11px] font-bold text-[#1C274C] dark:text-white mb-3">
-                <span>08:34</span>
-                <div className="flex items-center gap-1.5 text-[10px]">
-                  <span>4G</span>
-                  <div className="w-5 h-2.5 border border-[#1C274C] dark:border-white rounded-sm p-0.5 flex items-center">
-                    <div className="h-full w-full bg-[#1C274C] dark:bg-white rounded-2xs" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Kid Header inside App */}
-              <div className="flex justify-between items-center px-1 mb-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-full bg-[#E1C8F6] border-2 border-[#1C274C] flex items-center justify-center font-black text-base text-[#1C274C]">
-                    👦
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-[#1C274C]/60 dark:text-white/60">Hello Max 👋</p>
-                    <p className="text-xs font-black text-[#1C274C] dark:text-white">Good Morning</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1 bg-[#F4F8FF] dark:bg-[#1E293B] px-2.5 py-1 rounded-full text-[10px] font-bold text-[#1C274C] dark:text-white border border-[#1C274C]/10">
-                    <span>🇬🇧</span> English <span>⌄</span>
-                  </div>
-                  <div className="w-8 h-8 rounded-full bg-[#F4F8FF] dark:bg-[#1E293B] flex items-center justify-center text-[#1C274C] dark:text-white border border-[#1C274C]/10">
-                    <BellIcon />
-                  </div>
-                </div>
-              </div>
-
-              {/* Buddy Encouragement Card */}
-              <div className="bg-[#F4F8FF] dark:bg-[#1E293B] rounded-[24px] p-3.5 flex items-center gap-3 border border-[#1C274C]/5 mb-3">
-                <div className="w-9 h-9 rounded-full bg-[#1C274C] flex items-center justify-center text-white text-sm shrink-0">
-                  🤖
-                </div>
-                <div>
-                  <p className="text-[9px] font-bold text-[#1C274C]/60 dark:text-white/60 uppercase tracking-wider">Your Reading Buddy</p>
-                  <p className="text-xs font-black text-[#1C274C] dark:text-white leading-tight">You're learning great today!</p>
-                </div>
-              </div>
-
-              {/* Today's Pick Card */}
-              <div className="bg-[#F4F8FF] dark:bg-[#1E293B] rounded-[24px] p-4 border border-[#1C274C]/5 mb-4 shadow-sm">
-                <p className="text-[10px] font-bold text-[#1C274C]/60 dark:text-white/60 uppercase tracking-wider">Today's pick: Shapes</p>
-                <div className="flex justify-between items-center mt-1">
-                  <div className="flex items-center gap-2 text-[10px] font-bold text-[#1C274C]/70 dark:text-white/70">
-                    <span>📖 12 lessons</span>
-                    <span>•</span>
-                    <span>⏱ 10 min</span>
-                  </div>
-                  <span className="text-[10px] font-black text-[#1C274C] dark:text-white">20% complete</span>
-                </div>
-
-                <div className="mt-3 flex items-center justify-between gap-3">
-                  <div className="h-2 flex-1 bg-white dark:bg-[#0F172A] rounded-full overflow-hidden">
-                    <div className="h-full bg-[#1C274C] dark:bg-[#E1F18C] rounded-full w-1/5" />
-                  </div>
-                  <div className="w-9 h-9 rounded-full bg-[#1C274C] text-[#E1F18C] flex items-center justify-center shrink-0 shadow-md pl-0.5">
-                    <PlayIcon />
-                  </div>
-                </div>
-              </div>
-
-              {/* Let's Learn Grid Section */}
-              <div>
-                <h3 className="text-sm font-black text-[#1C274C] dark:text-white tracking-tight mb-2">Let's learn</h3>
-                
-                {/* Filter Chips */}
-                <div className="flex gap-1.5 mb-3 overflow-x-auto scrollbar-hide">
-                  <span className="px-3 py-1 rounded-full bg-[#1C274C] text-white text-[10px] font-bold shrink-0">
-                    All <span className="ml-1 bg-white/20 px-1 rounded-full">12</span>
-                  </span>
-                  <span className="px-3 py-1 rounded-full bg-[#F4F8FF] dark:bg-[#1E293B] text-[#1C274C] dark:text-white text-[10px] font-bold shrink-0 border border-[#1C274C]/5">
-                    Aa Letters <span className="text-[#1C274C]/40">03</span>
-                  </span>
-                  <span className="px-3 py-1 rounded-full bg-[#F4F8FF] dark:bg-[#1E293B] text-[#1C274C] dark:text-white text-[10px] font-bold shrink-0 border border-[#1C274C]/5">
-                    🎨 Colors <span className="text-[#1C274C]/40">04</span>
-                  </span>
-                </div>
-
-                {/* Two Column Pastel Cards */}
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div className="bg-[#E1C8F6] rounded-[22px] p-3 flex flex-col justify-between h-28 text-left">
-                    <div className="w-7 h-7 rounded-full bg-white/60 flex items-center justify-center text-xs">🎨</div>
-                    <div>
-                      <p className="text-[9px] font-bold text-[#1C274C]/60 uppercase">Colors</p>
-                      <p className="text-xs font-black text-[#1C274C] leading-tight">Learn colors with objects</p>
-                    </div>
-                  </div>
-
-                  <div className="bg-[#E1F18C] rounded-[22px] p-3 flex flex-col justify-between h-28 text-left">
-                    <div className="w-7 h-7 rounded-full bg-white/60 flex items-center justify-center text-xs">Aa</div>
-                    <div>
-                      <p className="text-[9px] font-bold text-[#1C274C]/60 uppercase">Letters</p>
-                      <p className="text-xs font-black text-[#1C274C] leading-tight">Learn fun sounds</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-            </div>
+          <div className="hidden md:flex items-center gap-8 text-sm font-bold text-[#1C274C]/70 dark:text-white/70">
+            <a href="#features" className="hover:text-[#1C274C] dark:hover:text-white transition-colors">Features</a>
+            <a href="#how-it-works" className="hover:text-[#1C274C] dark:hover:text-white transition-colors">How it works</a>
+            <a href="#parents" className="hover:text-[#1C274C] dark:hover:text-white transition-colors">For parents</a>
+            <Link href="/parent/pricing" className="hover:text-[#1C274C] dark:hover:text-white transition-colors">Pricing</Link>
           </div>
+
+          <div className="hidden md:flex items-center gap-3">
+            <Link 
+              href="/login" 
+              className="px-5 py-2.5 rounded-full text-sm font-bold text-[#1C274C] dark:text-white hover:bg-[#1C274C]/5 dark:hover:bg-white/5 transition-colors"
+            >
+              Sign in
+            </Link>
+            <Link 
+              href="/signup" 
+              className="px-6 py-2.5 rounded-full bg-[#1C274C] text-white text-sm font-bold shadow-md hover:bg-[#141C38] transition-all"
+            >
+              Get started free
+            </Link>
+          </div>
+
+          <button 
+            type="button" 
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden w-10 h-10 rounded-full bg-[#F4F8FF] dark:bg-[#0F172A] flex items-center justify-center text-[#1C274C] dark:text-white"
+            aria-label="Toggle navigation menu"
+          >
+            {mobileMenuOpen ? <CloseIcon /> : <MenuIcon />}
+          </button>
         </div>
 
-        {/* ========================================================= */}
-        {/* 4. FLOATING RIGHT CTA BUTTON ("Start learning")           */}
-        {/* ========================================================= */}
-        <div className="hidden md:flex absolute right-[8%] sm:right-[12%] top-[45%] z-20">
-          <Link
-            href="/signup"
-            className="group bg-white/90 hover:bg-white dark:bg-[#1E293B]/90 backdrop-blur-md px-7 py-3.5 rounded-full shadow-2xl border border-white/80 dark:border-white/10 flex items-center gap-4 transition-all duration-300 hover:scale-105"
-          >
-            <span className="font-black text-lg text-[#1C274C] dark:text-white">Start learning</span>
-            <div className="w-9 h-9 rounded-full bg-[#1C274C] text-white flex items-center justify-center shadow-md group-hover:translate-x-0.5 transition-transform pl-0.5">
-              <PlayIcon />
+        {mobileMenuOpen && (
+          <div className="md:hidden mx-auto mt-2 max-w-6xl rounded-[32px] bg-white dark:bg-[#1E293B] border border-[#1C274C]/5 p-6 space-y-4 shadow-xl">
+            <div className="flex flex-col gap-3 font-bold text-base">
+              <a href="#features" onClick={() => setMobileMenuOpen(false)} className="py-2 border-b border-[#1C274C]/5">Features</a>
+              <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="py-2 border-b border-[#1C274C]/5">How it works</a>
+              <a href="#parents" onClick={() => setMobileMenuOpen(false)} className="py-2 border-b border-[#1C274C]/5">For parents</a>
+              <Link href="/parent/pricing" onClick={() => setMobileMenuOpen(false)} className="py-2 border-b border-[#1C274C]/5">Pricing</Link>
             </div>
+            <div className="pt-2 flex flex-col gap-3">
+              <Link href="/login" className="w-full py-3 rounded-full text-center font-bold bg-[#F4F8FF] dark:bg-[#0F172A]">Sign in</Link>
+              <Link href="/signup" className="w-full py-3 rounded-full text-center font-bold bg-[#1C274C] text-white">Get started free</Link>
+            </div>
+          </div>
+        )}
+      </nav>
+
+      {/* 2. HERO SECTION */}
+      <section className="px-4 sm:px-8 pt-12 pb-20 max-w-6xl mx-auto text-center flex flex-col items-center">
+        
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#E1F18C] text-[#1C274C] text-xs font-black uppercase tracking-wider shadow-sm mb-6">
+          <SparkleIcon /> Early Literacy Platform for Ages 3 to 12
+        </div>
+
+        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-[1.08] max-w-4xl text-[#1C274C] dark:text-white">
+          Transform your child's reading journey with playful stories
+        </h1>
+
+        <p className="mt-6 text-lg sm:text-xl font-medium text-[#1C274C]/70 dark:text-white/70 max-w-2xl leading-relaxed">
+          Onesimos delivers personalized reading chapters, real-time speech evaluation, and adaptive story synthesis that turns early readers into confident storytellers.
+        </p>
+
+        <div className="mt-8 flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+          <Link 
+            href="/signup" 
+            className="w-full sm:w-auto px-8 py-4 rounded-full bg-[#1C274C] text-white font-bold text-base shadow-xl hover:bg-[#141C38] transition-all text-center"
+          >
+            Start your free trial
+          </Link>
+          <Link 
+            href="/login" 
+            className="w-full sm:w-auto px-8 py-4 rounded-full bg-white dark:bg-[#1E293B] text-[#1C274C] dark:text-white font-bold text-base shadow-sm border border-[#1C274C]/10 dark:border-white/10 hover:bg-[#F4F8FF] transition-all text-center"
+          >
+            Parent Sign in
           </Link>
         </div>
 
-        {/* ========================================================= */}
-        {/* 5. FLOATING LEFT ILLUSTRATION (Cute Reader Graphic)        */}
-        {/* ========================================================= */}
-        <div className="hidden lg:flex absolute left-[6%] bottom-[12%] z-20 pointer-events-none">
-          <div className="w-36 h-36 relative flex items-center justify-center">
-            {/* Playful vector child sitting on an apple */}
-            <svg viewBox="0 0 160 160" fill="none" className="w-full h-full drop-shadow-md">
-              <circle cx="80" cy="105" r="45" fill="#F7D4DA" />
-              <path d="M80 60 C75 45, 95 40, 85 30" stroke="#1C274C" strokeWidth="4" strokeLinecap="round" />
-              <path d="M85 30 Q95 25 100 35" fill="#E1F18C" />
-              <circle cx="70" cy="55" r="18" fill="#FFDBAC" />
-              <path d="M60 45 Q70 35 82 45" fill="#1C274C" />
-              <rect x="52" y="65" width="36" height="24" rx="4" fill="#71A6EE" transform="rotate(-10 70 77)" />
-            </svg>
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-6 text-xs font-bold text-[#1C274C]/80 dark:text-white/80">
+          <div className="flex items-center gap-2">
+            <CheckCircleIcon /> Personalized by age & interest
+          </div>
+          <div className="flex items-center gap-2">
+            <CheckCircleIcon /> Real-time speech evaluation
+          </div>
+          <div className="flex items-center gap-2">
+            <CheckCircleIcon /> Parent PIN protected zone
           </div>
         </div>
 
-        {/* ========================================================= */}
-        {/* 6. FLOATING BOTTOM RIGHT BOOK CIRCLE                       */}
-        {/* ========================================================= */}
-        <div className="hidden md:flex absolute right-[10%] bottom-[15%] z-20">
-          <div className="w-16 h-16 rounded-full bg-white/80 dark:bg-[#1E293B]/80 backdrop-blur-md shadow-xl flex items-center justify-center text-[#71A6EE] border border-white/60">
-            <BookIcon />
+        {/* 3. HERO PRODUCT SHOWCASE CARD */}
+        <div className="mt-14 w-full rounded-[36px] bg-white dark:bg-[#1E293B] p-4 sm:p-8 shadow-2xl border border-[#1C274C]/5 dark:border-white/10 relative overflow-hidden">
+          <div className="flex items-center justify-between pb-6 border-b border-[#1C274C]/5 dark:border-white/5">
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 rounded-full bg-red-400" />
+              <div className="w-3 h-3 rounded-full bg-yellow-400" />
+              <div className="w-3 h-3 rounded-full bg-green-400" />
+              <span className="text-xs font-bold text-[#1C274C]/40 dark:text-white/40 ml-2">onesimos.app / reader-demo</span>
+            </div>
+            <div className="flex items-center gap-2 bg-[#E1F18C] px-3 py-1 rounded-full text-[11px] font-black text-[#1C274C]">
+              <span>⭐️</span> 10,000+ Chapters Mastered
+            </div>
+          </div>
+
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-5 text-left">
+            <div className="md:col-span-2 bg-[#E1C8F6] rounded-[28px] p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden">
+              <div className="flex justify-between items-start mb-6">
+                <span className="bg-white/70 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-[#1C274C]">
+                  Chapter 1 • 5 min read
+                </span>
+                <span className="text-3xl">🦁</span>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-[#1C274C]/60 uppercase tracking-wider">Interactive Reader</p>
+                <h3 className="text-2xl sm:text-3xl font-black text-[#1C274C] mt-1 leading-tight">
+                  Leo the lion explores the green forest.
+                </h3>
+                <p className="text-sm font-medium text-[#1C274C]/80 mt-2">
+                  Read aloud to earn star rewards and unlock new vocabulary words!
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-[#1C274C] rounded-[28px] p-6 text-white flex flex-col justify-between">
+              <div className="flex justify-between items-center">
+                <div className="w-10 h-10 rounded-full bg-[#E1F18C] text-[#1C274C] flex items-center justify-center">
+                  <MicIcon />
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-white/10 px-2.5 py-1 rounded-full">Speech Engine</span>
+              </div>
+
+              <div className="my-6">
+                <p className="text-xs font-bold text-white/60 uppercase">Evaluation State</p>
+                <p className="text-lg font-black text-[#E1F18C] mt-0.5">Perfect Pronunciation!</p>
+                <div className="mt-3 flex gap-1">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <StarIcon key={s} />
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white/10 rounded-full px-4 py-2 text-xs font-bold flex items-center justify-between">
+                <span>Mastery Score</span>
+                <span className="text-[#E1F18C]">98%</span>
+              </div>
+            </div>
           </div>
         </div>
 
-      </div>
-    </main>
+      </section>
+
+      <footer className="py-8 text-center text-xs font-bold text-[#1C274C]/40 dark:text-white/40 border-t border-[#1C274C]/5">
+        Onesimos Early Literacy Platform • Built for Young Readers
+      </footer>
+
+    </div>
   );
 }
