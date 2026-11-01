@@ -72,7 +72,7 @@ function ReadingContent() {
   const router = useRouter();
   const childId = searchParams.get('child');
   const { theme } = useTheme();
-  const currentTheme = themes[theme] || themes.dinosaurs;
+  const currentTheme = (themes as Record<string, any>)[theme] || themes.dinosaurs;
 
   const [isLoading, setIsLoading] = useState(true);
   const [isListening, setIsListening] = useState(false);

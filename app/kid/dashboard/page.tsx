@@ -10,7 +10,7 @@ import { hasPassedPhonics, getChildReadingLevel } from "@/lib/dailyProgress";
 
 export default function KidDashboard() {
   const { theme } = useTheme();
-  const currentTheme = themes[theme] || themes.dinosaurs;
+  const currentTheme = (themes as Record<string, any>)[theme] || themes.dinosaurs;
   const router = useRouter();
   
   const [kidId, setKidId] = useState<string | null>(null);

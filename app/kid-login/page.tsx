@@ -8,7 +8,7 @@ import { themes } from "@/lib/themes";
 
 export default function KidLogin() {
   const { theme } = useTheme();
-  const currentTheme = themes[theme] || themes.dinosaurs;
+  const currentTheme = (themes as Record<string, any>)[theme] || themes.dinosaurs;
   const router = useRouter();
   
   const [pin, setPin] = useState("");
