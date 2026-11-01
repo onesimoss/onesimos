@@ -2,7 +2,9 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { Check } from 'lucide-react';
+const CheckIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="20 6 9 17 4 12" /></svg>
+);
 
 export const AVATAR_OPTIONS = [
   { id: 'avatar_bear', name: 'Barnaby Bear', bg: 'bg-[#E1F18C]', emoji: '🐻' },
@@ -47,7 +49,7 @@ export const AvatarPicker: React.FC<AvatarPickerProps> = ({ selectedId, onSelect
               </span>
               {isSelected && (
                 <div className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#1C274C] text-white shadow">
-                  <Check className="h-3.5 w-3.5 stroke-[3]" />
+                  <CheckIcon className="h-3.5 w-3.5 stroke-[3]" />
                 </div>
               )}
             </div>
