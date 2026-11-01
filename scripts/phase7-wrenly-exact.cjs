@@ -1,401 +1,585 @@
-// scripts/phase7-wrenly-exact.cjs
-// Exact Wrenly Framer visual replica with Onesimos content & zero extra packages.
-// Run: node scripts/phase7-wrenly-exact.cjs
-
 const fs = require("fs");
 const path = require("path");
-const ROOT = process.cwd();
 
-function read(rel) {
-  try {
-    return fs.readFileSync(path.join(ROOT, rel), "utf8");
-  } catch {
-    return null;
-  }
-}
+const targetFile = path.join(__dirname, "..", "app", "page.tsx");
 
-function write(rel, content) {
-  const abs = path.join(ROOT, rel);
-  fs.mkdirSync(path.dirname(abs), { recursive: true });
-  fs.writeFileSync(abs, content, "utf8");
-  console.log("WROTE  " + rel + "  (" + content.length + " bytes)");
-}
+const content = `'use client';
 
-// Detect Supabase client export name
-let supaName = "createClient";
-const supaSrc = read("lib/supabase/client.ts");
-if (supaSrc) {
-  const m = supaSrc.match(/export\s+(?:async\s+)?(?:function|const)\s+(\w+)/);
-  if (m) supaName = m[1];
-}
-function inject(s) {
-  return s.split("__SUPA__").join(supaName);
-}
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 
-const wrenlyExactContent = `"use client";
+const floatingVariants = {
+  animate: {
+    y: [0, -12, 0],
+    transition: { duration: 4, repeat: Infinity, ease: 'easeInOut' },
+  },
+};
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { __SUPA__ } from "@/lib/supabase/client";
-
-// Inline Icons (Zero extra npm packages)
-const MenuIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="3" y1="12" x2="21" y2="12"></line>
-    <line x1="3" y1="6" x2="21" y2="6"></line>
-    <line x1="3" y1="18" x2="21" y2="18"></line>
-  </svg>
-);
-
-const CloseIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="18" y1="6" x2="6" y2="18"></line>
-    <line x1="6" y1="6" x2="18" y2="18"></line>
-  </svg>
-);
-
-const SparkleIcon = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" />
-  </svg>
-);
-
-const StarIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="#FACC15">
-    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-  </svg>
-);
-
-const ArrowRight = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="5" y1="12" x2="19" y2="12"></line>
-    <polyline points="12 5 19 12 12 19"></polyline>
-  </svg>
-);
-
-const CheckIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12"></polyline>
-  </svg>
-);
-
-const MicIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-    <line x1="12" y1="19" x2="12" y2="23"></line>
-    <line x1="8" y1="23" x2="16" y2="23"></line>
-  </svg>
-);
-
-const ShieldIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-  </svg>
-);
-
-const BookOpenIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
-    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
-  </svg>
-);
+const fadeUpVariants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } },
+};
 
 export default function HomePage() {
-  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'3-5' | '6-8' | '9-12'>('6-8');
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly');
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [formSubmitted, setFormSubmitted] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const client = __SUPA__();
-        const { data } = await client.auth.getUser();
-        if (!cancelled && data && data.user) {
-          router.push("/who");
-        }
-      } catch {}
-    })();
-    return () => { cancelled = true; };
-  }, [router]);
+  const toggleFaq = (index: number) => {
+    setOpenFaq(openFaq === index ? null : index);
+  };
+
+  const handleContactSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormSubmitted(true);
+    setTimeout(() => setFormSubmitted(false), 5000);
+  };
 
   return (
-    <div className="min-h-screen bg-[#080B11] text-white font-sans selection:bg-blue-500 selection:text-white relative overflow-hidden">
+    <div className="min-h-screen bg-[#FDF8F3] text-[#0F172A] font-sans selection:bg-[#A3E635] selection:text-[#0B1B3A] overflow-x-hidden">
       
-      {/* ========================================================= */}
-      {/* AMBIENT RADIAL LIGHT GLOWS (WRENLY SIGNATURE BACKGROUND)   */}
-      {/* ========================================================= */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-gradient-to-tr from-blue-600/20 via-indigo-600/15 to-purple-600/10 blur-[130px] pointer-events-none z-0" />
-      <div className="absolute top-[800px] right-0 w-[600px] h-[600px] bg-blue-500/10 blur-[150px] pointer-events-none z-0" />
-
-      {/* ========================================================= */}
-      {/* 1. GLASSMORPHIC FLOATING NAVBAR                           */}
-      {/* ========================================================= */}
-      <nav className="sticky top-0 z-50 px-4 sm:px-8 pt-5 pb-3">
-        <div className="mx-auto max-w-6xl rounded-full bg-[#111622]/80 backdrop-blur-xl border border-white/10 px-6 py-3 flex items-center justify-between shadow-2xl">
-          
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 text-white font-black text-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-              O
-            </div>
-            <span className="font-black text-xl tracking-tight text-white">
-              Onesimos
-            </span>
-          </Link>
-
-          <div className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-300">
-            <a href="#features" className="hover:text-white transition-colors">Features</a>
-            <a href="#how-it-works" className="hover:text-white transition-colors">How it works</a>
-            <a href="#parents" className="hover:text-white transition-colors">For parents</a>
-            <Link href="/parent/pricing" className="hover:text-white transition-colors">Pricing</Link>
-          </div>
-
-          <div className="hidden md:flex items-center gap-3">
-            <Link 
-              href="/login" 
-              className="px-5 py-2.5 rounded-full text-sm font-bold text-slate-200 hover:text-white hover:bg-white/5 transition-colors"
-            >
-              Sign in
-            </Link>
-            <Link 
-              href="/signup" 
-              className="px-6 py-2.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-bold shadow-[0_0_25px_rgba(79,70,229,0.35)] transition-all"
-            >
-              Get started free
-            </Link>
-          </div>
-
-          <button 
-            type="button" 
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white border border-white/10"
-            aria-label="Toggle navigation menu"
-          >
-            {mobileMenuOpen ? <CloseIcon /> : <MenuIcon />}
-          </button>
-        </div>
-
-        {mobileMenuOpen && (
-          <div className="md:hidden mx-auto mt-3 max-w-6xl rounded-[32px] bg-[#111622] border border-white/10 p-6 space-y-4 shadow-2xl">
-            <div className="flex flex-col gap-3 font-bold text-base text-slate-300">
-              <a href="#features" onClick={() => setMobileMenuOpen(false)} className="py-2 border-b border-white/5">Features</a>
-              <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="py-2 border-b border-white/5">How it works</a>
-              <a href="#parents" onClick={() => setMobileMenuOpen(false)} className="py-2 border-b border-white/5">For parents</a>
-              <Link href="/parent/pricing" onClick={() => setMobileMenuOpen(false)} className="py-2 border-b border-white/5">Pricing</Link>
-            </div>
-            <div className="pt-2 flex flex-col gap-3">
-              <Link href="/login" className="w-full py-3 rounded-full text-center font-bold bg-white/5 border border-white/10">Sign in</Link>
-              <Link href="/signup" className="w-full py-3 rounded-full text-center font-bold bg-gradient-to-r from-blue-600 to-indigo-600 text-white">Get started free</Link>
-            </div>
-          </div>
-        )}
-      </nav>
-
-      {/* ========================================================= */}
-      {/* 2. HERO SECTION (WRENLY EXACT STRUCTURE)                   */}
-      {/* ========================================================= */}
-      <section className="relative z-10 px-4 sm:px-8 pt-16 pb-20 max-w-6xl mx-auto text-center flex flex-col items-center">
-        
-        {/* Glowing Pill Badge */}
-        <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-bold uppercase tracking-wider shadow-inner mb-8">
-          <span className="flex h-2 w-2 rounded-full bg-blue-400 animate-pulse" />
-          <SparkleIcon /> Adaptive Early Literacy Platform • Ages 3 to 12
-        </div>
-
-        {/* Gradient Headline */}
-        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-[1.08] max-w-4xl text-transparent bg-clip-text bg-gradient-to-b from-white via-slate-100 to-slate-400">
-          Transform reading time into your child's favorite adventure
-        </h1>
-
-        {/* Subtitle */}
-        <p className="mt-6 text-lg sm:text-xl font-medium text-slate-400 max-w-2xl leading-relaxed">
-          Onesimos generates personalized reading chapters, evaluates pronunciation in real-time, and builds lifetime confidence through playful story synthesis.
-        </p>
-
-        {/* CTA Buttons */}
-        <div className="mt-9 flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
-          <Link 
-            href="/signup" 
-            className="w-full sm:w-auto px-8 py-4 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:opacity-95 text-white font-bold text-base shadow-[0_0_35px_rgba(79,70,229,0.4)] transition-all flex items-center justify-center gap-2"
-          >
-            Start your free trial <ArrowRight />
-          </Link>
-          <Link 
-            href="/login" 
-            className="w-full sm:w-auto px-8 py-4 rounded-full bg-white/5 hover:bg-white/10 text-white font-bold text-base border border-white/10 transition-all text-center"
-          >
-            Parent Sign in
-          </Link>
-        </div>
-
-        {/* Social Proof Row */}
-        <div className="mt-12 flex flex-col sm:flex-row items-center gap-4 text-xs font-bold text-slate-400">
-          <div className="flex -space-x-2">
-            {["👦", "👧", "🦊", "🦁"].map((avatar, idx) => (
-              <div key={idx} className="w-8 h-8 rounded-full bg-slate-800 border-2 border-[#080B11] flex items-center justify-center text-sm shadow-md">
-                {avatar}
+      {/* 1. STICKY GLASS NAVBAR */}
+      <header className="sticky top-0 z-50 bg-[#FDF8F3]/90 backdrop-blur-md border-b border-black/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16 md:h-20">
+            <Link href="/" className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#F97316] to-[#F472B6] flex items-center justify-center text-white font-black text-lg shadow-sm">
+                O
               </div>
+              <span className="text-2xl font-bold tracking-tight text-[#0B1B3A]">
+                Onesimos
+              </span>
+            </Link>
+
+            <nav className="hidden md:flex items-center gap-8">
+              <a href="#why" className="text-sm font-semibold text-[#0B1B3A]/80 hover:text-[#0B1B3A] transition-colors">Why us</a>
+              <a href="#curriculum" className="text-sm font-semibold text-[#0B1B3A]/80 hover:text-[#0B1B3A] transition-colors">Curriculum</a>
+              <a href="#pricing" className="text-sm font-semibold text-[#0B1B3A]/80 hover:text-[#0B1B3A] transition-colors">Pricing</a>
+              <a href="#faq" className="text-sm font-semibold text-[#0B1B3A]/80 hover:text-[#0B1B3A] transition-colors">FAQ</a>
+            </nav>
+
+            <div className="flex items-center gap-3">
+              <Link href="/login" className="hidden md:inline-flex text-sm font-bold text-[#0B1B3A] hover:opacity-70 px-2">
+                Sign in
+              </Link>
+              <Link
+                href="/signup"
+                className="hidden sm:inline-flex items-center gap-2 bg-[#F97316] hover:bg-[#ea6305] text-white font-bold px-5 py-2.5 rounded-full transition-all shadow-md shadow-[#F97316]/20"
+              >
+                Start Free Trial
+                <span className="text-lg">😊</span>
+              </Link>
+
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden p-2 rounded-full hover:bg-black/5 text-[#0B1B3A]"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {mobileMenuOpen ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h16" />
+                  )}
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="md:hidden bg-[#FDF8F3] border-t border-black/5 overflow-hidden"
+            >
+              <div className="px-4 py-6 flex flex-col gap-4">
+                <a href="#why" onClick={() => setMobileMenuOpen(false)} className="text-lg font-bold text-[#0B1B3A]">Why us</a>
+                <a href="#curriculum" onClick={() => setMobileMenuOpen(false)} className="text-lg font-bold text-[#0B1B3A]">Curriculum</a>
+                <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="text-lg font-bold text-[#0B1B3A]">Pricing</a>
+                <a href="#faq" onClick={() => setMobileMenuOpen(false)} className="text-lg font-bold text-[#0B1B3A]">FAQ</a>
+                <div className="h-px bg-black/5 my-2" />
+                <Link href="/login" className="text-lg font-bold text-[#0B1B3A]">Sign in</Link>
+                <Link
+                  href="/signup"
+                  className="inline-flex justify-center items-center gap-2 bg-[#F97316] text-white font-bold px-5 py-3 rounded-full mt-2"
+                >
+                  Start Free Trial 😊
+                </Link>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </header>
+
+      {/* 2. HERO SECTION */}
+      <section className="relative overflow-hidden bg-[#0B1B3A] text-white">
+        <div 
+          className="absolute inset-0 opacity-10 pointer-events-none"
+          style={{
+            backgroundImage: 'linear-gradient(#ffffff 1px, transparent 1px), linear-gradient(90deg, #ffffff 1px, transparent 1px)',
+            backgroundSize: '40px 40px',
+          }}
+        />
+
+        {/* Floating Mascots */}
+        <motion.div
+          variants={floatingVariants}
+          animate="animate"
+          className="absolute top-20 left-8 w-16 h-16 md:w-24 md:h-24 rounded-full bg-[#FACC15] flex items-center justify-center text-3xl shadow-lg border-2 border-[#0B1B3A]"
+        >
+          😄
+        </motion.div>
+        <motion.div
+          variants={floatingVariants}
+          animate="animate"
+          className="absolute top-40 right-12 w-14 h-20 md:w-20 md:h-28 rounded-[2rem] bg-[#F472B6] flex items-center justify-center text-2xl border-2 border-[#0B1B3A]"
+          style={{ animationDelay: '0.5s' }}
+        >
+          🥰
+        </motion.div>
+        <motion.div
+          variants={floatingVariants}
+          animate="animate"
+          className="absolute bottom-32 left-16 w-14 h-14 md:w-20 md:h-20 rounded-2xl bg-[#A3E635] flex items-center justify-center text-2xl border-2 border-[#0B1B3A]"
+          style={{ animationDelay: '1s' }}
+        >
+          🚀
+        </motion.div>
+        <motion.div
+          variants={floatingVariants}
+          animate="animate"
+          className="absolute bottom-40 right-20 w-16 h-12 md:w-24 md:h-16 rounded-t-full bg-[#A78BFA] flex items-end justify-center pb-2 text-xl border-2 border-[#0B1B3A]"
+          style={{ animationDelay: '1.5s' }}
+        >
+          📚
+        </motion.div>
+
+        <div className="relative max-w-5xl mx-auto px-4 pt-24 pb-32 md:pt-32 md:pb-40 text-center z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="inline-flex items-center gap-2 bg-[#A3E635]/20 text-[#A3E635] text-sm font-bold px-4 py-1.5 rounded-full mb-8 border border-[#A3E635]/30 uppercase tracking-wide"
+          >
+            <span className="w-2 h-2 rounded-full bg-[#A3E635] animate-pulse" />
+            Early literacy platform for ages 3 to 12
+          </motion.div>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="text-4xl sm:text-5xl md:text-7xl font-bold leading-[1.1] tracking-tight mb-6"
+          >
+            Transform <span className="text-[#FACC15]">reading time</span>
+            <br />
+            into your child's{' '}
+            <span className="inline-block bg-[#F472B6] text-[#0B1B3A] px-4 py-1 md:py-2 rounded-2xl -rotate-1 shadow-lg border-2 border-white/20">
+              favorite
+            </span>
+            <br />
+            daily <span className="text-[#A78BFA]">habit</span>.
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto mb-10 leading-relaxed font-medium"
+          >
+            Onesimos creates personalized reading chapters, evaluates speech pronunciation in real-time, and builds lifetime reading confidence.
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+          >
+            <Link
+              href="/signup"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#F97316] hover:bg-[#ea6305] text-white font-bold px-8 py-4 rounded-full transition-all shadow-lg shadow-[#F97316]/25 hover:scale-105"
+            >
+              Start Free Trial
+              <span className="text-xl">😊</span>
+            </Link>
+            <Link
+              href="/login"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-bold px-8 py-4 rounded-full border border-white/20 transition-all backdrop-blur-sm"
+            >
+              Parent Sign In
+              <span className="text-lg">→</span>
+            </Link>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.5 }}
+            className="mt-16 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm font-semibold text-white/70"
+          >
+            <div className="flex items-center gap-2"><span className="text-[#A3E635] text-lg">✓</span> Age-adaptive stories</div>
+            <div className="flex items-center gap-2"><span className="text-[#A3E635] text-lg">✓</span> Real-time speech evaluation</div>
+            <div className="flex items-center gap-2"><span className="text-[#A3E635] text-lg">🔒</span> 100% PIN protected</div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* 3. FOUR PROMISES */}
+      <section id="why" className="py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="grid lg:grid-cols-[1fr_1.5fr] gap-12 lg:gap-20 items-start">
+          <motion.div 
+            initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} variants={fadeUpVariants}
+            className="lg:sticky lg:top-32"
+          >
+            <h2 className="text-4xl md:text-5xl font-bold text-[#0B1B3A] leading-tight mb-6 tracking-tight">
+              Four promises, <br className="hidden lg:block"/>kept every reading session.
+            </h2>
+            <p className="text-lg text-[#0B1B3A]/70 mb-8 leading-relaxed font-medium">
+              We replace static books with dynamic, age-appropriate adventures that actively listen and encourage your child.
+            </p>
+            <Link href="/signup" className="inline-flex items-center gap-2 bg-[#F97316] hover:bg-[#ea6305] text-white font-bold px-6 py-3 rounded-full transition-all shadow-md">
+              Start Free Trial 😊
+            </Link>
+          </motion.div>
+
+          <div className="grid sm:grid-cols-2 gap-6">
+            {[
+              { title: "Personalized Chapters", desc: "Fresh stories tailored precisely to your child's grade level and vocabulary needs.", bg: "bg-[#A3E635]", tags: ["Adaptive", "Engaging"], icon: "🚀" },
+              { title: "Real-Time Feedback", desc: "Our voice engine listens carefully and rewards fluency without stress.", bg: "bg-[#FB923C]", tags: ["Speech Recognition", "Gentle"], icon: "🎙️" },
+              { title: "Parent Security", desc: "Secure 4-digit PIN protection keeps your billing and settings safe.", bg: "bg-[#A78BFA]", tags: ["PIN Lock", "No Ads"], icon: "🔒" },
+              { title: "Age-Tailored Paths", desc: "Curriculum scaling automatically from early phonics to chapter books.", bg: "bg-[#F472B6]", tags: ["Ages 3-12", "Growth"], icon: "📚" }
+            ].map((card, idx) => (
+              <motion.div 
+                key={idx}
+                initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-50px" }}
+                variants={{ hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { delay: idx * 0.1, duration: 0.5 } } }}
+                className={\`\${card.bg} text-[#0B1B3A] rounded-[2rem] p-8 shadow-sm hover:-translate-y-1 transition-transform flex flex-col justify-between\` }
+              >
+                <div>
+                  <div className="text-4xl mb-6">{card.icon}</div>
+                  <h3 className="text-2xl font-bold mb-3">{card.title}</h3>
+                  <p className="font-medium opacity-90 mb-8 leading-relaxed">{card.desc}</p>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-auto">
+                  {card.tags.map(tag => (
+                    <span key={tag} className="bg-white/30 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">{tag}</span>
+                  ))}
+                </div>
+              </motion.div>
             ))}
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex text-yellow-400">
-              {[1, 2, 3, 4, 5].map((s) => <StarIcon key={s} />)}
-            </div>
-            <span className="text-slate-300 font-bold">Loved by 2,000+ early readers</span>
-          </div>
-        </div>
-
-        {/* ========================================================= */}
-        {/* 3. WRENLY HERO BENTO SHOWCASE CARD                         */}
-        {/* ========================================================= */}
-        <div className="mt-16 w-full rounded-[36px] bg-[#111622]/90 p-4 sm:p-8 shadow-[0_0_60px_rgba(0,0,0,0.8)] border border-white/10 relative overflow-hidden backdrop-blur-xl">
-          
-          {/* Glowing Top Frame */}
-          <div className="flex items-center justify-between pb-6 border-b border-white/10">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-red-500/80" />
-              <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
-              <div className="w-3 h-3 rounded-full bg-green-500/80" />
-              <span className="text-xs font-bold text-slate-500 ml-2">onesimos.app / adaptive-reader</span>
-            </div>
-            <div className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 px-3.5 py-1 rounded-full text-xs font-bold text-blue-400">
-              <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping" />
-              Live Reader Active
-            </div>
-          </div>
-
-          {/* Interactive Feature Demo Grid */}
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-5 text-left">
-            
-            {/* Bento Card 1: Interactive Story Reader */}
-            <div className="md:col-span-2 rounded-[28px] bg-gradient-to-br from-slate-900 to-[#141B2D] p-6 sm:p-8 border border-white/10 relative overflow-hidden flex flex-col justify-between">
-              <div className="flex justify-between items-start mb-6">
-                <span className="bg-blue-500/20 text-blue-300 border border-blue-500/30 px-3 py-1 rounded-full text-xs font-bold">
-                  Chapter 1 • Magic Forest
-                </span>
-                <span className="text-3xl">🚀</span>
-              </div>
-
-              <div>
-                <p className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-1">Adaptive Reading Engine</p>
-                <h3 className="text-2xl sm:text-3xl font-black text-white leading-snug">
-                  Leo unlocked the glowing blue key under the giant leaf.
-                </h3>
-                
-                {/* Audio Waveform Micro-Widget */}
-                <div className="mt-6 flex items-center gap-3 bg-white/5 p-3 rounded-2xl border border-white/10">
-                  <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white shrink-0">
-                    🔊
-                  </div>
-                  <div className="flex-1 flex items-center gap-1 h-6">
-                    {[40, 70, 25, 90, 60, 30, 80, 50, 95, 40, 60, 30].map((h, i) => (
-                      <div key={i} className="flex-1 bg-blue-400/80 rounded-full" style={{ height: \`\${h}%\` }} />
-                    ))}
-                  </div>
-                  <span className="text-xs font-bold text-slate-400">0:14</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Bento Card 2: Speech Recognition Evaluation */}
-            <div className="rounded-[28px] bg-gradient-to-b from-indigo-950/60 to-[#111622] p-6 border border-indigo-500/20 flex flex-col justify-between text-left">
-              <div className="flex justify-between items-center">
-                <div className="w-10 h-10 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center">
-                  <MicIcon />
-                </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 px-2.5 py-1 rounded-full border border-indigo-500/30">
-                  Speech AI
-                </span>
-              </div>
-
-              <div className="my-6">
-                <p className="text-xs font-bold text-slate-400 uppercase">Pronunciation Feedback</p>
-                <p className="text-xl font-black text-white mt-1">98% Mastery</p>
-                <div className="mt-3 flex gap-1">
-                  {[1, 2, 3, 4, 5].map((s) => <StarIcon key={s} />)}
-                </div>
-              </div>
-
-              <div className="bg-white/5 rounded-2xl p-3 border border-white/10 flex items-center justify-between text-xs font-bold">
-                <span className="text-slate-300">Stumbled Words Log</span>
-                <span className="text-emerald-400">+3 Mastered</span>
-              </div>
-            </div>
-
-          </div>
-
-        </div>
-
-      </section>
-
-      {/* ========================================================= */}
-      {/* 4. THREE COLUMN BENTO FEATURES (WRENLY FEATURE GRID)       */}
-      {/* ========================================================= */}
-      <section id="features" className="relative z-10 px-4 sm:px-8 py-20 max-w-6xl mx-auto text-center">
-        
-        <span className="text-xs font-bold uppercase tracking-widest text-blue-400 bg-blue-500/10 px-4 py-1.5 rounded-full border border-blue-500/20">
-          Core Capability
-        </span>
-        
-        <h2 className="mt-4 text-3xl sm:text-5xl font-black tracking-tight text-white max-w-2xl mx-auto">
-          Built for how children naturally learn to read
-        </h2>
-
-        <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-          
-          {/* Feature 1 */}
-          <div className="rounded-[32px] bg-[#111622] p-8 border border-white/10 hover:border-blue-500/40 transition-all flex flex-col justify-between">
-            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mb-6">
-              <BookOpenIcon />
-            </div>
-            <div>
-              <h3 className="text-xl font-black text-white">Personalized Chapters</h3>
-              <p className="mt-2 text-sm font-medium text-slate-400 leading-relaxed">
-                Stories adapt automatically to your child's age, vocabulary level, and personal interests like animals, space, or magic.
-              </p>
-            </div>
-          </div>
-
-          {/* Feature 2 */}
-          <div className="rounded-[32px] bg-[#111622] p-8 border border-white/10 hover:border-indigo-500/40 transition-all flex flex-col justify-between">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mb-6">
-              <MicIcon />
-            </div>
-            <div>
-              <h3 className="text-xl font-black text-white">Real-Time Evaluation</h3>
-              <p className="mt-2 text-sm font-medium text-slate-400 leading-relaxed">
-                Speech recognition listens as your child reads aloud, giving instant gentle feedback without pressure or stress.
-              </p>
-            </div>
-          </div>
-
-          {/* Feature 3 */}
-          <div className="rounded-[32px] bg-[#111622] p-8 border border-white/10 hover:border-purple-500/40 transition-all flex flex-col justify-between">
-            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center mb-6">
-              <ShieldIcon />
-            </div>
-            <div>
-              <h3 className="text-xl font-black text-white">Protected Parent Zone</h3>
-              <p className="mt-2 text-sm font-medium text-slate-400 leading-relaxed">
-                Guarded by a 4-digit PIN, parents can monitor mastery streaks, set daily minute goals, and handle subscriptions safely.
-              </p>
-            </div>
-          </div>
-
         </div>
       </section>
 
-      {/* ========================================================= */}
-      {/* 5. FOOTER BRANDING                                         */}
-      {/* ========================================================= */}
-      <footer className="relative z-10 py-12 text-center text-xs font-bold text-slate-500 border-t border-white/10">
-        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-blue-600 text-white font-black text-xs flex items-center justify-center">O</div>
-            <span className="font-bold text-slate-300">Onesimos Literacy Platform</span>
+      {/* 4. CURRICULUM TABS */}
+      <section id="curriculum" className="py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <motion.div 
+          initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUpVariants}
+          className="text-center mb-16"
+        >
+          <h2 className="text-4xl md:text-5xl font-bold text-[#0B1B3A] mb-4 tracking-tight">A path for every reading stage.</h2>
+          <p className="text-lg text-[#0B1B3A]/70 font-medium">From early phonics to confident chapter book readers.</p>
+        </motion.div>
+
+        <div className="flex flex-wrap justify-center gap-3 mb-12">
+          {[
+            { id: '3-5', label: 'Early Readers (3-5)' },
+            { id: '6-8', label: 'Growing Readers (6-8)' },
+            { id: '9-12', label: 'Confident Readers (9-12)' }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as '3-5' | '6-8' | '9-12')}
+              className={\`px-6 py-3 rounded-full font-bold text-sm transition-all \${
+                activeTab === tab.id 
+                  ? 'bg-[#0B1B3A] text-white shadow-lg scale-105' 
+                  : 'bg-white text-[#0B1B3A] border border-black/10 hover:border-[#0B1B3A]/30'
+              }\`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <motion.div 
+          key={activeTab}
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4 }}
+          className="bg-white rounded-[2.5rem] p-8 md:p-12 border border-black/5 shadow-xl max-w-5xl mx-auto"
+        >
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            {activeTab === '3-5' && (
+              <>
+                <div>
+                  <div className="inline-block bg-[#F472B6]/20 text-[#EC4899] px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider mb-6">Level 1 • Phonics</div>
+                  <h3 className="text-3xl font-bold text-[#0B1B3A] mb-4">Building early word recognition</h3>
+                  <p className="text-[#0B1B3A]/70 mb-8 leading-relaxed font-medium">Short, interactive stories focusing on high-frequency sight words and playful character dialogues with gentle voice assistance.</p>
+                  <div className="space-y-4 font-bold text-[#0B1B3A]">
+                    <div className="flex items-center gap-3"><span className="w-8 h-8 rounded-full bg-[#FDF8F3] flex items-center justify-center text-[#F97316]">✓</span> Word-by-word highlighting</div>
+                    <div className="flex items-center gap-3"><span className="w-8 h-8 rounded-full bg-[#FDF8F3] flex items-center justify-center text-[#F97316]">✓</span> Positive feedback badges</div>
+                    <div className="flex items-center gap-3"><span className="w-8 h-8 rounded-full bg-[#FDF8F3] flex items-center justify-center text-[#F97316]">✓</span> Vibrant story themes</div>
+                  </div>
+                </div>
+                <div className="bg-[#FDF8F3] rounded-[2rem] p-8 text-center border border-black/5">
+                  <div className="text-6xl mb-6">🦁</div>
+                  <h4 className="text-2xl font-bold text-[#0B1B3A] mb-2">Leo's First Adventure</h4>
+                  <div className="flex justify-center gap-4 text-sm font-bold text-[#0B1B3A]/60 mt-4">
+                    <span className="bg-white px-3 py-1 rounded-full">120 Words</span>
+                    <span className="bg-white px-3 py-1 rounded-full">4 Mins</span>
+                  </div>
+                </div>
+              </>
+            )}
+            {activeTab === '6-8' && (
+              <>
+                <div>
+                  <div className="inline-block bg-[#A3E635]/20 text-[#65A30D] px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider mb-6">Level 2 • Fluency</div>
+                  <h3 className="text-3xl font-bold text-[#0B1B3A] mb-4">Expanding vocabulary and pacing</h3>
+                  <p className="text-[#0B1B3A]/70 mb-8 leading-relaxed font-medium">Engaging multi-chapter tales that challenge growing readers with richer plots, dynamic dialogues, and automated vocabulary helpers.</p>
+                  <div className="space-y-4 font-bold text-[#0B1B3A]">
+                    <div className="flex items-center gap-3"><span className="w-8 h-8 rounded-full bg-[#FDF8F3] flex items-center justify-center text-[#F97316]">✓</span> Richer story arcs</div>
+                    <div className="flex items-center gap-3"><span className="w-8 h-8 rounded-full bg-[#FDF8F3] flex items-center justify-center text-[#F97316]">✓</span> Real-time pronunciation</div>
+                    <div className="flex items-center gap-3"><span className="w-8 h-8 rounded-full bg-[#FDF8F3] flex items-center justify-center text-[#F97316]">✓</span> Weekly progress tracking</div>
+                  </div>
+                </div>
+                <div className="bg-[#FDF8F3] rounded-[2rem] p-8 text-center border border-black/5">
+                  <div className="text-6xl mb-6">🚀</div>
+                  <h4 className="text-2xl font-bold text-[#0B1B3A] mb-2">Journey to the Stars</h4>
+                  <div className="flex justify-center gap-4 text-sm font-bold text-[#0B1B3A]/60 mt-4">
+                    <span className="bg-white px-3 py-1 rounded-full">350 Words</span>
+                    <span className="bg-white px-3 py-1 rounded-full">8 Mins</span>
+                  </div>
+                </div>
+              </>
+            )}
+            {activeTab === '9-12' && (
+              <>
+                <div>
+                  <div className="inline-block bg-[#A78BFA]/20 text-[#7C3AED] px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider mb-6">Level 3 • Comprehension</div>
+                  <h3 className="text-3xl font-bold text-[#0B1B3A] mb-4">Fostering deep comprehension</h3>
+                  <p className="text-[#0B1B3A]/70 mb-8 leading-relaxed font-medium">Chapter books featuring mystery, science, and history designed to build reading stamina and advanced vocabulary expression.</p>
+                  <div className="space-y-4 font-bold text-[#0B1B3A]">
+                    <div className="flex items-center gap-3"><span className="w-8 h-8 rounded-full bg-[#FDF8F3] flex items-center justify-center text-[#F97316]">✓</span> Multi-chapter series</div>
+                    <div className="flex items-center gap-3"><span className="w-8 h-8 rounded-full bg-[#FDF8F3] flex items-center justify-center text-[#F97316]">✓</span> Context explanations</div>
+                    <div className="flex items-center gap-3"><span className="w-8 h-8 rounded-full bg-[#FDF8F3] flex items-center justify-center text-[#F97316]">✓</span> Expressive scoring</div>
+                  </div>
+                </div>
+                <div className="bg-[#FDF8F3] rounded-[2rem] p-8 text-center border border-black/5">
+                  <div className="text-6xl mb-6">🧙‍♂️</div>
+                  <h4 className="text-2xl font-bold text-[#0B1B3A] mb-2">The Wizard's Academy</h4>
+                  <div className="flex justify-center gap-4 text-sm font-bold text-[#0B1B3A]/60 mt-4">
+                    <span className="bg-white px-3 py-1 rounded-full">800 Words</span>
+                    <span className="bg-white px-3 py-1 rounded-full">15 Mins</span>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
-          <p>© {new Date().getFullYear()} Onesimos. All rights reserved.</p>
+        </motion.div>
+      </section>
+
+      {/* 5. PROCESS */}
+      <section className="py-24 bg-white border-y border-black/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 overflow-hidden">
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUpVariants} className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-[#0B1B3A] mb-4 tracking-tight">From first words to chapter books.</h2>
+            <p className="text-lg text-[#0B1B3A]/70 font-medium">A simple daily routine that builds lifetime confidence.</p>
+          </motion.div>
+          
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { time: "Step 1", title: "Create Profile", desc: "Add your child name and select age in seconds.", color: "text-[#F97316]" },
+              { time: "Step 2", title: "Pick a Theme", desc: "Choose from space, magic, animals, or mystery.", color: "text-[#F472B6]" },
+              { time: "Step 3", title: "Read Aloud", desc: "Our engine listens and guides pronunciation gently.", color: "text-[#A3E635]" },
+              { time: "Step 4", title: "Track Progress", desc: "Review reading minutes on the parent dashboard.", color: "text-[#A78BFA]" }
+            ].map((step, idx) => (
+              <motion.div 
+                key={idx}
+                initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: idx * 0.15 }}
+                className="bg-[#FDF8F3] rounded-[2rem] p-8 border border-black/5 relative"
+              >
+                <div className={\`font-black text-xl mb-4 \${step.color}\`}>{step.time}</div>
+                <h3 className="text-xl font-bold text-[#0B1B3A] mb-3">{step.title}</h3>
+                <p className="text-[#0B1B3A]/70 font-medium leading-relaxed">{step.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 6. PRICING */}
+      <section id="pricing" className="py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUpVariants} className="text-center mb-16">
+          <h2 className="text-4xl md:text-5xl font-bold text-[#0B1B3A] mb-4 tracking-tight">Simple, honest pricing.</h2>
+          
+          <div className="flex justify-center items-center gap-4 mt-8">
+            <span className={\`text-sm font-bold \${billingCycle === 'monthly' ? 'text-[#0B1B3A]' : 'text-[#0B1B3A]/50'}\`}>Monthly</span>
+            <button
+              onClick={() => setBillingCycle(billingCycle === 'monthly' ? 'yearly' : 'monthly')}
+              className="w-16 h-8 bg-[#0B1B3A] rounded-full p-1 relative transition-colors focus:outline-none"
+            >
+              <motion.div 
+                layout
+                className="w-6 h-6 bg-[#A3E635] rounded-full"
+                animate={{ x: billingCycle === 'yearly' ? 32 : 0 }}
+              />
+            </button>
+            <span className={\`text-sm font-bold \${billingCycle === 'yearly' ? 'text-[#0B1B3A]' : 'text-[#0B1B3A]/50'}\`}>
+              Yearly <span className="text-[#F97316] ml-1 bg-[#F97316]/10 px-2 py-0.5 rounded-full text-xs">Save 20%</span>
+            </span>
+          </div>
+        </motion.div>
+
+        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+            className="bg-white rounded-[2.5rem] p-8 md:p-10 border border-black/5 shadow-sm flex flex-col"
+          >
+            <h3 className="text-2xl font-bold text-[#0B1B3A] mb-2">Free Explorer</h3>
+            <p className="text-[#0B1B3A]/60 font-medium mb-6">Perfect for discovering the app.</p>
+            <div className="text-5xl font-black text-[#0B1B3A] mb-8">$0 <span className="text-lg font-bold text-[#0B1B3A]/40">/ forever</span></div>
+            <ul className="space-y-4 mb-10 font-bold text-[#0B1B3A]/80 flex-1">
+              <li className="flex items-center gap-3"><span className="text-[#A3E635] text-xl">✓</span> 3 sample story chapters</li>
+              <li className="flex items-center gap-3"><span className="text-[#A3E635] text-xl">✓</span> Basic speech evaluation</li>
+              <li className="flex items-center gap-3"><span className="text-[#A3E635] text-xl">✓</span> 1 Child Profile</li>
+              <li className="flex items-center gap-3"><span className="text-[#A3E635] text-xl">✓</span> Parent PIN Protection</li>
+            </ul>
+            <Link href="/signup" className="w-full py-4 text-center rounded-full font-bold bg-[#FDF8F3] text-[#0B1B3A] hover:bg-[#f2ebe1] transition-colors border border-black/5">
+              Start Free Trial
+            </Link>
+          </motion.div>
+
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }}
+            className="bg-[#0B1B3A] text-white rounded-[2.5rem] p-8 md:p-10 shadow-2xl relative flex flex-col"
+          >
+            <div className="absolute -top-4 right-8 bg-[#F472B6] text-[#0B1B3A] px-4 py-1 rounded-full text-sm font-bold shadow-md transform rotate-2">
+              Most loved 💖
+            </div>
+            <h3 className="text-2xl font-bold mb-2">Pro Reader</h3>
+            <p className="text-white/70 font-medium mb-6">Unlimited personalized learning.</p>
+            <div className="text-5xl font-black mb-8">
+              {billingCycle === 'yearly' ? '$7.99' : '$9.99'}
+              <span className="text-lg font-bold text-white/50"> / mo</span>
+            </div>
+            <ul className="space-y-4 mb-10 font-bold text-white/90 flex-1">
+              <li className="flex items-center gap-3"><span className="text-[#FACC15] text-xl">✓</span> Unlimited story chapters</li>
+              <li className="flex items-center gap-3"><span className="text-[#FACC15] text-xl">✓</span> Real-time speech scoring</li>
+              <li className="flex items-center gap-3"><span className="text-[#FACC15] text-xl">✓</span> Up to 4 Child Profiles</li>
+              <li className="flex items-center gap-3"><span className="text-[#FACC15] text-xl">✓</span> Weekly activity reports</li>
+              <li className="flex items-center gap-3"><span className="text-[#FACC15] text-xl">✓</span> Secure Paystack Billing</li>
+            </ul>
+            <Link href="/parent/pricing" className="w-full py-4 text-center rounded-full font-bold bg-[#F97316] text-white hover:bg-[#ea6305] transition-colors shadow-lg">
+              Upgrade to Pro 😊
+            </Link>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* 7. FAQ */}
+      <section id="faq" className="py-24 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto">
+        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUpVariants} className="text-center mb-16">
+          <h2 className="text-4xl md:text-5xl font-bold text-[#0B1B3A] mb-4 tracking-tight">Questions parents ask us.</h2>
+        </motion.div>
+
+        <div className="space-y-4">
+          {[
+            { q: "What age range is Onesimos suitable for?", a: "Onesimos is specially tailored for children aged 3 to 12 years old, spanning early phonics to advanced chapter stories." },
+            { q: "How does the real-time speech evaluation work?", a: "Our engine listens via your device microphone, highlighting correctly pronounced words and providing gentle visual assistance without interrupting the flow." },
+            { q: "Can I manage multiple children?", a: "Yes! The Pro plan supports up to 4 distinct child profiles under one parent dashboard." },
+            { q: "Is my child safe while using Onesimos?", a: "100%. Onesimos features a secure 4-digit Parent PIN lock preventing access to billing or settings, with zero third-party ads." },
+            { q: "How does billing work?", a: "We partner with Paystack to support major credit/debit cards and local payment methods securely. You can cancel anytime from the dashboard." }
+          ].map((faq, idx) => (
+            <div key={idx} className="bg-white rounded-[1.5rem] border border-black/5 overflow-hidden">
+              <button
+                onClick={() => toggleFaq(idx)}
+                className="w-full p-6 text-left font-bold text-lg text-[#0B1B3A] flex justify-between items-center"
+              >
+                <span>{faq.q}</span>
+                <motion.span animate={{ rotate: openFaq === idx ? 45 : 0 }} className="text-2xl text-[#0B1B3A]/40">+</motion.span>
+              </button>
+              <AnimatePresence>
+                {openFaq === idx && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="px-6 pb-6 text-[#0B1B3A]/70 font-medium leading-relaxed"
+                  >
+                    {faq.a}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 8. FOOTER / CONTACT */}
+      <footer className="bg-[#0B1B3A] text-white pt-24 pb-12 rounded-t-[3rem] md:rounded-t-[4rem] mt-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 mb-20">
+          <div>
+            <h2 className="text-4xl md:text-5xl font-bold mb-6">Come and see us play.</h2>
+            <p className="text-white/70 text-lg font-medium mb-10 max-w-md">Ready to transform your child's reading habit? Start your free trial today or send our support team a message.</p>
+            <div className="space-y-6">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-[#FACC15] text-[#0B1B3A] font-black flex items-center justify-center">1</div>
+                <span className="font-bold text-lg">Create Parent Profile</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-[#F472B6] text-[#0B1B3A] font-black flex items-center justify-center">2</div>
+                <span className="font-bold text-lg">Set up Kid Profiles</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-[#A3E635] text-[#0B1B3A] font-black flex items-center justify-center">3</div>
+                <span className="font-bold text-lg">Read first adventure</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-[2.5rem] p-8 md:p-10 text-[#0B1B3A]">
+            {formSubmitted ? (
+              <div className="h-full flex flex-col items-center justify-center text-center py-10">
+                <div className="text-6xl mb-4">💖</div>
+                <h3 className="text-2xl font-bold mb-2">Message Sent!</h3>
+                <p className="text-[#0B1B3A]/60 font-medium">We'll get back to you within 24 hours.</p>
+              </div>
+            ) : (
+              <form onSubmit={handleContactSubmit} className="space-y-5">
+                <h3 className="text-2xl font-bold mb-6">Send us a message</h3>
+                <div>
+                  <input type="text" required placeholder="Your Name" className="w-full px-5 py-4 rounded-2xl bg-[#FDF8F3] border border-black/5 focus:outline-none focus:ring-2 focus:ring-[#F97316] font-medium" />
+                </div>
+                <div>
+                  <input type="email" required placeholder="Email Address" className="w-full px-5 py-4 rounded-2xl bg-[#FDF8F3] border border-black/5 focus:outline-none focus:ring-2 focus:ring-[#F97316] font-medium" />
+                </div>
+                <div>
+                  <textarea required rows={3} placeholder="How can we help?" className="w-full px-5 py-4 rounded-2xl bg-[#FDF8F3] border border-black/5 focus:outline-none focus:ring-2 focus:ring-[#F97316] font-medium" />
+                </div>
+                <button type="submit" className="w-full py-4 rounded-full bg-[#F97316] text-white font-bold hover:bg-[#ea6305] transition-colors shadow-lg">
+                  Send Message
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4 text-sm font-bold text-white/50">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#F97316] to-[#F472B6] flex items-center justify-center text-white font-black text-xs">O</div>
+            <span>© {new Date().getFullYear()} Onesimos. All rights reserved.</span>
+          </div>
+          <div className="flex gap-6">
+            <Link href="/login" className="hover:text-white transition-colors">Parent Login</Link>
+            <Link href="/kid-login" className="hover:text-white transition-colors">Kid Quick Login</Link>
+          </div>
         </div>
       </footer>
 
@@ -404,12 +588,5 @@ export default function HomePage() {
 }
 `;
 
-write("app/page.tsx", inject(wrenlyExactContent));
-
-console.log("");
-console.log("Done. Commit and push:");
-console.log("  git add .");
-console.log(
-  '  git commit -m "Step 1: Exact Wrenly Framer visual replica for Onesimos homepage"',
-);
-console.log("  git push origin main");
+fs.writeFileSync(targetFile, content, "utf8");
+console.log("Successfully written strict Wrenly-matched page to app/page.tsx");
