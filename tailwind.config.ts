@@ -33,24 +33,20 @@ const config: Config = {
           darkCard: "#1E293B",
         },
         primary: {
-          DEFAULT: "#1C274C",
-          foreground: "#FFFFFF",
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
         },
         secondary: {
-          DEFAULT: "#E1F18C",
-          foreground: "#1C274C",
-        },
-        accent: {
-          DEFAULT: "#71A6EE",
-          foreground: "#FFFFFF",
-        },
-        purpleCard: {
-          DEFAULT: "#E1C8F6",
-          foreground: "#1C274C",
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
         },
         muted: {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
         },
         card: {
           DEFAULT: "hsl(var(--card))",
