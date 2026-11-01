@@ -18,44 +18,53 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-[#F4F5F7] font-[family-name:var(--font-switzer)] text-[#0B1B3A] overflow-x-hidden w-full m-0 p-0">
+    <div className="min-h-[100dvh] flex flex-col font-[family-name:var(--font-switzer)] overflow-x-hidden w-full m-0 p-0 bg-black">
       
-      {/* Edge-to-Edge Clean Hero Section */}
-      <div className="relative min-h-[100dvh] w-full flex flex-col justify-between">
+      {/* 100% FULL SCREEN HERO - IMAGE COVERS ENTIRE VIEWPORT */}
+      <div className="relative w-full min-h-[100dvh] flex flex-col justify-between overflow-hidden">
         
-        {/* Floating Transparent Navigation Header */}
-        <header className="absolute top-0 left-0 right-0 z-50 bg-transparent py-4 px-6 md:px-12">
+        {/* Full Page Image Background */}
+        <div className="absolute inset-0 w-full h-full z-0">
+          <img
+            src="/hero-kids-phone.jpg"
+            alt="Children using smart reading app"
+            className="w-full h-full object-cover object-center"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=1600";
+            }}
+          />
+          {/* Subtle soft gradient overlay so text remains readable without obscuring the photo */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
+        </div>
+
+        {/* Floating Header directly over full screen photo */}
+        <header className="relative z-20 w-full px-6 py-6 md:px-12">
           <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between">
-            
-            {/* Logo */}
             <Link href="/" className="flex items-center gap-2">
-              <span className="font-[family-name:var(--font-achiko)] text-2xl font-bold tracking-tight text-[#0B1B3A]">
+              <span className="font-[family-name:var(--font-achiko)] text-2xl font-bold tracking-tight text-white drop-shadow-sm">
                 Onesimos
               </span>
             </Link>
 
-            {/* Desktop Center Links */}
-            <nav className="hidden items-center gap-8 text-sm font-medium text-[#0B1B3A]/80 md:flex">
-              <a href="#features" className="hover:text-[#8B5CF6] transition-colors">Features</a>
-              <a href="#curriculum" className="hover:text-[#8B5CF6] transition-colors">Curriculum</a>
-              <a href="#pricing" className="hover:text-[#8B5CF6] transition-colors">Pricing</a>
-              <a href="#about" className="hover:text-[#8B5CF6] transition-colors">About Us</a>
+            <nav className="hidden items-center gap-8 text-sm font-medium text-white/90 md:flex">
+              <a href="#features" className="hover:text-[#F97316] transition-colors">Features</a>
+              <a href="#curriculum" className="hover:text-[#F97316] transition-colors">Curriculum</a>
+              <a href="#pricing" className="hover:text-[#F97316] transition-colors">Pricing</a>
+              <a href="#about" className="hover:text-[#F97316] transition-colors">About Us</a>
             </nav>
 
-            {/* Desktop Right Action Pill */}
             <div className="hidden items-center gap-4 md:flex">
-              <Link href="/login" className="text-sm font-semibold text-[#0B1B3A] hover:text-[#8B5CF6] transition-colors">
+              <Link href="/login" className="text-sm font-semibold text-white hover:text-[#F97316] transition-colors">
                 Log in
               </Link>
-              <Link href="/signup" className="rounded-full bg-[#8B5CF6] px-7 py-3 text-sm font-semibold text-white hover:bg-[#7C3AED] transition-all shadow-sm">
+              <Link href="/signup" className="rounded-full bg-[#F97316] px-7 py-3 text-sm font-semibold text-white hover:bg-[#EA580C] transition-all shadow-md">
                 Get Started
               </Link>
             </div>
 
-            {/* Mobile Hamburger Button */}
             <button
               type="button"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-lg md:hidden text-[#0B1B3A]"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg md:hidden text-white"
               aria-label={menuOpen ? "Close menu" : "Open menu"}
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((v) => !v)}
@@ -68,125 +77,95 @@ export default function LandingPage() {
             </button>
           </div>
 
-          {/* Mobile Drawer */}
+          {/* Mobile Drawer Menu */}
           {menuOpen && (
-            <div className="border-b border-[#0B1B3A]/10 bg-white px-6 py-6 md:hidden shadow-xl absolute w-full left-0 top-20 z-50">
-              <div className="flex flex-col gap-4 text-base font-medium text-[#0B1B3A]">
+            <div className="border-b border-white/10 bg-black/90 backdrop-blur-xl px-6 py-6 md:hidden shadow-xl absolute w-full left-0 top-20 z-50">
+              <div className="flex flex-col gap-4 text-base font-medium text-white">
                 <a href="#features" onClick={() => setMenuOpen(false)} className="py-1">Features</a>
                 <a href="#curriculum" onClick={() => setMenuOpen(false)} className="py-1">Curriculum</a>
                 <a href="#pricing" onClick={() => setMenuOpen(false)} className="py-1">Pricing</a>
                 <a href="#about" onClick={() => setMenuOpen(false)} className="py-1">About Us</a>
-                <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-[#0B1B3A]/10">
-                  <Link href="/login" onClick={() => setMenuOpen(false)} className="rounded-full border border-[#0B1B3A]/20 px-4 py-2.5 text-center text-sm font-semibold">Log in</Link>
-                  <Link href="/signup" onClick={() => setMenuOpen(false)} className="rounded-full bg-[#8B5CF6] px-4 py-2.5 text-center text-sm font-semibold text-white">Get Started</Link>
+                <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-white/10">
+                  <Link href="/login" onClick={() => setMenuOpen(false)} className="rounded-full border border-white/30 px-4 py-2.5 text-center text-sm font-semibold">Log in</Link>
+                  <Link href="/signup" onClick={() => setMenuOpen(false)} className="rounded-full bg-[#F97316] px-4 py-2.5 text-center text-sm font-semibold text-white">Get Started</Link>
                 </div>
               </div>
             </div>
           )}
         </header>
 
-        {/* Hero Grid Container */}
-        <main className="flex-grow w-full pt-20 md:pt-0">
-          <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[100dvh] items-stretch">
+        {/* Clean Overlay Content */}
+        <main className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 py-16 flex-grow flex items-center">
+          <div className="max-w-2xl text-white">
             
-            {/* Left Column: Full height crisp cut-out hero image */}
-            <div className="lg:col-span-5 relative min-h-[400px] lg:min-h-full flex items-end justify-start">
-              <img
-                src="/hero-kids-phone.jpg"
-                alt="Children engaging with interactive reading app"
-                className="w-full h-full object-cover object-left-bottom"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=1200";
-                }}
-              />
-            </div>
+            <span className="inline-block rounded-full bg-white/15 backdrop-blur-md px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-white/90 border border-white/20">
+              AGES 3 TO 12 • PERSONALIZED READING
+            </span>
 
-            {/* Right Column: Clean Typography & Call to Action */}
-            <div className="lg:col-span-7 flex flex-col justify-center px-6 py-12 md:px-16 lg:px-24">
-              <div className="max-w-2xl">
-                
-                {/* Uppercase Tag */}
-                <span className="text-xs font-bold uppercase tracking-widest text-[#0B1B3A]/50">
-                  AGES 3 TO 12 • PERSONALIZED READING
-                </span>
+            <h1 className="mt-6 font-[family-name:var(--font-achiko)] text-4xl sm:text-6xl lg:text-7xl font-bold leading-[1.08] tracking-tight drop-shadow-md">
+              Make reading <br />
+              something kids <span className="bg-[#F472B6] text-white px-4 py-1 rounded-[28px] inline-block -rotate-1">own</span>
+            </h1>
 
-                {/* Main Heading */}
-                <h1 className="mt-4 font-[family-name:var(--font-achiko)] text-4xl sm:text-6xl lg:text-7xl font-bold text-[#0B1B3A] leading-[1.08] tracking-tight">
-                  Make reading <br />
-                  something kids own.
-                </h1>
+            <p className="mt-6 text-base sm:text-lg text-white/90 leading-relaxed max-w-xl font-normal drop-shadow-sm">
+              Personalized learning chapters and real-time speech evaluation designed to build independent confidence in young readers.
+            </p>
 
-                {/* Accent Subtitle */}
-                <div className="mt-6">
-                  <span className="font-[family-name:var(--font-achiko)] text-xl sm:text-2xl font-normal italic text-[#8B5CF6]">
-                    Interactive Phonics & Real-Time Speech Evaluation
-                  </span>
-                  <p className="text-xs font-bold uppercase tracking-wider text-[#0B1B3A]/40 mt-1">
-                    PERSONALIZED LEARNING PLATFORM
-                  </p>
-                </div>
+            <div className="mt-10 flex flex-wrap items-center gap-4">
+              <Link
+                href="/signup"
+                className="inline-flex items-center justify-center rounded-full bg-[#F97316] px-8 py-4 text-base font-semibold text-white transition-all hover:bg-[#EA580C] hover:scale-105 active:scale-95 shadow-lg"
+              >
+                Get Started
+              </Link>
 
-                {/* Description Paragraph */}
-                <p className="mt-6 text-base sm:text-lg text-[#0B1B3A]/70 leading-relaxed max-w-xl">
-                  Onesimos creates a joyful learning environment where children develop independent reading confidence through adaptive stories and immediate voice feedback.
-                </p>
-
-                {/* Dual CTA Buttons */}
-                <div className="mt-10 flex flex-wrap items-center gap-4">
-                  <Link
-                    href="/signup"
-                    className="inline-flex items-center justify-center rounded-full bg-[#8B5CF6] px-8 py-4 text-base font-semibold text-white transition-all hover:bg-[#7C3AED] hover:scale-105 active:scale-95 shadow-md"
-                  >
-                    GET STARTED
-                  </Link>
-
-                  <a
-                    href="#features"
-                    className="inline-flex items-center justify-center rounded-full bg-white border border-[#0B1B3A]/15 px-8 py-4 text-base font-semibold text-[#0B1B3A] transition-colors hover:bg-gray-50 shadow-xs"
-                  >
-                    LEARN MORE
-                  </a>
-                </div>
-
-              </div>
+              <a
+                href="#features"
+                className="inline-flex items-center justify-center rounded-full bg-white/20 backdrop-blur-md border border-white/30 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-white/30"
+              >
+                Learn More
+              </a>
             </div>
 
           </div>
         </main>
+
+        {/* Bottom space filler for full height anchor */}
+        <div className="relative z-10 pb-8" />
       </div>
 
-      {/* Clean Feature Overview Strip */}
-      <section className="w-full bg-white border-t border-[#0B1B3A]/5 py-16 px-6 md:px-12" id="features">
+      {/* Feature Strip Section */}
+      <section className="w-full bg-white border-t border-black/5 py-16 px-6 md:px-12 text-[#0B1B3A]" id="features">
         <div className="mx-auto max-w-6xl">
           <div className="text-center max-w-2xl mx-auto mb-12">
-            <h2 className="font-[family-name:var(--font-achiko)] text-3xl sm:text-4xl font-bold text-[#0B1B3A]">
+            <h2 className="font-[family-name:var(--font-achiko)] text-3xl sm:text-4xl font-bold">
               Designed for Confident Learners
             </h2>
             <p className="mt-3 text-base text-[#0B1B3A]/70">
-              Four key pillars that empower children aged 3 to 12.
+              Key capabilities that empower children aged 3 to 12.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="p-8 rounded-3xl bg-[#F4F5F7] border border-[#0B1B3A]/5">
+            <div className="p-8 rounded-3xl bg-[#F4F5F7] border border-black/5">
               <div className="text-3xl mb-4">🎙️</div>
-              <h3 className="font-[family-name:var(--font-achiko)] text-xl font-bold text-[#0B1B3A]">Speech Evaluation</h3>
+              <h3 className="font-[family-name:var(--font-achiko)] text-xl font-bold">Speech Evaluation</h3>
               <p className="mt-2 text-sm text-[#0B1B3A]/70 leading-relaxed">
-                Real-time voice recognition that listens as your child reads aloud and provides instant encouragement.
+                Real-time voice recognition that listens as your child reads aloud and provides instant feedback.
               </p>
             </div>
 
-            <div className="p-8 rounded-3xl bg-[#F4F5F7] border border-[#0B1B3A]/5">
+            <div className="p-8 rounded-3xl bg-[#F4F5F7] border border-black/5">
               <div className="text-3xl mb-4">📖</div>
-              <h3 className="font-[family-name:var(--font-achiko)] text-xl font-bold text-[#0B1B3A]">Adaptive Chapters</h3>
+              <h3 className="font-[family-name:var(--font-achiko)] text-xl font-bold">Adaptive Chapters</h3>
               <p className="mt-2 text-sm text-[#0B1B3A]/70 leading-relaxed">
-                Personalized story chapters that automatically adjust to your childs reading level and vocabulary.
+                Personalized story chapters that automatically adjust to your childs reading level.
               </p>
             </div>
 
-            <div className="p-8 rounded-3xl bg-[#F4F5F7] border border-[#0B1B3A]/5">
+            <div className="p-8 rounded-3xl bg-[#F4F5F7] border border-black/5">
               <div className="text-3xl mb-4">🛡️</div>
-              <h3 className="font-[family-name:var(--font-achiko)] text-xl font-bold text-[#0B1B3A]">Parent PIN Protection</h3>
+              <h3 className="font-[family-name:var(--font-achiko)] text-xl font-bold">Parent PIN Protection</h3>
               <p className="mt-2 text-sm text-[#0B1B3A]/70 leading-relaxed">
                 100% Parent PIN protected safety controls to keep learning sessions focused and secure.
               </p>
