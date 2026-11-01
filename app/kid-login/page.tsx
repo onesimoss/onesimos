@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export default function KidLoginPage() {
+function KidLoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const childId = searchParams ? searchParams.get("child") : null;
@@ -36,8 +36,6 @@ export default function KidLoginPage() {
       const newPin = pin + d;
       setPin(newPin);
       if (newPin.length === 4) {
-        // In a real app, verify against kid_pin here.
-        // For the UI phase, auto-redirect on 4 digits.
         setTimeout(() => router.push("/dashboard?child=" + childId), 300);
       }
     }
@@ -51,7 +49,6 @@ export default function KidLoginPage() {
 
   return (
     <main className="min-h-screen bg-[#E1C8F6] dark:bg-[#0F172A] flex flex-col items-center justify-center p-5 relative overflow-hidden">
-      {/* Decorative background shapes */}
       <div className="absolute top-10 left-10 w-32 h-32 bg-white/20 rounded-full blur-2xl pointer-events-none" />
       <div className="absolute bottom-10 right-10 w-40 h-40 bg-[#E1F18C]/40 rounded-full blur-2xl pointer-events-none" />
 
@@ -93,5 +90,13 @@ export default function KidLoginPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function KidLoginPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen bg-[#E1C8F6] dark:bg-[#0F172A]" />}>
+      <KidLoginContent />
+    </Suspense>
   );
 }

@@ -1,15 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-// Inline SVGs to avoid dependency issues
 const BellIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>;
 const PlayIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>;
 const BookIcon = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path></svg>;
 
-export default function DashboardPage() {
+function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const childId = searchParams ? searchParams.get("child") : null;
@@ -24,7 +23,6 @@ export default function DashboardPage() {
           const { data } = await client.from("children").select("name").eq("id", childId).single();
           if (!cancelled && data) setName(data.name);
         } else {
-          // Fallback: load first child if no ID provided
           const { data: user } = await client.auth.getUser();
           if (user?.user) {
             const { data } = await client.from("children").select("id, name").eq("parent_id", user.user.id).limit(1).single();
@@ -39,14 +37,12 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-[#F4F8FF] dark:bg-[#0F172A] relative overflow-hidden flex justify-center">
       
-      {/* ========================================================= */}
-      {/* DESKTOP WRAPPER (Hidden on mobile)                        */}
-      {/* ========================================================= */}
+      {/* DESKTOP WRAPPER */}
       <div className="hidden lg:flex absolute inset-0 items-center justify-center pointer-events-none z-0">
         <h1 className="text-[12rem] font-black text-[#71A6EE]/10 tracking-tighter select-none">Onesimos</h1>
       </div>
       
-      {/* Floating Elements (Desktop only) */}
+      {/* Floating Elements */}
       <div className="hidden lg:flex absolute top-20 left-[10%] items-center gap-3 bg-white/90 dark:bg-[#1E293B]/90 backdrop-blur-sm px-6 py-4 rounded-full shadow-xl pointer-events-none z-0 border border-[#1C274C]/5">
          <span className="text-2xl">🤖</span>
          <span className="font-bold text-[#1C274C] dark:text-white">Your <span className="bg-[#1C274C] text-white px-3 py-1.5 rounded-full ml-1 text-sm">Reading Buddy</span></span>
@@ -59,10 +55,7 @@ export default function DashboardPage() {
          <BookIcon />
       </div>
 
-
-      {/* ========================================================= */}
-      {/* MOBILE APP CONTAINER (Fills screen on mobile, phone-sized on desktop) */}
-      {/* ========================================================= */}
+      {/* MOBILE APP CONTAINER */}
       <div className="relative z-10 w-full max-w-md bg-[#F4F8FF] dark:bg-[#0F172A] min-h-screen lg:min-h-[800px] lg:my-12 lg:rounded-[40px] lg:shadow-2xl lg:border-[8px] lg:border-white/50 lg:dark:border-[#1E293B] overflow-y-auto overflow-x-hidden pb-[calc(2rem+env(safe-area-inset-bottom))] scrollbar-hide">
         
         {/* Top Bar */}
@@ -174,5 +167,13 @@ export default function DashboardPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen bg-[#F4F8FF] dark:bg-[#0F172A]" />}>
+      <DashboardContent />
+    </Suspense>
   );
 }
