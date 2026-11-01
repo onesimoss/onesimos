@@ -1,66 +1,43 @@
-﻿import type { Metadata } from "next";
-import localFont from "next/font/local";
+import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
-import { AuthProvider } from "@/context/AuthContext";
-import { ThemeProvider } from "@/context/ThemeContext";
+import { ThemeProvider } from "@/components/theme-provider";
 
-const achiko = localFont({
-  src: "./fonts/achiko.otf",
-  variable: "--font-achiko",
-  display: "swap",
-});
-
-const switzer = localFont({
-  src: [
-    {
-      path: "./fonts/Switzer-Regular.otf",
-      weight: "400",
-      style: "normal",
-    },
-    {
-      path: "./fonts/Switzer-Medium.otf",
-      weight: "500",
-      style: "normal",
-    },
-    {
-      path: "./fonts/Switzer-Semibold.otf",
-      weight: "600",
-      style: "normal",
-    },
-    {
-      path: "./fonts/Switzer-Bold.otf",
-      weight: "700",
-      style: "normal",
-    },
-    {
-      path: "./fonts/Switzer-Extrabold.otf",
-      weight: "800",
-      style: "normal",
-    },
-  ],
-  variable: "--font-switzer",
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Onesimos — Playful Reading for Kids",
-  description:
-    "A playful reading platform where kids unlock incredible stories, conquer tricky words, and build a lifelong love for reading.",
+  title: "Onesimos | Early Learning & Growth Compass",
+  description: "Personalized learning chapters and growth monitoring for young learners.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
-    <html lang="en" className={`${achiko.variable} ${switzer.variable}`}>
-      <body className="font-body antialiased">
-        <AuthProvider>
-          <ThemeProvider>
-            {children}
-          </ThemeProvider>
-        </AuthProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${inter.variable} font-sans bg-brand-bg dark:bg-brand-darkBg min-h-screen text-brand-navy dark:text-slate-100`}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );
