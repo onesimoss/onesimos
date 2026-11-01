@@ -82,10 +82,12 @@ const FAQS = [
 
 function Logo() {
   return (
-    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-      <rect width="40" height="40" rx="12" fill="#F97316" />
-      <path d="M12 28V12H16L24 22V12H28V28H24L16 18V28H12Z" fill="white" />
-    </svg>
+    <div className="flex items-center gap-2">
+      <div className="w-9 h-9 rounded-full bg-[#F97316] flex items-center justify-center text-white font-black text-xl">
+        O
+      </div>
+      <span className="text-2xl font-black tracking-tighter text-[#0B1B3A]">onesimos</span>
+    </div>
   );
 }
 
@@ -94,6 +96,69 @@ function CheckIcon({ dark = false }: { dark?: boolean }) {
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
       <circle cx="10" cy="10" r="10" fill={dark ? "#F97316" : "#A3E635"} />
       <path d="M6 10L9 13L14 7" stroke={dark ? "#FFFFFF" : "#0B1B3A"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// --- Floating Mascot SVG Characters ---
+
+function YellowCircleMascot() {
+  return (
+    <svg width="90" height="90" viewBox="0 0 90 90" fill="none" className="w-16 h-16 md:w-24 md:h-24">
+      <circle cx="45" cy="45" r="45" fill="#FACC15" />
+      <circle cx="32" cy="40" r="4.5" fill="#0B1B3A" />
+      <circle cx="58" cy="40" r="4.5" fill="#0B1B3A" />
+      <path d="M35 54C35 54 40 60 45 60C50 60 55 54 55 54" stroke="#0B1B3A" strokeWidth="4" strokeLinecap="round" />
+      <circle cx="26" cy="48" r="5" fill="#F97316" opacity="0.4" />
+      <circle cx="64" cy="48" r="5" fill="#F97316" opacity="0.4" />
+    </svg>
+  );
+}
+
+function GreenSquareMascot() {
+  return (
+    <svg width="90" height="90" viewBox="0 0 90 90" fill="none" className="w-16 h-16 md:w-22 md:h-22">
+      <rect width="90" height="90" rx="28" fill="#A3E635" />
+      <circle cx="32" cy="42" r="4.5" fill="#0B1B3A" />
+      <circle cx="58" cy="42" r="4.5" fill="#0B1B3A" />
+      <path d="M36 56C36 56 41 62 45 62C49 62 54 56 54 56" stroke="#0B1B3A" strokeWidth="4" strokeLinecap="round" />
+      <circle cx="24" cy="50" r="5" fill="#16A34A" opacity="0.3" />
+      <circle cx="66" cy="50" r="5" fill="#16A34A" opacity="0.3" />
+    </svg>
+  );
+}
+
+function PinkArchMascot() {
+  return (
+    <svg width="80" height="100" viewBox="0 0 80 100" fill="none" className="w-16 h-20 md:w-20 md:h-24">
+      <path d="M0 40C0 17.9086 17.9086 0 40 0C62.0914 0 80 17.9086 80 40V84C80 92.8366 72.8366 100 64 100H16C7.16344 100 0 92.8366 0 84V40Z" fill="#F472B6" />
+      <circle cx="28" cy="42" r="4" fill="#0B1B3A" />
+      <circle cx="52" cy="42" r="4" fill="#0B1B3A" />
+      <path d="M32 54C32 54 36 58 40 58C44 58 48 54 48 54" stroke="#0B1B3A" strokeWidth="3.5" strokeLinecap="round" />
+      <circle cx="20" cy="48" r="4" fill="#DB2777" opacity="0.3" />
+      <circle cx="60" cy="48" r="4" fill="#DB2777" opacity="0.3" />
+    </svg>
+  );
+}
+
+function OrangeCircleMascot() {
+  return (
+    <svg width="60" height="60" viewBox="0 0 60 60" fill="none" className="w-12 h-12 md:w-16 md:h-16">
+      <circle cx="30" cy="30" r="30" fill="#F97316" />
+      <circle cx="20" cy="26" r="3" fill="#0B1B3A" />
+      <circle cx="40" cy="26" r="3" fill="#0B1B3A" />
+      <path d="M23 36C23 36 26 40 30 40C34 40 37 36 37 36" stroke="#0B1B3A" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function PurpleDomeMascot() {
+  return (
+    <svg width="110" height="70" viewBox="0 0 110 70" fill="none" className="w-20 h-14 md:w-28 md:h-18">
+      <path d="M0 55C0 24.6243 24.6243 0 55 0C85.3757 0 110 24.6243 110 55V58C110 64.6274 104.627 70 98 70H12C5.37258 70 0 64.6274 0 58V55Z" fill="#A78BFA" />
+      <circle cx="40" cy="38" r="4" fill="#0B1B3A" />
+      <circle cx="70" cy="38" r="4" fill="#0B1B3A" />
+      <path d="M46 50C46 50 50 54 55 54C60 54 64 50 64 50" stroke="#0B1B3A" strokeWidth="3.5" strokeLinecap="round" />
     </svg>
   );
 }
@@ -121,52 +186,87 @@ export default function HomePage() {
     <div className="min-h-screen bg-[#FDF8F3] text-[#0B1B3A] font-sans selection:bg-[#F97316] selection:text-white">
       {/* Navigation */}
       <nav className="max-w-7xl mx-auto px-6 py-6 flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <Logo />
-          <span className="text-2xl font-black tracking-tighter">ONESIMOS</span>
+        <Logo />
+        <div className="hidden md:flex gap-8 font-semibold text-sm">
+          <a href="#promises" className="hover:text-[#F97316] transition-colors">About</a>
+          <a href="#curriculum" className="hover:text-[#F97316] transition-colors">Programs</a>
+          <a href="#pricing" className="hover:text-[#F97316] transition-colors">Tuition</a>
+          <a href="#faq" className="hover:text-[#F97316] transition-colors">FAQ</a>
         </div>
-        <div className="hidden md:flex gap-8 font-medium">
-          <a href="#promises" className="hover:text-[#F97316] transition-colors">Why Onesimos</a>
-          <a href="#curriculum" className="hover:text-[#F97316] transition-colors">Curriculum</a>
-          <a href="#how-it-works" className="hover:text-[#F97316] transition-colors">How it works</a>
-          <a href="#pricing" className="hover:text-[#F97316] transition-colors">Pricing</a>
-        </div>
-        <div className="flex gap-3">
-          <Link href="/login" className="px-5 py-2 rounded-full font-bold border-2 border-[#0B1B3A] hover:bg-[#0B1B3A] hover:text-white transition-all">Login</Link>
-          <Link href="/login" className="px-5 py-2 rounded-full font-bold bg-[#F97316] text-white border-2 border-[#0B1B3A] shadow-[4px_4px_0px_0px_#0B1B3A] hover:translate-y-1 hover:shadow-none transition-all">Start Free</Link>
+        <div className="flex items-center gap-3">
+          <Link href="/login" className="px-5 py-2.5 rounded-full font-bold text-sm bg-[#0B1B3A] text-white hover:bg-opacity-90 transition-all">
+            Login
+          </Link>
+          <Link href="/login" className="px-6 py-2.5 rounded-full font-bold text-sm bg-[#F97316] text-white border-2 border-[#0B1B3A] shadow-[3px_3px_0px_0px_#0B1B3A] hover:translate-y-0.5 hover:shadow-none transition-all flex items-center gap-2">
+            <span>Start Free</span>
+            <span className="text-base">😊</span>
+          </Link>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="px-4 pb-20 pt-6">
-        <div className="max-w-7xl mx-auto bg-[#0B1B3A] rounded-[2.5rem] p-10 md:p-24 relative overflow-hidden text-center">
+      <section className="px-4 pb-16 pt-2">
+        <div className="max-w-7xl mx-auto bg-[#0B1B3A] rounded-[2.5rem] md:rounded-[3.5rem] p-8 md:p-20 relative overflow-hidden text-center min-h-[580px] flex flex-col items-center justify-center">
+          
+          {/* Floating Mascots */}
+          <div className="absolute top-10 left-8 md:top-14 md:left-14 animate-bounce" style={{ animationDuration: '4s' }}>
+            <YellowCircleMascot />
+          </div>
+          <div className="absolute bottom-12 left-6 md:bottom-16 md:left-16 animate-bounce" style={{ animationDuration: '3.5s', animationDelay: '1s' }}>
+            <GreenSquareMascot />
+          </div>
+          <div className="absolute top-10 right-8 md:top-14 md:right-16 animate-bounce" style={{ animationDuration: '4.2s', animationDelay: '0.5s' }}>
+            <PinkArchMascot />
+          </div>
+          <div className="absolute top-1/2 right-6 md:right-20 transform -translate-y-1/2 animate-bounce" style={{ animationDuration: '3.8s', animationDelay: '1.2s' }}>
+            <OrangeCircleMascot />
+          </div>
+          <div className="absolute bottom-6 right-10 md:bottom-10 md:right-24 animate-bounce" style={{ animationDuration: '4.5s', animationDelay: '0.8s' }}>
+            <PurpleDomeMascot />
+          </div>
+
+          {/* Background Sparkles */}
+          <div className="absolute top-24 left-1/3 text-white/20 text-xl pointer-events-none">✨</div>
+          <div className="absolute bottom-24 right-1/3 text-white/20 text-xl pointer-events-none">✨</div>
+          <div className="absolute top-1/3 right-1/4 text-white/20 text-sm pointer-events-none">✦</div>
+
           <div className="max-w-4xl mx-auto relative z-10">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 text-white border border-white/20 mb-6 text-sm font-medium backdrop-blur-sm">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#A3E635]" />
+            {/* Top Pill Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#A3E635] text-[#0B1B3A] font-bold text-xs md:text-sm mb-8 shadow-md">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#0B1B3A] animate-pulse" />
               Personalized reading for ages 3 to 12
             </div>
-            <h1 className="text-5xl md:text-7xl font-black text-white mb-8 leading-[1.1] tracking-tighter">
-              Where every child <span className="text-[#A3E635]">reads</span> their <span className="text-[#F472B6]">own</span> <span className="text-[#7DD3FC]">story</span>.
+
+            {/* Wrenly Multi-Colored Headline */}
+            <h1 className="text-4xl sm:text-6xl md:text-7xl font-black text-white mb-8 leading-[1.08] tracking-tighter">
+              Where every child <span className="text-[#FACC15]">reads</span> their{" "}
+              <span className="inline-block bg-[#F472B6] text-[#0B1B3A] px-3 md:px-5 py-0.5 rounded-2xl mx-1 font-black transform -rotate-1">
+                own
+              </span>{" "}
+              <span className="text-[#7DD3FC]">story,</span> <br className="hidden sm:inline" />
+              every single <span className="text-[#A78BFA]">day.</span>
             </h1>
-            <p className="text-xl text-white/70 mb-10 max-w-2xl mx-auto leading-relaxed">
-              Onesimos creates personalized learning chapters that adapt to your child&apos;s pace, featuring real-time speech evaluation and 100% Parent PIN protection.
+
+            <p className="text-lg md:text-xl text-white/80 mb-10 max-w-2xl mx-auto font-normal leading-relaxed">
+              Onesimos crafts personalized learning chapters that adapt to your child&apos;s pace, featuring real-time speech evaluation and 100% Parent PIN protection.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/login" className="px-10 py-5 bg-[#F97316] text-white rounded-full text-xl font-bold shadow-[0_8px_0_0_#C2410C] hover:translate-y-1 hover:shadow-[0_4px_0_0_#C2410C] transition-all">
-                Try Free Explorer
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <Link href="/login" className="px-8 py-4 bg-[#F97316] text-white rounded-full text-lg font-bold border-2 border-[#0B1B3A] shadow-[4px_4px_0px_0px_#FFFFFF] hover:translate-y-0.5 hover:shadow-none transition-all flex items-center gap-2">
+                <span>Try Free Explorer</span>
+                <span className="text-xl">😊</span>
               </Link>
-              <a href="#promises" className="px-10 py-5 bg-white text-[#0B1B3A] rounded-full text-xl font-bold border-2 border-white hover:bg-transparent hover:text-white transition-all">
-                Explore Features
+              <a href="#promises" className="px-8 py-4 bg-white text-[#0B1B3A] rounded-full text-lg font-bold border-2 border-white hover:bg-transparent hover:text-white transition-all">
+                See How It Works
               </a>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Wrenly 4 Promises Layout */}
+      {/* 4 Promises Section */}
       <section id="promises" className="py-20 md:py-28 max-w-7xl mx-auto px-6">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-start">
-          {/* Left Sticky Content */}
           <div className="lg:sticky lg:top-12">
             <div className="inline-flex items-center gap-2 bg-white border border-[#0B1B3A]/10 text-sm font-bold text-[#0B1B3A] px-4 py-1.5 rounded-full mb-6 shadow-sm">
               <span className="w-2.5 h-2.5 rounded-full bg-[#A3E635]" />
@@ -179,12 +279,12 @@ export default function HomePage() {
             <p className="text-lg text-[#0B1B3A]/70 mb-8 max-w-md leading-relaxed">
               Building confident readers requires the right tools. Here are the guarantees we build into every story chapter and reading session.
             </p>
-            <Link href="/login" className="inline-flex items-center gap-2 bg-[#F97316] text-white font-bold px-8 py-4 rounded-full shadow-[4px_4px_0px_0px_#0B1B3A] border-2 border-[#0B1B3A] hover:translate-y-1 hover:shadow-none transition-all">
-              Start Reading Now
+            <Link href="/login" className="inline-flex items-center gap-2 bg-[#F97316] text-white font-bold px-8 py-4 rounded-full shadow-[4px_4px_0px_0px_#0B1B3A] border-2 border-[#0B1B3A] hover:translate-y-0.5 hover:shadow-none transition-all">
+              <span>Start Reading Now</span>
+              <span>😊</span>
             </Link>
           </div>
 
-          {/* Right Stacked Cards */}
           <div className="space-y-6">
             {PROMISES.map((item) => (
               <div key={item.number} className={item.bg + " " + item.text + " rounded-[2.5rem] p-8 md:p-10 border-2 border-[#0B1B3A] shadow-[6px_6px_0px_0px_#0B1B3A] relative overflow-hidden"}>
@@ -204,7 +304,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Age Tabs Curriculum */}
+      {/* Curriculum Section */}
       <section id="curriculum" className="bg-white py-24 border-y-2 border-[#0B1B3A]">
         <div className="max-w-5xl mx-auto px-6">
           <div className="text-center mb-12">
@@ -228,8 +328,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 4 Steps Timeline */}
-      <section id="how-it-works" className="py-24 max-w-7xl mx-auto px-6">
+      {/* Steps Timeline */}
+      <section className="py-24 max-w-7xl mx-auto px-6">
         <h2 className="text-4xl md:text-5xl font-black text-center mb-20">4 steps to reading success</h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 relative">
           <div className="hidden md:block absolute top-10 left-0 w-full h-1 bg-[#0B1B3A]/10" />
@@ -243,7 +343,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 3 Tier Pricing Section: Free, Parent, School */}
+      {/* 3 Payment Options: Free, Parent, School */}
       <section id="pricing" className="py-24 bg-[#FDF8F3] border-t-2 border-[#0B1B3A]">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-12">
@@ -322,7 +422,7 @@ export default function HomePage() {
       </section>
 
       {/* FAQ */}
-      <section className="py-24 max-w-3xl mx-auto px-6">
+      <section id="faq" className="py-24 max-w-3xl mx-auto px-6">
         <h2 className="text-4xl font-black text-center mb-12">Frequently asked questions</h2>
         {FAQS.map((f) => (
           <AccordionItem key={f.q} question={f.q} answer={f.a} />
@@ -332,10 +432,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="bg-[#0B1B3A] text-white py-16 px-6 border-t-2 border-[#0B1B3A]">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2">
-            <Logo />
-            <span className="text-2xl font-black tracking-tighter">ONESIMOS</span>
-          </div>
+          <Logo />
           <p className="text-white/50 text-sm">Personalized reading chapters and speech evaluation for ages 3 to 12.</p>
           <p className="text-white/40 text-sm">&copy; {new Date().getFullYear()} Onesimos Reading Inc.</p>
         </div>
