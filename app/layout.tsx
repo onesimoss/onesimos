@@ -1,5 +1,6 @@
 ﻿import type { Metadata } from "next";
 import { achiko, switzer } from "@/lib/fonts";
+import { AuthProvider } from "@/context/AuthContext";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,7 +16,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${achiko.variable} ${switzer.variable} antialiased`}>
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
