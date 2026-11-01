@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { achiko, switzer } from "@/lib/fonts";
 import "./globals.css";
 
@@ -7,10 +7,14 @@ export const metadata: Metadata = {
   description: "Personalized learning chapters and real-time speech evaluation for children.",
 };
 
-export default function RootLayout({ children }) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html lang="en">
-      <body className={achiko.variable + " " + switzer.variable + " antialiased"}>
+      <body className={`${achiko.variable} ${switzer.variable} antialiased`}>
         {children}
       </body>
     </html>
