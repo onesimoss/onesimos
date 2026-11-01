@@ -4,71 +4,82 @@
 
 @layer base {
   :root {
-    --background: 216 100% 98%;
-    --foreground: 226 46% 20%;
+    --background: 220 100% 98%;
+    --foreground: 228 46% 20%;
+
     --card: 0 0% 100%;
-    --card-foreground: 226 46% 20%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 226 46% 20%;
-    --primary: 226 46% 20%;
+    --card-foreground: 228 46% 20%;
+
+    --primary: 228 46% 20%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 70 78% 75%;
-    --secondary-foreground: 226 46% 20%;
-    --muted: 216 30% 95%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 214 77% 69%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 226 46% 20%;
-    --radius: 20px;
+
+    --secondary: 214 77% 69%;
+    --secondary-foreground: 228 46% 20%;
+
+    --accent: 70 78% 75%;
+    --accent-foreground: 228 46% 20%;
+
+    --muted: 220 60% 95%;
+    --muted-foreground: 220 20% 45%;
+
+    --border: 220 30% 90%;
+    --radius: 2rem;
   }
 
   .dark {
     --background: 222 47% 11%;
     --foreground: 210 40% 98%;
+
     --card: 217 33% 17%;
     --card-foreground: 210 40% 98%;
-    --popover: 217 33% 17%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 214 77% 69%;
-    --primary-foreground: 222 47% 11%;
-    --secondary: 70 78% 75%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 217 19% 27%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 214 77% 69%;
-    --accent-foreground: 222 47% 11%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217 19% 27%;
-    --input: 217 19% 27%;
-    --ring: 214 77% 69%;
-  }
-}
 
-@layer base {
+    --primary: 210 40% 98%;
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 214 77% 69%;
+    --secondary-foreground: 222 47% 11%;
+
+    --accent: 70 78% 75%;
+    --accent-foreground: 222 47% 11%;
+
+    --muted: 217 33% 22%;
+    --muted-foreground: 215 20% 65%;
+
+    --border: 217 33% 25%;
+  }
+
   * {
     border-color: hsl(var(--border));
     -webkit-tap-highlight-color: transparent;
   }
+
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
-    font-family: var(--font-inter), sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
+    font-family: var(--font-inter), system-ui, sans-serif;
+    overscroll-behavior-y: none;
   }
 }
 
-/* Mobile Capacitor touch target optimization */
-.touch-target {
+/* Custom Mobile Utilities */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Touch Target Enforcement */
+button, a, input, select {
   min-height: 44px;
   min-width: 44px;
+}
+
+/* Capacitor Safe Area Supports */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
 }
