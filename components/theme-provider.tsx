@@ -75,8 +75,12 @@ export function ThemeProvider({
 
 export const useTheme = () => {
   const context = useContext(ThemeProviderContext);
+  // Safe default fallback for static generation or unmounted SSR tree
   if (context === undefined) {
-    throw new Error("useTheme must be used within a ThemeProvider");
+    return {
+      theme: "light" as Theme,
+      setTheme: () => null,
+    };
   }
   return context;
 };
