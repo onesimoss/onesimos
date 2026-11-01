@@ -1,24 +1,31 @@
-import * as React from "react";
-import { cn } from "@/lib/utils";
+'use client';
 
-export interface InputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {}
+import * as React from 'react';
+import { cn } from '@/lib/utils';
+
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  error?: string;
+}
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, ...props }, ref) => {
+  ({ className, type, error, ...props }, ref) => {
     return (
-      <input
-        type={type}
-        className={cn(
-          "flex h-12 w-full rounded-full border border-brand-navy/15 bg-white px-5 py-3 text-sm text-brand-navy placeholder:text-brand-navy/40 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/30 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500 dark:focus:ring-brand-blue/40 transition-all",
-          className
-        )}
-        ref={ref}
-        {...props}
-      />
+      <div className="w-full">
+        <input
+          type={type}
+          className={cn(
+            'flex h-12 w-full rounded-full border border-slate-200 bg-[#F4F8FF] px-6 py-3 text-sm font-medium text-[#1C274C] transition-colors placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#71A6EE] focus-visible:border-transparent disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500',
+            error && 'border-rose-500 focus-visible:ring-rose-500',
+            className
+          )}
+          ref={ref}
+          {...props}
+        />
+        {error && <p className="mt-1.5 ml-4 text-xs font-semibold text-rose-500">{error}</p>}
+      </div>
     );
   }
 );
-Input.displayName = "Input";
+Input.displayName = 'Input';
 
 export { Input };

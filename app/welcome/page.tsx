@@ -1,97 +1,106 @@
-"use client";
+'use client';
 
-import React from "react";
-import Link from "next/link";
-import { Logo } from "@/components/ui/logo";
-import { Button } from "@/components/ui/button";
-
-function ArrowRightIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="M5 12h14" />
-      <path d="m12 5 7 7-7 7" />
-    </svg>
-  );
-}
+import React from 'react';
+import Link from 'next/link';
+import { Logo } from '@/components/ui/logo';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Sparkles, BookOpen, Mic, ShieldCheck, ArrowRight, Star } from 'lucide-react';
 
 export default function WelcomePage() {
   return (
-    <div className="min-h-screen bg-brand-bg dark:bg-brand-darkBg flex flex-col justify-between p-6 sm:p-10">
-      {/* Header */}
-      <header className="flex items-center justify-between max-w-5xl w-full mx-auto">
-        <Logo variant="spark" />
-        <Link href="/login">
-          <Button variant="ghost" size="sm" className="font-semibold">
-            Log in
-          </Button>
-        </Link>
+    <div className="min-h-screen bg-[#F4F8FF] dark:bg-slate-950 text-[#1C274C] dark:text-slate-100 flex flex-col justify-between selection:bg-[#E1F18C]">
+      {/* Top Header */}
+      <header className="px-6 py-6 sm:px-12 flex items-center justify-between max-w-7xl mx-auto w-full">
+        <Logo size="md" />
+        <div className="flex items-center space-x-3">
+          <Link href="/login">
+            <Button variant="ghost" className="font-semibold text-[#1C274C] dark:text-slate-200">
+              Parent Sign In
+            </Button>
+          </Link>
+          <Link href="/signup">
+            <Button variant="lime" size="md">
+              Get Started
+            </Button>
+          </Link>
+        </div>
       </header>
 
       {/* Main Hero Section */}
-      <main className="max-w-4xl w-full mx-auto my-auto py-8 flex flex-col items-center text-center">
-        {/* Behance Reference Stacked Cards Visual */}
-        <div className="relative w-full max-w-md h-64 mb-8 flex items-center justify-center">
-          {/* Back Card 1 - Pink */}
-          <div className="absolute top-0 w-72 h-36 rounded-3xl bg-brand-pink border border-black/5 -rotate-6 shadow-sm flex items-center justify-center p-4">
-            <span className="font-bold text-brand-navy text-sm">
-              Instant Feedback
-            </span>
-          </div>
-          {/* Back Card 2 - Lime */}
-          <div className="absolute top-4 w-80 h-36 rounded-3xl bg-brand-lime border border-black/5 rotate-3 shadow-sm flex items-center justify-center p-4">
-            <span className="font-bold text-brand-navy text-sm">
-              Fun Games & Activities
-            </span>
-          </div>
-          {/* Front Hero Card - Blue/Purple */}
-          <div className="absolute top-8 w-full max-w-sm rounded-[32px] bg-white dark:bg-slate-800 border border-black/5 p-6 shadow-xl flex flex-col items-center text-center gap-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-blue/20 text-brand-navy dark:text-brand-blue text-xs font-bold">
-              <span>Personalized</span>
-            </div>
-            <h2 className="text-2xl font-black text-brand-navy dark:text-white tracking-tight">
-              Personalized Learning
-            </h2>
-            <p className="text-xs text-brand-navy/70 dark:text-slate-300 leading-relaxed">
-              Lessons adapt to your child's pace, focusing on what they need most.
-            </p>
-          </div>
-        </div>
+      <main className="flex-1 max-w-7xl mx-auto w-full px-6 sm:px-12 py-8 flex flex-col items-center justify-center text-center">
+        {/* Micro Badge */}
+        <Badge variant="pillBlue" className="mb-6 py-2 px-5 text-xs font-bold uppercase tracking-wider space-x-2">
+          <Sparkles className="h-4 w-4" />
+          <span>Adaptive Early Literacy Experience</span>
+        </Badge>
 
-        {/* Title & Copy */}
-        <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-brand-navy dark:text-white max-w-xl leading-tight mb-4">
-          Every child learns differently, our job is to meet them where they are.
+        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight max-w-4xl text-[#1C274C] dark:text-white leading-[1.1]">
+          Personalized Learning Adventures for Every Child
         </h1>
-        <p className="text-base text-brand-navy/70 dark:text-slate-300 max-w-md mb-8">
-          Personalized learning chapters, real-time speech evaluation, and adaptive story synthesis designed for early learners.
+
+        <p className="mt-6 text-lg sm:text-xl text-slate-600 dark:text-slate-300 max-w-2xl font-medium leading-relaxed">
+          Interactive chapters synthesized for your child with real-time speech evaluation to build reading mastery.
         </p>
 
-        {/* Call to Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full max-w-xs sm:max-w-sm">
-          <Link href="/signup" className="w-full">
-            <Button size="lg" className="w-full gap-2 text-base font-bold shadow-md">
-              <span>Sign up</span>
-              <ArrowRightIcon className="w-4 h-4" />
+        {/* Hero CTA Buttons */}
+        <div className="mt-8 flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+          <Link href="/signup" className="w-full sm:w-auto">
+            <Button variant="lime" size="lg" className="w-full sm:w-auto text-base font-bold shadow-lg shadow-lime-200/50">
+              Start Free Trial <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </Link>
-          <Link href="/login" className="w-full">
-            <Button variant="outline" size="lg" className="w-full text-base font-bold">
-              Log in
+          <Link href="/login" className="w-full sm:w-auto">
+            <Button variant="blue" size="lg" className="w-full sm:w-auto text-base font-bold shadow-lg shadow-blue-200/50">
+              I Already Have an Account
             </Button>
           </Link>
+        </div>
+
+        {/* Behance Feature Cards Grid */}
+        <div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-6 w-full text-left">
+          <Card variant="lime" className="p-2 border-0 shadow-sm">
+            <CardContent className="space-y-3">
+              <div className="h-12 w-12 rounded-full bg-[#1C274C] text-white flex items-center justify-center">
+                <BookOpen className="h-6 w-6" />
+              </div>
+              <h3 className="text-xl font-bold text-[#1C274C]">Adaptive Stories</h3>
+              <p className="text-sm font-medium text-slate-700">
+                Custom chapters synthesized matching your child age, interest tags, and reading pace.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card variant="purple" className="p-2 border-0 shadow-sm">
+            <CardContent className="space-y-3">
+              <div className="h-12 w-12 rounded-full bg-[#1C274C] text-white flex items-center justify-center">
+                <Mic className="h-6 w-6" />
+              </div>
+              <h3 className="text-xl font-bold text-[#1C274C]">Speech Recognition</h3>
+              <p className="text-sm font-medium text-slate-700">
+                Real-time speech evaluation gives immediate feedback on phonics and word pronunciations.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card variant="blue" className="p-2 border-0 shadow-sm">
+            <CardContent className="space-y-3">
+              <div className="h-12 w-12 rounded-full bg-[#1C274C] text-white flex items-center justify-center">
+                <ShieldCheck className="h-6 w-6" />
+              </div>
+              <h3 className="text-xl font-bold text-white">Parent Security</h3>
+              <p className="text-sm font-medium text-blue-50">
+                Child-safe interface with 4-digit Parent PIN authorization to manage subscription and progress.
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="text-center text-xs text-brand-navy/50 dark:text-slate-500 py-4">
-        Onesimos Early Learning System. Safe, ad-free, and private for children.
+      <footer className="py-6 text-center text-xs font-semibold text-slate-400 dark:text-slate-600">
+        Onesimos Learning App &copy; {new Date().getFullYear()}. All rights reserved.
       </footer>
     </div>
   );
