@@ -1,107 +1,95 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
-import { useTheme } from "@/context/ThemeContext";
-import { themes } from "@/lib/themes";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
-export default function KidLogin() {
-  const { theme } = useTheme();
-  const currentTheme = (themes as Record<string, any>)[theme] || themes.dinosaurs;
+export default function KidLoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const childId = searchParams ? searchParams.get("child") : null;
   
+  const [name, setName] = useState("Friend");
   const [pin, setPin] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!childId) {
+        if (!cancelled) router.push("/who");
+        return;
+      }
+      try {
+        const client = createClient();
+        const { data } = await client.from("children").select("name").eq("id", childId).single();
+        if (!cancelled && data) setName(data.name);
+      } catch {} finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [childId, router]);
 
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, display_name, is_kid")
-      .eq("pin_code", pin)
-      .eq("is_kid", true)
-      .single();
-
-    if (error || !data) {
-      setError("❌ Invalid PIN. Please ask your parent for the correct code.");
-      setLoading(false);
-      return;
+  function handleDigit(d: string) {
+    if (pin.length < 4) {
+      const newPin = pin + d;
+      setPin(newPin);
+      if (newPin.length === 4) {
+        // In a real app, verify against kid_pin here.
+        // For the UI phase, auto-redirect on 4 digits.
+        setTimeout(() => router.push("/dashboard?child=" + childId), 300);
+      }
     }
+  }
 
-    sessionStorage.setItem("kidId", data.id);
-    sessionStorage.setItem("kidName", data.display_name || "Reader");
-    router.push("/kid/dashboard");
-  };
+  function handleBackspace() {
+    setPin((prev) => prev.slice(0, -1));
+  }
+
+  if (loading) return <main className="min-h-screen bg-[#E1C8F6] dark:bg-[#0F172A]" />;
 
   return (
-    <main 
-      className="min-h-screen flex items-center justify-center p-6 transition-colors duration-300"
-      style={{ background: currentTheme.background }}
-    >
-      <div 
-        className="max-w-md w-full rounded-3xl shadow-xl p-8 border transition-colors duration-300"
-        style={{ 
-          background: currentTheme.card,
-          borderColor: currentTheme.accentLight,
-          color: currentTheme.primary
-        }}
-      >
-        <div className="text-center mb-8">
-          <div className="text-5xl mb-3">🧒</div>
-          <h1 className="text-2xl font-bold">Welcome Back, Reader!</h1>
-          <p className="text-sm" style={{ color: currentTheme.muted }}>Enter your secret PIN to start reading.</p>
+    <main className="min-h-screen bg-[#E1C8F6] dark:bg-[#0F172A] flex flex-col items-center justify-center p-5 relative overflow-hidden">
+      {/* Decorative background shapes */}
+      <div className="absolute top-10 left-10 w-32 h-32 bg-white/20 rounded-full blur-2xl pointer-events-none" />
+      <div className="absolute bottom-10 right-10 w-40 h-40 bg-[#E1F18C]/40 rounded-full blur-2xl pointer-events-none" />
+
+      <div className="relative z-10 flex flex-col items-center w-full max-w-xs">
+        <div className="w-24 h-24 rounded-full bg-white flex items-center justify-center text-4xl font-black text-[#1C274C] ring-8 ring-white/30 dark:bg-[#1E293B] dark:text-white dark:ring-white/10 mb-6 shadow-xl">
+          {name.charAt(0).toUpperCase()}
+        </div>
+        
+        <h1 className="text-3xl font-black tracking-tight text-[#1C274C] dark:text-white mb-2 text-center">
+          Hi, {name}!
+        </h1>
+        <p className="text-sm font-bold text-[#1C274C]/60 dark:text-white/60 mb-8 uppercase tracking-widest text-center">
+          Enter your secret code
+        </p>
+
+        <div className="flex gap-4 mb-10">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className={"w-12 h-12 rounded-full flex items-center justify-center text-2xl font-black transition-all " + (i < pin.length ? "bg-[#1C274C] text-white shadow-md dark:bg-white dark:text-[#1C274C]" : "bg-white/50 text-transparent dark:bg-white/10")}>
+              *
+            </div>
+          ))}
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="mb-6">
-            <label className="block text-sm font-medium mb-2" style={{ color: currentTheme.secondary }}>
-              Your PIN Code
-            </label>
-            <input
-              type="password"
-              inputMode="numeric"
-              maxLength={4}
-              value={pin}
-              onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-              className="w-full px-4 py-3 text-2xl text-center rounded-xl border-2 focus:ring-2 focus:outline-none"
-              style={{ 
-                borderColor: currentTheme.accentLight,
-                background: currentTheme.background,
-                color: currentTheme.primary
-              }}
-              placeholder="🔒 Enter 4-digit PIN"
-              required
-            />
-          </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg mb-4 text-sm">
-              {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading || pin.length < 4}
-            className="w-full py-3 rounded-full font-medium transition-all hover:shadow-xl disabled:opacity-50"
-            style={{
-              background: currentTheme.accent,
-              color: theme === "space" || theme === "fantasy" ? "#fff" : currentTheme.primary,
-            }}
-          >
-            {loading ? "Checking..." : "🔓 Unlock Reading"}
+        <div className="grid grid-cols-3 gap-4 w-full">
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => (
+            <button key={d} type="button" onClick={() => handleDigit(d.toString())} className="h-16 rounded-full bg-white/80 dark:bg-[#1E293B]/80 text-[#1C274C] dark:text-white text-2xl font-black shadow-sm active:scale-95 transition-transform backdrop-blur-sm">
+              {d}
+            </button>
+          ))}
+          <button type="button" onClick={() => router.push("/who")} className="h-16 rounded-full bg-transparent text-[#1C274C]/50 dark:text-white/50 text-sm font-bold active:scale-95 transition-transform">
+            Cancel
           </button>
-        </form>
-
-        <div className="mt-6 text-center">
-          <p className="text-xs" style={{ color: currentTheme.muted }}>
-            👋 This is a Kids-Only login. Parents, use the main login.
-          </p>
+          <button type="button" onClick={() => handleDigit("0")} className="h-16 rounded-full bg-white/80 dark:bg-[#1E293B]/80 text-[#1C274C] dark:text-white text-2xl font-black shadow-sm active:scale-95 transition-transform backdrop-blur-sm">
+            0
+          </button>
+          <button type="button" onClick={handleBackspace} className="h-16 rounded-full bg-transparent text-[#1C274C] dark:text-white flex items-center justify-center active:scale-95 transition-transform">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path><line x1="18" y1="9" x2="12" y2="15"></line><line x1="12" y1="9" x2="18" y2="15"></line></svg>
+          </button>
         </div>
       </div>
     </main>
