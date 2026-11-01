@@ -1,113 +1,98 @@
-/**
- * @file app/welcome/page.tsx
- * @description Vibrant Parent Welcome Page shown immediately after signup or Google login.
- *
- * @module app/welcome/page
- * @fonts Logo (wordmark) + Achiko (headings) + Switzer (body/UI)
- */
-
 "use client";
 
-import { useEffect, useState } from "react";
+import React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
+import { Logo } from "@/components/ui/logo";
+import { Button } from "@/components/ui/button";
 
-function toTitleCase(str: string): string {
-  if (!str) return "Parent";
-  return str
-    .toLowerCase()
-    .split(/[\s._-]+/)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+function ArrowRightIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <path d="M5 12h14" />
+      <path d="m12 5 7 7-7 7" />
+    </svg>
+  );
 }
 
-export default function WelcomePage(): JSX.Element {
-  const { user, loading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/login");
-    }
-  }, [user, loading, router]);
-
-  if (loading || !user) {
-    return (
-      <main className="min-h-screen bg-[#FDFBF7] flex items-center justify-center font-switzer">
-        <p className="font-bold text-gray-500 text-sm animate-pulse font-switzer">
-          Preparing your welcome...
-        </p>
-      </main>
-    );
-  }
-
-  const rawName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Parent";
-  const parentName = toTitleCase(rawName);
-
+export default function WelcomePage() {
   return (
-    <main className="min-h-screen bg-gradient-to-b from-[#FDFBF7] via-amber-50/30 to-sky-50/40 font-switzer py-12 px-6 flex items-center justify-center">
-      <div className="max-w-xl w-full bg-white rounded-3xl p-8 md:p-10 border border-gray-200 shadow-sm text-center font-switzer relative overflow-hidden">
-        
-        {/* Confetti / Celebration Header */}
-        <div className="text-6xl mb-4 animate-bounce">🎉</div>
+    <div className="min-h-screen bg-brand-bg dark:bg-brand-darkBg flex flex-col justify-between p-6 sm:p-10">
+      {/* Header */}
+      <header className="flex items-center justify-between max-w-5xl w-full mx-auto">
+        <Logo variant="spark" />
+        <Link href="/login">
+          <Button variant="ghost" size="sm" className="font-semibold">
+            Log in
+          </Button>
+        </Link>
+      </header>
 
-        <span className="font-logo text-3xl text-amber-900 block mb-2">
-          Onesimos
-        </span>
+      {/* Main Hero Section */}
+      <main className="max-w-4xl w-full mx-auto my-auto py-8 flex flex-col items-center text-center">
+        {/* Behance Reference Stacked Cards Visual */}
+        <div className="relative w-full max-w-md h-64 mb-8 flex items-center justify-center">
+          {/* Back Card 1 - Pink */}
+          <div className="absolute top-0 w-72 h-36 rounded-3xl bg-brand-pink border border-black/5 -rotate-6 shadow-sm flex items-center justify-center p-4">
+            <span className="font-bold text-brand-navy text-sm">
+              Instant Feedback
+            </span>
+          </div>
+          {/* Back Card 2 - Lime */}
+          <div className="absolute top-4 w-80 h-36 rounded-3xl bg-brand-lime border border-black/5 rotate-3 shadow-sm flex items-center justify-center p-4">
+            <span className="font-bold text-brand-navy text-sm">
+              Fun Games & Activities
+            </span>
+          </div>
+          {/* Front Hero Card - Blue/Purple */}
+          <div className="absolute top-8 w-full max-w-sm rounded-[32px] bg-white dark:bg-slate-800 border border-black/5 p-6 shadow-xl flex flex-col items-center text-center gap-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-blue/20 text-brand-navy dark:text-brand-blue text-xs font-bold">
+              <span>Personalized</span>
+            </div>
+            <h2 className="text-2xl font-black text-brand-navy dark:text-white tracking-tight">
+              Personalized Learning
+            </h2>
+            <p className="text-xs text-brand-navy/70 dark:text-slate-300 leading-relaxed">
+              Lessons adapt to your child's pace, focusing on what they need most.
+            </p>
+          </div>
+        </div>
 
-        <h1 className="font-achiko text-3xl md:text-4xl text-amber-950 mb-3">
-          Welcome, {parentName}!
+        {/* Title & Copy */}
+        <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-brand-navy dark:text-white max-w-xl leading-tight mb-4">
+          Every child learns differently, our job is to meet them where they are.
         </h1>
-
-        <p className="text-sm text-gray-600 mb-8 max-w-md mx-auto leading-relaxed font-switzer">
-          Your parent account is ready! Onesimos helps your child build reading fluency and 80 percent comprehension through playful, listening adventures.
+        <p className="text-base text-brand-navy/70 dark:text-slate-300 max-w-md mb-8">
+          Personalized learning chapters, real-time speech evaluation, and adaptive story synthesis designed for early learners.
         </p>
 
-        {/* 3-Step Orientation Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8 text-left font-switzer">
-          <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200">
-            <span className="text-2xl block mb-1">👨‍👩‍👧</span>
-            <h3 className="font-bold text-xs text-amber-950 font-switzer">1. Set Up Reader</h3>
-            <p className="text-[11px] text-gray-600 mt-0.5 font-switzer leading-tight">
-              Create a profile with your child&apos;s age and favorite themes.
-            </p>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-sky-50/80 border border-sky-200">
-            <span className="text-2xl block mb-1">🎙️</span>
-            <h3 className="font-bold text-xs text-sky-950 font-switzer">2. Read Out Loud</h3>
-            <p className="text-[11px] text-gray-600 mt-0.5 font-switzer leading-tight">
-              Onesimos listens gently and catches stumbled words.
-            </p>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200">
-            <span className="text-2xl block mb-1">📈</span>
-            <h3 className="font-bold text-xs text-emerald-950 font-switzer">3. Track Growth</h3>
-            <p className="text-[11px] text-gray-600 mt-0.5 font-switzer leading-tight">
-              Review words-per-minute and quiz scores on your report card.
-            </p>
-          </div>
-        </div>
-
-        {/* Main CTA */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 font-switzer">
-          <Link
-            href="/onboarding"
-            className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm shadow-xs transition-all active:scale-95 font-switzer text-center"
-          >
-            Set Up Your Reader Profile →
+        {/* Call to Action Buttons */}
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full max-w-xs sm:max-w-sm">
+          <Link href="/signup" className="w-full">
+            <Button size="lg" className="w-full gap-2 text-base font-bold shadow-md">
+              <span>Sign up</span>
+              <ArrowRightIcon className="w-4 h-4" />
+            </Button>
           </Link>
-          <Link
-            href="/parent"
-            className="w-full sm:w-auto px-6 py-3.5 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-bold text-sm font-switzer text-center"
-          >
-            Go to Parent Dashboard
+          <Link href="/login" className="w-full">
+            <Button variant="outline" size="lg" className="w-full text-base font-bold">
+              Log in
+            </Button>
           </Link>
         </div>
+      </main>
 
-      </div>
-    </main>
+      {/* Footer */}
+      <footer className="text-center text-xs text-brand-navy/50 dark:text-slate-500 py-4">
+        Onesimos Early Learning System. Safe, ad-free, and private for children.
+      </footer>
+    </div>
   );
 }
