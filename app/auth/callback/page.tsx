@@ -1,67 +1,48 @@
-/**
- * @file app/auth/callback/page.tsx
- * @description Client-side OAuth callback page that handles hash fragments (#access_token) 
- * and PKCE codes (?code=), confirms the session, and redirects parents to the Welcome page.
- *
- * @module app/auth/callback/page
- * @fonts Logo (wordmark) + Achiko (headings) + Switzer (body/UI)
- */
-
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, Suspense } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
+import { createClient } from "@/lib/supabase/client";
 
-export default function AuthCallbackPage(): JSX.Element {
+function CallbackContent() {
   const router = useRouter();
-  const [status, setStatus] = useState("Signing you in securely...");
 
   useEffect(() => {
-    async function handleAuthCallback(): Promise<void> {
+    let cancelled = false;
+    (async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-
-        if (error) {
-          console.error("[AuthCallback] Session error:", error);
-          setStatus("Authentication failed. Redirecting to login...");
-          setTimeout(() => router.replace("/login"), 1500);
-          return;
-        }
-
-        if (session) {
-          setStatus("Success! Welcome to Onesimos...");
-          router.replace("/welcome");
-          return;
-        }
-
-        // Wait brief moment for client auth listener
-        const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
-          if (event === "SIGNED_IN" && newSession) {
-            listener.subscription.unsubscribe();
-            router.replace("/welcome");
+        const client = createClient();
+        const { data } = await client.auth.getSession();
+        if (!cancelled) {
+          if (data && data.session) {
+            router.push("/who");
+          } else {
+            setTimeout(() => router.push("/who"), 1000);
           }
-        });
-
-        setTimeout(() => {
-          router.replace("/welcome");
-        }, 2000);
-      } catch (err) {
-        console.error("[AuthCallback] Unexpected error:", err);
-        router.replace("/login");
+        }
+      } catch {
+        if (!cancelled) router.push("/login");
       }
-    }
-
-    void handleAuthCallback();
+    })();
+    return () => { cancelled = true; };
   }, [router]);
 
   return (
-    <main className="min-h-screen bg-[#FDFBF7] flex flex-col items-center justify-center p-6 font-switzer text-center">
-      <div className="w-16 h-16 border-4 border-amber-400 border-t-amber-600 rounded-full animate-spin mb-4" />
-      <h1 className="font-logo text-3xl text-amber-900 mb-2">Onesimos</h1>
-      <p className="font-bold text-gray-700 text-sm font-switzer animate-pulse">
-        {status}
-      </p>
+    <main className="min-h-screen bg-[#F4F8FF] dark:bg-[#0F172A] flex items-center justify-center p-5">
+      <div className="text-center space-y-3">
+        <div className="w-12 h-12 rounded-full bg-[#1C274C] text-[#E1F18C] flex items-center justify-center font-black text-xl mx-auto animate-bounce">
+          O
+        </div>
+        <p className="text-sm font-bold text-[#1C274C] dark:text-white">Completing sign in...</p>
+      </div>
     </main>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen bg-[#F4F8FF] dark:bg-[#0F172A]" />}>
+      <CallbackContent />
+    </Suspense>
   );
 }
