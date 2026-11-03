@@ -4,10 +4,24 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Footer from "@/components/Footer";
 
+const butterflyStyles = `
+  @keyframes b-wing-left { 0%, 100% { transform: scaleX(1) rotate(0deg); } 50% { transform: scaleX(0.2) rotate(15deg); } }
+  @keyframes b-wing-right { 0%, 100% { transform: scaleX(1) rotate(0deg); } 50% { transform: scaleX(0.2) rotate(-15deg); } }
+  @keyframes b-flight-1 { 0%, 100% { transform: translate(0px, 0px); } 50% { transform: translate(60px, -40px) rotate(8deg); } }
+  @keyframes b-flight-2 { 0%, 100% { transform: translate(0px, 0px); } 50% { transform: translate(-50px, 35px) rotate(-10deg); } }
+  @keyframes b-flight-3 { 0%, 100% { transform: translate(0px, 0px); } 50% { transform: translate(45px, 25px) rotate(12deg); } }
+  .b-left { animation: b-wing-left 0.35s infinite ease-in-out; transform-origin: right center; }
+  .b-right { animation: b-wing-right 0.35s infinite ease-in-out; transform-origin: left center; }
+  .b-f1 { animation: b-flight-1 12s infinite ease-in-out; }
+  .b-f2 { animation: b-flight-2 15s infinite ease-in-out; }
+  .b-f3 { animation: b-flight-3 10s infinite ease-in-out; }
+`;
+
 export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [phraseIndex, setPhraseIndex] = useState(0);
-  const [fade, setFade] = useState(true);`n  const [coppaOpen, setCoppaOpen] = useState(false);
+  const [fade, setFade] = useState(true);
+  const [coppaOpen, setCoppaOpen] = useState(false);
 
   const phrases = [
     "Make reading\nsomething kids\ntruly own.",
@@ -15,9 +29,6 @@ export default function LandingPage() {
     "Personalized\nstories, made\njust for you."
   ];
 
-
-
-  // Rotate through phrases every 4 seconds with a smooth fade effect
   useEffect(() => {
     const interval = setInterval(() => {
       setFade(false);
@@ -30,7 +41,6 @@ export default function LandingPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Mobile address bar hide helper
   useEffect(() => {
     const hideAddressBar = () => {
       if (window.scrollY === 0) {
@@ -44,28 +54,12 @@ export default function LandingPage() {
   return (
     <div className="min-h-[100dvh] flex flex-col font-[family-name:var(--font-switzer)] overflow-x-hidden w-full m-0 p-0 bg-white">
       
-      {/* --- HERO SECTION --- */}
+      <style dangerouslySetInnerHTML={{ __html: butterflyStyles }} />
+
       <div className="relative w-full min-h-[100dvh] lg:h-[100dvh] flex flex-col justify-between overflow-visible bg-[#522DB8]">
         
-        {/* --- SEASONAL INTERACTION HOOK (SNOW EFFECT READY) --- */}
         {/* <div className="seasonal-snow-layer pointer-events-none absolute inset-0 z-30" /> */}
 
-        {/* CSS Keyframes for Perching Butterflies */}
-        <style dangerouslySetInnerHTML={{ __html: `
-          @keyframes b-wing-left { 0%, 100% { transform: scaleX(1) rotate(0deg); } 50% { transform: scaleX(0.2) rotate(15deg); } }
-          @keyframes b-wing-right { 0%, 100% { transform: scaleX(1) rotate(0deg); } 50% { transform: scaleX(0.2) rotate(-15deg); } }
-          @keyframes b-flight-1 { 0%, 100% { transform: translate(0px, 0px); } 50% { transform: translate(60px, -40px) rotate(8deg); } }
-          @keyframes b-flight-2 { 0%, 100% { transform: translate(0px, 0px); } 50% { transform: translate(-50px, 35px) rotate(-10deg); } }
-          @keyframes b-flight-3 { 0%, 100% { transform: translate(0px, 0px); } 50% { transform: translate(45px, 25px) rotate(12deg); } }
-          .b-left { animation: b-wing-left 0.35s infinite ease-in-out; transform-origin: right center; }
-          .b-right { animation: b-wing-right 0.35s infinite ease-in-out; transform-origin: left center; }
-          .b-f1 { animation: b-flight-1 12s infinite ease-in-out; }
-          .b-f2 { animation: b-flight-2 15s infinite ease-in-out; }
-          .b-f3 { animation: b-flight-3 10s infinite ease-in-out; }
-        ` }} />
-
-        {/* Live Vector Butterflies Perched near Flowers */}
-        {/* 5 Live Vector Butterflies */}
         <div className="hidden md:block absolute top-28 left-12 z-20 pointer-events-none b-f1">
           <div className="flex items-center drop-shadow-md">
             <svg width="14" height="18" viewBox="0 0 14 18" className="b-left"><path d="M14 9C8 2 1 0 1 5C1 8 6 9 14 9Z" fill="#FACC15" /><path d="M14 9C8 13 2 15 2 17C2 18 6 17 14 9Z" fill="#F472B6" /></svg>
@@ -90,18 +84,8 @@ export default function LandingPage() {
             <svg width="11" height="15" viewBox="0 0 14 18" className="b-right"><path d="M0 9C6 2 13 0 13 5C13 8 8 9 0 9Z" fill="#34D399" /><path d="M0 9C6 13 12 15 12 17C12 18 8 17 0 9Z" fill="#FACC15" /></svg>
           </div>
         </div>
-        <div className="hidden md:block absolute top-28 right-16 z-20 pointer-events-none b-fly-2">
-          <svg width="24" height="24" viewBox="0 0 24 24" className="b-wing drop-shadow-md" style={{ animationDelay: "0.2s" }}>
-            <path d="M12 12C10 6 3 4 3 9C3 12 7 13 12 12Z" fill="#60A5FA" />
-            <path d="M12 12C14 6 21 4 21 9C21 12 17 13 12 12Z" fill="#60A5FA" />
-            <path d="M12 12C10 16 4 17 4 19C4 21 8 20 12 12Z" fill="#FACC15" />
-            <path d="M12 12C14 16 20 17 20 19C20 21 16 20 12 12Z" fill="#FACC15" />
-          </svg>
-        </div>
-        
-        {/* Responsive Background Swap */}
+
         <div className="absolute inset-0 w-full h-full z-0 overflow-hidden">
-          {/* Desktop Background */}
           <img
             src="/hero-bg-desktop.jpg"
             alt="Onesimos Desktop Hero"
@@ -110,7 +94,6 @@ export default function LandingPage() {
               (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=2560";
             }}
           />
-          {/* Mobile Background */}
           <img
             src="/hero-bg-mobile.jpg"
             alt="Onesimos Mobile Hero"
@@ -121,11 +104,9 @@ export default function LandingPage() {
           />
         </div>
 
-        {/* Floating Header */}
         <header className="fixed top-4 inset-x-0 z-40 w-full px-4 md:px-8 pointer-events-none">
           <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between rounded-full bg-white/15 backdrop-blur-xl border border-white/25 px-5 py-2 shadow-2xl pointer-events-auto">
             
-            {/* Logo */}
             <Link href="/" className="flex items-center gap-2.5">
               <img
                 src="/logo.png"
@@ -140,7 +121,6 @@ export default function LandingPage() {
               </span>
             </Link>
 
-            {/* Floating Nav Links */}
             <nav className="hidden items-center gap-7 text-xs sm:text-sm font-semibold text-white/90 md:flex">
               <a href="#features" className="hover:text-[#FACC15] transition-colors py-1">Features</a>
               <a href="#curriculum" className="hover:text-[#FACC15] transition-colors py-1">Curriculum</a>
@@ -148,7 +128,6 @@ export default function LandingPage() {
               <a href="#about" className="hover:text-[#FACC15] transition-colors py-1">About us</a>
             </nav>
 
-            {/* Desktop Action Buttons */}
             <div className="hidden items-center gap-4 md:flex">
               <Link href="/login" className="text-xs sm:text-sm font-bold text-white hover:text-[#FACC15] transition-colors px-2 py-1">
                 Log in
@@ -158,7 +137,6 @@ export default function LandingPage() {
               </Link>
             </div>
 
-            {/* Mobile Burger Button */}
             <button
               type="button"
               className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 md:hidden text-white hover:bg-white/20"
@@ -174,7 +152,6 @@ export default function LandingPage() {
             </button>
           </div>
 
-          {/* Mobile Drawer */}
           {menuOpen && (
             <div className="mx-auto mt-2 max-w-sm rounded-3xl border border-white/20 bg-[#0B1B3A]/95 p-6 shadow-2xl backdrop-blur-2xl md:hidden pointer-events-auto">
               <div className="flex flex-col gap-3 text-sm font-medium text-white">
@@ -191,23 +168,11 @@ export default function LandingPage() {
           )}
         </header>
 
-        {/* Hero Body Content */}
         <main className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 pt-24 md:pt-28 pb-6 md:pb-12 flex-grow grid grid-cols-1 md:grid-cols-12 items-center gap-8">
           
-          {/* Left Side: Live Dynamic Text Rotator */}
           <div className="md:col-span-6 lg:col-span-6 flex flex-col justify-center items-start text-white max-w-[85%] md:max-w-none">
             
-            <span className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-widest transition-all duration-500 border shadow-sm ${trafficLightBadges[phraseIndex]}`}>
-              <span className="flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full transition-opacity duration-300 ${phraseIndex === 0 ? "bg-white animate-pulse" : "bg-white/40"}`} />
-                <span className={`w-2 h-2 rounded-full transition-opacity duration-300 ${phraseIndex === 1 ? "bg-[#0B1B3A] animate-pulse" : "bg-white/40"}`} />
-                <span className={`w-2 h-2 rounded-full transition-opacity duration-300 ${phraseIndex === 2 ? "bg-white animate-pulse" : "bg-white/40"}`} />
-              </span>
-              DESIGNED FOR AGES 3 TO 12
-            </span>
-
-            {/* Rotating Headline */}
-            <div className="h-[180px] sm:h-[220px] lg:h-[260px] flex items-center mt-4">
+            <div className="h-[180px] sm:h-[220px] lg:h-[260px] flex items-center mt-2">
               <h1
                 className={`font-[family-name:var(--font-switzer)] text-4xl sm:text-6xl lg:text-7xl font-extrabold leading-[1.05] tracking-tight whitespace-pre-line transition-opacity duration-300 ${
                   fade ? "opacity-100" : "opacity-0"
@@ -217,12 +182,10 @@ export default function LandingPage() {
               </h1>
             </div>
 
-            {/* Subcaption */}
             <p className="mt-4 text-base sm:text-lg text-white/90 leading-relaxed max-w-[340px] font-normal drop-shadow-sm">
               Personalized learning chapters and real-time speech evaluation designed to build independent confidence in young readers.
             </p>
 
-            {/* CTA Buttons */}
             <div className="mt-8 flex flex-wrap items-center gap-4">
               <Link
                 href="/signup"
@@ -240,16 +203,14 @@ export default function LandingPage() {
 
           </div>
 
-          {/* Right Side: Spacer for Desktop Layout */}
           <div className="hidden md:block md:col-span-6 lg:col-span-6 relative h-full z-20">
-            {/* Rotating COPPA Badge */}
+            
             <button
               onClick={() => setCoppaOpen(true)}
               className="group absolute top-2 right-12 lg:right-24 z-30 flex items-center justify-center transition-transform hover:scale-110 active:scale-95 focus:outline-none"
               title="Click for COPPA & Child Safety Specs"
             >
               <div className="relative w-28 h-28 flex items-center justify-center">
-                {/* Rotating Outer Text Ring */}
                 <svg className="w-full h-full animate-[spin_12s_linear_infinite]" viewBox="0 0 100 100">
                   <path id="circlePath" d="M 50, 50 m -37, 0 a 37,37 0 1,1 74,0 a 37,37 0 1,1 -74,0" fill="none" />
                   <text className="text-[9.5px] font-extrabold uppercase fill-[#FACC15] tracking-widest">
@@ -258,7 +219,6 @@ export default function LandingPage() {
                     </textPath>
                   </text>
                 </svg>
-                {/* Inner White Circle Button */}
                 <div className="absolute w-12 h-12 rounded-full bg-white text-[#0B1B3A] flex items-center justify-center shadow-lg border-2 border-[#FACC15] group-hover:bg-[#FACC15] transition-colors">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="translate-x-[0.5px] -translate-y-[0.5px]">
                     <path d="M7 17L17 7M17 7H7M17 7V17" />
@@ -267,7 +227,6 @@ export default function LandingPage() {
               </div>
             </button>
 
-            {/* Hero Character Cutout */}
             <img
               src="/hero-characters.png"
               alt="Family Reading On Sofa"
@@ -277,12 +236,16 @@ export default function LandingPage() {
 
         </main>
 
-        {/* Overlapping 3D Characters Cutout */}
-        <div className="block md:hidden relative z-20 w-full flex justify-center pointer-events-none mt-2"><img src="/hero-characters.png" alt="Onesimos Family Learning" className="w-[90%] max-w-[400px] h-auto object-contain drop-shadow-2xl -translate-x-3 translate-y-[10%]" /></div>
+        <div className="block md:hidden relative z-20 w-full flex justify-center pointer-events-none mt-2">
+          <img
+            src="/hero-characters.png"
+            alt="Onesimos Family Learning"
+            className="w-[90%] max-w-[400px] h-auto object-contain drop-shadow-2xl -translate-x-3 translate-y-[10%]"
+          />
+        </div>
 
       </div>
 
-      {/* --- WHITE FEATURE SECTION BELOW HERO --- */}
       <section className="w-full bg-white pt-14 md:pt-24 pb-20 px-6 md:px-12 text-[#0B1B3A] border-t border-gray-100" id="features">
         <div className="mx-auto max-w-6xl">
           <div className="text-center max-w-2xl mx-auto mb-16">
@@ -295,11 +258,9 @@ export default function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            
-            {/* Feature Pillar 1 */}
             <div className="p-8 rounded-3xl bg-[#FAF9F6] border border-[#0B1B3A]/5 shadow-xs flex flex-col justify-between">
               <div>
-                <div className="text-4xl mb-5">???</div>
+                <div className="text-4xl mb-5">🎙️</div>
                 <h3 className="font-[family-name:var(--font-switzer)] text-2xl font-bold text-[#0B1B3A]">
                   Speech Evaluation
                 </h3>
@@ -309,10 +270,9 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Feature Pillar 2 */}
             <div className="p-8 rounded-3xl bg-[#FAF9F6] border border-[#0B1B3A]/5 shadow-xs flex flex-col justify-between">
               <div>
-                <div className="text-4xl mb-5">??</div>
+                <div className="text-4xl mb-5">📖</div>
                 <h3 className="font-[family-name:var(--font-switzer)] text-2xl font-bold text-[#0B1B3A]">
                   Adaptive Chapters
                 </h3>
@@ -322,10 +282,9 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Feature Pillar 3 */}
             <div className="p-8 rounded-3xl bg-[#FAF9F6] border border-[#0B1B3A]/5 shadow-xs flex flex-col justify-between">
               <div>
-                <div className="text-4xl mb-5">???</div>
+                <div className="text-4xl mb-5">🛡️</div>
                 <h3 className="font-[family-name:var(--font-switzer)] text-2xl font-bold text-[#0B1B3A]">
                   Parent Protection
                 </h3>
@@ -334,15 +293,10 @@ export default function LandingPage() {
                 </p>
               </div>
             </div>
-
           </div>
         </div>
       </section>
 
-      {/* --- FOOTER --- */}
-      <Footer />
-
-      {/* COPPA & Child Safety Compliance Modal */}
       {coppaOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B1B3A]/80 backdrop-blur-md animate-fadeIn">
           <div className="relative w-full max-w-md rounded-3xl bg-white p-6 md:p-8 text-[#0B1B3A] shadow-2xl border border-gray-100">
@@ -373,6 +327,8 @@ export default function LandingPage() {
           </div>
         </div>
       )}
+
+      <Footer />
     </div>
   );
 }
