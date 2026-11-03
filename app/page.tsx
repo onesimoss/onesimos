@@ -52,14 +52,16 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="min-h-[100dvh] flex flex-col font-[family-name:var(--font-switzer)] overflow-x-hidden w-full m-0 p-0 bg-white">
+    <div className="min-h-[100dvh] flex flex-col font-[family-name:var(--font-switzer)] overflow-x-hidden w-full m-0 p-0 bg-white [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
       
       <style dangerouslySetInnerHTML={{ __html: butterflyStyles }} />
 
+      {/* --- HERO SECTION --- */}
       <div className="relative w-full min-h-[100dvh] lg:h-[100dvh] flex flex-col justify-between overflow-visible bg-[#522DB8]">
         
         {/* <div className="seasonal-snow-layer pointer-events-none absolute inset-0 z-30" /> */}
 
+        {/* 5 Live Vector Butterflies */}
         <div className="hidden md:block absolute top-28 left-12 z-20 pointer-events-none b-f1">
           <div className="flex items-center drop-shadow-md">
             <svg width="14" height="18" viewBox="0 0 14 18" className="b-left"><path d="M14 9C8 2 1 0 1 5C1 8 6 9 14 9Z" fill="#FACC15" /><path d="M14 9C8 13 2 15 2 17C2 18 6 17 14 9Z" fill="#F472B6" /></svg>
@@ -85,6 +87,7 @@ export default function LandingPage() {
           </div>
         </div>
 
+        {/* Responsive Background Swap */}
         <div className="absolute inset-0 w-full h-full z-0 overflow-hidden">
           <img
             src="/hero-bg-desktop.jpg"
@@ -104,42 +107,47 @@ export default function LandingPage() {
           />
         </div>
 
-        <header className="fixed top-4 inset-x-0 z-40 w-full px-4 md:px-8 pointer-events-none">
-          <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between rounded-full bg-white/15 backdrop-blur-xl border border-white/25 px-5 py-2 shadow-2xl pointer-events-auto">
+        {/* Header Layout: Left Logo, Center Floating Glass Pill Nav, Right Actions */}
+        <header className="fixed top-5 inset-x-0 z-40 w-full px-6 md:px-12 pointer-events-none">
+          <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between">
             
-            <Link href="/" className="flex items-center gap-2.5">
+            {/* Left Logo */}
+            <Link href="/" className="flex items-center gap-2.5 pointer-events-auto">
               <img
                 src="/logo.png"
                 alt="Onesimos"
-                className="h-8 w-auto object-contain"
+                className="h-9 w-auto object-contain"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = "none";
                 }}
               />
-              <span className="font-[family-name:var(--font-achiko)] text-xl font-bold tracking-tight text-white drop-shadow-sm">
+              <span className="font-[family-name:var(--font-achiko)] text-2xl font-bold tracking-tight text-white drop-shadow-sm">
                 Onesimos
               </span>
             </Link>
 
-            <nav className="hidden items-center gap-7 text-xs sm:text-sm font-semibold text-white/90 md:flex">
+            {/* Center Floating Glass Pill (Nav Links Only) */}
+            <nav className="hidden md:flex items-center gap-8 px-8 py-2.5 rounded-full bg-white/15 backdrop-blur-xl border border-white/25 shadow-2xl pointer-events-auto text-sm font-semibold text-white/90">
               <a href="#features" className="hover:text-[#FACC15] transition-colors py-1">Features</a>
               <a href="#curriculum" className="hover:text-[#FACC15] transition-colors py-1">Curriculum</a>
               <a href="#pricing" className="hover:text-[#FACC15] transition-colors py-1">Pricing</a>
               <a href="#about" className="hover:text-[#FACC15] transition-colors py-1">About us</a>
             </nav>
 
-            <div className="hidden items-center gap-4 md:flex">
-              <Link href="/login" className="text-xs sm:text-sm font-bold text-white hover:text-[#FACC15] transition-colors px-2 py-1">
+            {/* Right Action Buttons */}
+            <div className="hidden md:flex items-center gap-5 pointer-events-auto">
+              <Link href="/login" className="text-sm font-bold text-white hover:text-[#FACC15] transition-colors px-2 py-1">
                 Log in
               </Link>
-              <Link href="/signup" className="rounded-full bg-[#FACC15] px-5 py-2 text-xs sm:text-sm font-bold text-[#0B1B3A] hover:bg-white transition-all shadow-md hover:scale-105 active:scale-95">
+              <Link href="/signup" className="rounded-full bg-[#FACC15] px-6 py-2.5 text-sm font-bold text-[#0B1B3A] hover:bg-white transition-all shadow-lg hover:scale-105 active:scale-95">
                 Get Started
               </Link>
             </div>
 
+            {/* Mobile Burger Button */}
             <button
               type="button"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 md:hidden text-white hover:bg-white/20"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 backdrop-blur-md md:hidden text-white hover:bg-white/25 pointer-events-auto"
               aria-label={menuOpen ? "Close menu" : "Open menu"}
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((v) => !v)}
@@ -152,8 +160,9 @@ export default function LandingPage() {
             </button>
           </div>
 
+          {/* Mobile Navigation Drawer */}
           {menuOpen && (
-            <div className="mx-auto mt-2 max-w-sm rounded-3xl border border-white/20 bg-[#0B1B3A]/95 p-6 shadow-2xl backdrop-blur-2xl md:hidden pointer-events-auto">
+            <div className="mx-auto mt-3 max-w-sm rounded-3xl border border-white/20 bg-[#0B1B3A]/95 p-6 shadow-2xl backdrop-blur-2xl md:hidden pointer-events-auto">
               <div className="flex flex-col gap-3 text-sm font-medium text-white">
                 <a href="#features" onClick={() => setMenuOpen(false)} className="py-1.5 hover:text-[#FACC15]">Features</a>
                 <a href="#curriculum" onClick={() => setMenuOpen(false)} className="py-1.5 hover:text-[#FACC15]">Curriculum</a>
@@ -168,8 +177,10 @@ export default function LandingPage() {
           )}
         </header>
 
-        <main className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 pt-24 md:pt-28 pb-6 md:pb-12 flex-grow grid grid-cols-1 md:grid-cols-12 items-center gap-8">
+        {/* Hero Body Content */}
+        <main className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 pt-28 md:pt-32 pb-6 md:pb-12 flex-grow grid grid-cols-1 md:grid-cols-12 items-center gap-8">
           
+          {/* Left Side: Dynamic Text Rotator */}
           <div className="md:col-span-6 lg:col-span-6 flex flex-col justify-center items-start text-white max-w-[85%] md:max-w-none">
             
             <div className="h-[180px] sm:h-[220px] lg:h-[260px] flex items-center mt-2">
@@ -203,14 +214,16 @@ export default function LandingPage() {
 
           </div>
 
+          {/* Right Side: Desktop Characters & Solid Green COPPA Security Seal */}
           <div className="hidden md:block md:col-span-6 lg:col-span-6 relative h-full z-20">
             
+            {/* Solid Green COPPA Security Stamp */}
             <button
               onClick={() => setCoppaOpen(true)}
               className="group absolute top-2 right-12 lg:right-24 z-30 flex items-center justify-center transition-transform hover:scale-110 active:scale-95 focus:outline-none"
               title="Click for COPPA & Child Safety Specs"
             >
-              <div className="relative w-28 h-28 flex items-center justify-center">
+              <div className="relative w-28 h-28 flex items-center justify-center rounded-full bg-emerald-600 border-2 border-emerald-400 shadow-2xl">
                 <svg className="w-full h-full animate-[spin_12s_linear_infinite]" viewBox="0 0 100 100">
                   <path id="circlePath" d="M 50, 50 m -37, 0 a 37,37 0 1,1 74,0 a 37,37 0 1,1 -74,0" fill="none" />
                   <text className="text-[9.5px] font-extrabold uppercase fill-[#FACC15] tracking-widest">
@@ -219,7 +232,7 @@ export default function LandingPage() {
                     </textPath>
                   </text>
                 </svg>
-                <div className="absolute w-12 h-12 rounded-full bg-white text-[#0B1B3A] flex items-center justify-center shadow-lg border-2 border-[#FACC15] group-hover:bg-[#FACC15] transition-colors">
+                <div className="absolute w-12 h-12 rounded-full bg-white text-[#0B1B3A] flex items-center justify-center shadow-md border-2 border-[#FACC15] group-hover:bg-[#FACC15] transition-colors">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="translate-x-[0.5px] -translate-y-[0.5px]">
                     <path d="M7 17L17 7M17 7H7M17 7V17" />
                   </svg>
@@ -230,7 +243,7 @@ export default function LandingPage() {
             <img
               src="/hero-characters.png"
               alt="Family Reading On Sofa"
-              className="absolute bottom-0 right-6 lg:right-16 w-[560px] lg:w-[720px] xl:w-[800px] max-w-none object-contain pointer-events-none drop-shadow-2xl translate-y-[14%]"
+              className="absolute bottom-0 right-6 lg:right-16 w-[560px] lg:w-[720px] xl:w-[800px] max-w-none object-contain pointer-events-none drop-shadow-2xl translate-y-[18%]"
             />
           </div>
 
@@ -240,12 +253,13 @@ export default function LandingPage() {
           <img
             src="/hero-characters.png"
             alt="Onesimos Family Learning"
-            className="w-[90%] max-w-[400px] h-auto object-contain drop-shadow-2xl -translate-x-3 translate-y-[10%]"
+            className="w-[90%] max-w-[400px] h-auto object-contain drop-shadow-2xl -translate-x-3 translate-y-[14%]"
           />
         </div>
 
       </div>
 
+      {/* --- WHITE FEATURE SECTION BELOW HERO --- */}
       <section className="w-full bg-white pt-14 md:pt-24 pb-20 px-6 md:px-12 text-[#0B1B3A] border-t border-gray-100" id="features">
         <div className="mx-auto max-w-6xl">
           <div className="text-center max-w-2xl mx-auto mb-16">
@@ -297,6 +311,7 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* COPPA & Child Safety Compliance Modal */}
       {coppaOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B1B3A]/80 backdrop-blur-md animate-fadeIn">
           <div className="relative w-full max-w-md rounded-3xl bg-white p-6 md:p-8 text-[#0B1B3A] shadow-2xl border border-gray-100">
