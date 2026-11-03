@@ -37,7 +37,6 @@ export default function LandingPage() {
         setFade(true);
       }, 300);
     }, 7000);
-
     return () => clearInterval(interval);
   }, []);
 
@@ -56,62 +55,56 @@ export default function LandingPage() {
       
       <style dangerouslySetInnerHTML={{ __html: butterflyStyles }} />
 
-      {/* --- HERO SECTION --- */}
       <div className="relative w-full min-h-[100dvh] lg:h-[100dvh] flex flex-col justify-between overflow-visible bg-[#522DB8]">
         
         {/* <div className="seasonal-snow-layer pointer-events-none absolute inset-0 z-30" /> */}
 
-        {/* 5 Live Vector Butterflies */}
-        <div className="hidden md:block absolute top-28 left-12 z-20 pointer-events-none b-f1">
-          <div className="flex items-center drop-shadow-md">
-            <svg width="14" height="18" viewBox="0 0 14 18" className="b-left"><path d="M14 9C8 2 1 0 1 5C1 8 6 9 14 9Z" fill="#FACC15" /><path d="M14 9C8 13 2 15 2 17C2 18 6 17 14 9Z" fill="#F472B6" /></svg>
-            <svg width="14" height="18" viewBox="0 0 14 18" className="b-right"><path d="M0 9C6 2 13 0 13 5C13 8 8 9 0 9Z" fill="#FACC15" /><path d="M0 9C6 13 12 15 12 17C12 18 8 17 0 9Z" fill="#F472B6" /></svg>
-          </div>
+        {/* 5 Live Vector Butterflies (Desktop Only for now) */}
+        <div className="absolute top-[18%] left-[8%] z-20 pointer-events-none b-f1 hidden md:block" style={{ opacity: 0.85 }}>
+          <svg width="38" height="38" viewBox="0 0 40 40">
+            <ellipse className="b-left" cx="14" cy="20" rx="10" ry="7" fill="#FACC15" />
+            <ellipse className="b-right" cx="26" cy="20" rx="10" ry="7" fill="#FACC15" />
+            <circle cx="20" cy="20" r="2" fill="#1a1a2e" />
+          </svg>
         </div>
-        <div className="hidden md:block absolute top-36 right-20 z-20 pointer-events-none b-f2">
-          <div className="flex items-center drop-shadow-md">
-            <svg width="12" height="16" viewBox="0 0 14 18" className="b-left"><path d="M14 9C8 2 1 0 1 5C1 8 6 9 14 9Z" fill="#60A5FA" /><path d="M14 9C8 13 2 15 2 17C2 18 6 17 14 9Z" fill="#FACC15" /></svg>
-            <svg width="12" height="16" viewBox="0 0 14 18" className="b-right"><path d="M0 9C6 2 13 0 13 5C13 8 8 9 0 9Z" fill="#60A5FA" /><path d="M0 9C6 13 12 15 12 17C12 18 8 17 0 9Z" fill="#FACC15" /></svg>
-          </div>
+        <div className="absolute top-[12%] right-[15%] z-20 pointer-events-none b-f2 hidden md:block" style={{ opacity: 0.7 }}>
+          <svg width="30" height="30" viewBox="0 0 40 40">
+            <ellipse className="b-left" cx="14" cy="20" rx="10" ry="7" fill="#A78BFA" />
+            <ellipse className="b-right" cx="26" cy="20" rx="10" ry="7" fill="#A78BFA" />
+            <circle cx="20" cy="20" r="2" fill="#1a1a2e" />
+          </svg>
         </div>
-        <div className="hidden md:block absolute bottom-24 left-1/3 z-20 pointer-events-none b-f3">
-          <div className="flex items-center drop-shadow-md">
-            <svg width="13" height="17" viewBox="0 0 14 18" className="b-left"><path d="M14 9C8 2 1 0 1 5C1 8 6 9 14 9Z" fill="#F472B6" /><path d="M14 9C8 13 2 15 2 17C2 18 6 17 14 9Z" fill="#A78BFA" /></svg>
-            <svg width="13" height="17" viewBox="0 0 14 18" className="b-right"><path d="M0 9C6 2 13 0 13 5C13 8 8 9 0 9Z" fill="#F472B6" /><path d="M0 9C6 13 12 15 12 17C12 18 8 17 0 9Z" fill="#A78BFA" /></svg>
-          </div>
+        <div className="absolute top-[55%] left-[5%] z-20 pointer-events-none b-f3 hidden md:block" style={{ opacity: 0.75 }}>
+          <svg width="34" height="34" viewBox="0 0 40 40">
+            <ellipse className="b-left" cx="14" cy="20" rx="10" ry="7" fill="#34D399" />
+            <ellipse className="b-right" cx="26" cy="20" rx="10" ry="7" fill="#34D399" />
+            <circle cx="20" cy="20" r="2" fill="#1a1a2e" />
+          </svg>
         </div>
-        <div className="hidden md:block absolute bottom-16 right-1/4 z-20 pointer-events-none b-f1">
-          <div className="flex items-center drop-shadow-md">
-            <svg width="11" height="15" viewBox="0 0 14 18" className="b-left"><path d="M14 9C8 2 1 0 1 5C1 8 6 9 14 9Z" fill="#34D399" /><path d="M14 9C8 13 2 15 2 17C2 18 6 17 14 9Z" fill="#FACC15" /></svg>
-            <svg width="11" height="15" viewBox="0 0 14 18" className="b-right"><path d="M0 9C6 2 13 0 13 5C13 8 8 9 0 9Z" fill="#34D399" /><path d="M0 9C6 13 12 15 12 17C12 18 8 17 0 9Z" fill="#FACC15" /></svg>
-          </div>
+        <div className="absolute top-[40%] right-[8%] z-20 pointer-events-none b-f1 hidden md:block" style={{ opacity: 0.65 }}>
+          <svg width="28" height="28" viewBox="0 0 40 40">
+            <ellipse className="b-left" cx="14" cy="20" rx="10" ry="7" fill="#FB923C" />
+            <ellipse className="b-right" cx="26" cy="20" rx="10" ry="7" fill="#FB923C" />
+            <circle cx="20" cy="20" r="2" fill="#1a1a2e" />
+          </svg>
+        </div>
+        <div className="absolute top-[70%] left-[45%] z-20 pointer-events-none b-f2 hidden md:block" style={{ opacity: 0.6 }}>
+          <svg width="32" height="32" viewBox="0 0 40 40">
+            <ellipse className="b-left" cx="14" cy="20" rx="10" ry="7" fill="#F472B6" />
+            <ellipse className="b-right" cx="26" cy="20" rx="10" ry="7" fill="#F472B6" />
+            <circle cx="20" cy="20" r="2" fill="#1a1a2e" />
+          </svg>
         </div>
 
-        {/* Responsive Background Swap */}
         <div className="absolute inset-0 w-full h-full z-0 overflow-hidden">
-          <img
-            src="/hero-bg-desktop.jpg"
-            alt="Onesimos Desktop Hero"
-            className="hidden md:block w-full h-full object-cover object-center"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=2560";
-            }}
-          />
-          <img
-            src="/hero-bg-mobile.jpg"
-            alt="Onesimos Mobile Hero"
-            className="block md:hidden w-full h-full object-cover object-center"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=1080";
-            }}
-          />
+          <img src="/hero-bg-desktop.jpg" alt="Onesimos Desktop Hero" className="hidden md:block w-full h-full object-cover object-center" />
+          <img src="/hero-bg-mobile.jpg" alt="Onesimos Mobile Hero" className="block md:hidden w-full h-full object-cover object-center" />
         </div>
 
-        {/* Header Layout: Left Logo, Center Floating Glass Pill Nav, Right Actions */}
         <header className="fixed top-5 inset-x-0 z-40 w-full px-6 md:px-12 pointer-events-none">
           <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between">
             
-            {/* Left Logo */}
+            {/* Left: Logo Area */}
             <Link href="/" className="flex items-center gap-2.5 pointer-events-auto">
               <img
                 src="/logo.png"
@@ -126,15 +119,15 @@ export default function LandingPage() {
               </span>
             </Link>
 
-            {/* Center Floating Glass Pill (Nav Links Only) */}
-            <nav className="hidden md:flex items-center gap-8 px-8 py-2.5 rounded-full bg-white/15 backdrop-blur-xl border border-white/25 shadow-2xl pointer-events-auto text-sm font-semibold text-white/90">
+            {/* Center: Dark Frost Glass Petit Pill */}
+            <nav className="hidden md:flex items-center gap-7 px-8 py-2.5 rounded-full bg-black/40 backdrop-blur-lg border border-white/5 shadow-xl pointer-events-auto text-sm font-semibold text-white/90">
               <a href="#features" className="hover:text-[#FACC15] transition-colors py-1">Features</a>
               <a href="#curriculum" className="hover:text-[#FACC15] transition-colors py-1">Curriculum</a>
               <a href="#pricing" className="hover:text-[#FACC15] transition-colors py-1">Pricing</a>
               <a href="#about" className="hover:text-[#FACC15] transition-colors py-1">About us</a>
             </nav>
 
-            {/* Right Action Buttons */}
+            {/* Right: CTA Buttons */}
             <div className="hidden md:flex items-center gap-5 pointer-events-auto">
               <Link href="/login" className="text-sm font-bold text-white hover:text-[#FACC15] transition-colors px-2 py-1">
                 Log in
@@ -144,43 +137,35 @@ export default function LandingPage() {
               </Link>
             </div>
 
-            {/* Mobile Burger Button */}
+            {/* Mobile Hamburger */}
             <button
               type="button"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 backdrop-blur-md md:hidden text-white hover:bg-white/25 pointer-events-auto"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/40 backdrop-blur-md md:hidden text-white hover:bg-black/60 pointer-events-auto border border-white/10"
               aria-label={menuOpen ? "Close menu" : "Open menu"}
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((v) => !v)}
             >
-              {menuOpen ? (
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12" /></svg>
-              ) : (
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
-              )}
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d={menuOpen ? "M18 6L6 18M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
+              </svg>
             </button>
           </div>
-
-          {/* Mobile Navigation Drawer */}
-          {menuOpen && (
-            <div className="mx-auto mt-3 max-w-sm rounded-3xl border border-white/20 bg-[#0B1B3A]/95 p-6 shadow-2xl backdrop-blur-2xl md:hidden pointer-events-auto">
-              <div className="flex flex-col gap-3 text-sm font-medium text-white">
-                <a href="#features" onClick={() => setMenuOpen(false)} className="py-1.5 hover:text-[#FACC15]">Features</a>
-                <a href="#curriculum" onClick={() => setMenuOpen(false)} className="py-1.5 hover:text-[#FACC15]">Curriculum</a>
-                <a href="#pricing" onClick={() => setMenuOpen(false)} className="py-1.5 hover:text-[#FACC15]">Pricing</a>
-                <a href="#about" onClick={() => setMenuOpen(false)} className="py-1.5 hover:text-[#FACC15]">About us</a>
-                <div className="grid grid-cols-2 gap-3 mt-2 pt-3 border-t border-white/15">
-                  <Link href="/login" onClick={() => setMenuOpen(false)} className="rounded-full border border-white/30 px-4 py-2 text-center text-xs font-semibold">Log in</Link>
-                  <Link href="/signup" onClick={() => setMenuOpen(false)} className="rounded-full bg-[#FACC15] px-4 py-2 text-center text-xs font-bold text-[#0B1B3A]">Get Started</Link>
-                </div>
-              </div>
-            </div>
-          )}
         </header>
 
-        {/* Hero Body Content */}
+        {/* Full-Screen Mobile Menu Drawer */}
+        {menuOpen && (
+          <div className="fixed inset-0 top-20 z-50 bg-[#522DB8]/95 backdrop-blur-lg flex flex-col items-center gap-6 pt-10 md:hidden pointer-events-auto">
+            <a href="#features" onClick={() => setMenuOpen(false)} className="text-lg font-semibold text-white hover:text-[#FACC15]">Features</a>
+            <a href="#curriculum" onClick={() => setMenuOpen(false)} className="text-lg font-semibold text-white hover:text-[#FACC15]">Curriculum</a>
+            <a href="#pricing" onClick={() => setMenuOpen(false)} className="text-lg font-semibold text-white hover:text-[#FACC15]">Pricing</a>
+            <a href="#about" onClick={() => setMenuOpen(false)} className="text-lg font-semibold text-white hover:text-[#FACC15]">About us</a>
+            <Link href="/login" onClick={() => setMenuOpen(false)} className="text-lg font-bold text-white hover:text-[#FACC15] mt-4">Log in</Link>
+            <Link href="/signup" onClick={() => setMenuOpen(false)} className="rounded-full bg-[#FACC15] px-8 py-3 text-base font-bold text-[#0B1B3A]">Get Started</Link>
+          </div>
+        )}
+
         <main className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 pt-28 md:pt-32 pb-6 md:pb-12 flex-grow grid grid-cols-1 md:grid-cols-12 items-center gap-8">
           
-          {/* Left Side: Dynamic Text Rotator */}
           <div className="md:col-span-6 lg:col-span-6 flex flex-col justify-center items-start text-white max-w-[85%] md:max-w-none">
             
             <div className="h-[180px] sm:h-[220px] lg:h-[260px] flex items-center mt-2">
@@ -206,7 +191,7 @@ export default function LandingPage() {
               </Link>
               <a
                 href="#features"
-                className="inline-flex items-center justify-center rounded-full bg-white/15 backdrop-blur-md border border-white/30 px-7 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-white/25"
+                className="inline-flex items-center justify-center rounded-full bg-black/40 backdrop-blur-md border border-white/10 px-7 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-black/60 shadow-lg"
               >
                 Learn More
               </a>
@@ -214,26 +199,25 @@ export default function LandingPage() {
 
           </div>
 
-          {/* Right Side: Desktop Characters & Solid Green COPPA Security Seal */}
           <div className="hidden md:block md:col-span-6 lg:col-span-6 relative h-full z-20">
             
-            {/* Solid Green COPPA Security Stamp */}
+            {/* New Black COPPA Badge with Hover Flip Arrow */}
             <button
               onClick={() => setCoppaOpen(true)}
               className="group absolute top-2 right-12 lg:right-24 z-30 flex items-center justify-center transition-transform hover:scale-110 active:scale-95 focus:outline-none"
               title="Click for COPPA & Child Safety Specs"
             >
-              <div className="relative w-28 h-28 flex items-center justify-center rounded-full bg-emerald-600 border-2 border-emerald-400 shadow-2xl">
+              <div className="relative w-28 h-28 flex items-center justify-center rounded-full bg-black shadow-2xl">
                 <svg className="w-full h-full animate-[spin_12s_linear_infinite]" viewBox="0 0 100 100">
                   <path id="circlePath" d="M 50, 50 m -37, 0 a 37,37 0 1,1 74,0 a 37,37 0 1,1 -74,0" fill="none" />
-                  <text className="text-[9.5px] font-extrabold uppercase fill-[#FACC15] tracking-widest">
+                  <text className="text-[9.5px] font-extrabold uppercase fill-white tracking-widest">
                     <textPath href="#circlePath" startOffset="0%">
                       DESIGNED FOR AGES 3 TO 9 • COPPA SAFE • 
                     </textPath>
                   </text>
                 </svg>
-                <div className="absolute w-12 h-12 rounded-full bg-white text-[#0B1B3A] flex items-center justify-center shadow-md border-2 border-[#FACC15] group-hover:bg-[#FACC15] transition-colors">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="translate-x-[0.5px] -translate-y-[0.5px]">
+                <div className="absolute w-12 h-12 rounded-full bg-white text-[#0B1B3A] flex items-center justify-center shadow-md group-hover:bg-[#FACC15] transition-colors duration-300">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="transition-transform duration-300 group-hover:rotate-90">
                     <path d="M7 17L17 7M17 7H7M17 7V17" />
                   </svg>
                 </div>
@@ -259,7 +243,6 @@ export default function LandingPage() {
 
       </div>
 
-      {/* --- WHITE FEATURE SECTION BELOW HERO --- */}
       <section className="w-full bg-white pt-14 md:pt-24 pb-20 px-6 md:px-12 text-[#0B1B3A] border-t border-gray-100" id="features">
         <div className="mx-auto max-w-6xl">
           <div className="text-center max-w-2xl mx-auto mb-16">
@@ -272,7 +255,7 @@ export default function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="p-8 rounded-3xl bg-[#FAF9F6] border border-[#0B1B3A]/5 shadow-xs flex flex-col justify-between">
+            <div className="p-8 rounded-3xl bg-[#FAF9F6] border border-[#0B1B3A]/5 shadow-sm flex flex-col justify-between">
               <div>
                 <div className="text-4xl mb-5">🎙️</div>
                 <h3 className="font-[family-name:var(--font-switzer)] text-2xl font-bold text-[#0B1B3A]">
@@ -284,7 +267,7 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div className="p-8 rounded-3xl bg-[#FAF9F6] border border-[#0B1B3A]/5 shadow-xs flex flex-col justify-between">
+            <div className="p-8 rounded-3xl bg-[#FAF9F6] border border-[#0B1B3A]/5 shadow-sm flex flex-col justify-between">
               <div>
                 <div className="text-4xl mb-5">📖</div>
                 <h3 className="font-[family-name:var(--font-switzer)] text-2xl font-bold text-[#0B1B3A]">
@@ -296,7 +279,7 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div className="p-8 rounded-3xl bg-[#FAF9F6] border border-[#0B1B3A]/5 shadow-xs flex flex-col justify-between">
+            <div className="p-8 rounded-3xl bg-[#FAF9F6] border border-[#0B1B3A]/5 shadow-sm flex flex-col justify-between">
               <div>
                 <div className="text-4xl mb-5">🛡️</div>
                 <h3 className="font-[family-name:var(--font-switzer)] text-2xl font-bold text-[#0B1B3A]">
@@ -311,34 +294,66 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* COPPA & Child Safety Compliance Modal */}
+      {/* Upgraded COPPA Modal */}
       {coppaOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B1B3A]/80 backdrop-blur-md animate-fadeIn">
-          <div className="relative w-full max-w-md rounded-3xl bg-white p-6 md:p-8 text-[#0B1B3A] shadow-2xl border border-gray-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B1B3A]/80 backdrop-blur-md">
+          <div className="relative w-full max-w-lg bg-white rounded-3xl p-8 shadow-2xl text-[#0B1B3A]">
             <button
               onClick={() => setCoppaOpen(false)}
-              className="absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-800 transition-colors"
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
             >
-              ✕
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
             </button>
-            <div className="text-3xl mb-3">🛡️</div>
-            <h3 className="font-[family-name:var(--font-switzer)] font-extrabold text-2xl text-[#0B1B3A]">
-              100% COPPA Compliant
-            </h3>
-            <p className="mt-2 text-xs font-bold uppercase tracking-wider text-emerald-600">
-              Ages 3 to 9 • Parent Protected
-            </p>
-            <div className="mt-4 space-y-3 text-sm text-[#0B1B3A]/80 leading-relaxed">
-              <p>• <strong>Zero Ads & Zero Tracking</strong>: Onesimos is entirely ad-free and built to strictly protect young learners data privacy.</p>
-              <p>• <strong>Parent PIN Barrier</strong>: Sensitive account controls and settings require a mandatory 4-digit Parent PIN.</p>
-              <p>• <strong>Safe Speech AI</strong>: Real-time voice processing is encrypted on-device and never saved or shared with 3rd parties.</p>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-xl font-extrabold font-[family-name:var(--font-switzer)]">Child Safety First</h3>
+                <p className="text-sm text-gray-500 font-medium">COPPA Compliant Platform</p>
+              </div>
             </div>
-            <button
-              onClick={() => setCoppaOpen(false)}
-              className="mt-6 w-full rounded-full bg-[#522DB8] py-3 text-sm font-bold text-white hover:bg-[#0B1B3A] transition-colors shadow-md"
-            >
-              Got it, thanks!
-            </button>
+            <div className="space-y-4 text-sm leading-relaxed text-gray-700">
+              <p className="font-semibold text-[#0B1B3A]">
+                Onesimos is designed for children ages 3 to 9 and fully complies with COPPA regulations.
+              </p>
+              <ul className="space-y-2">
+                <li className="flex items-start gap-2">
+                  <span className="mt-1 w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0"></span>
+                  <span>No personal data is collected from children without verified parental consent.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-1 w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0"></span>
+                  <span>All reading sessions are processed locally or under strict data minimization.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-1 w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0"></span>
+                  <span>Parents maintain full control over their childs account and data at all times.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-1 w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0"></span>
+                  <span>No third-party advertising or behavioral tracking is ever used.</span>
+                </li>
+              </ul>
+            </div>
+            <div className="mt-8 flex gap-3">
+              <button
+                onClick={() => setCoppaOpen(false)}
+                className="flex-1 rounded-full bg-emerald-600 text-white py-3 text-sm font-bold hover:bg-emerald-700 transition-colors shadow-md"
+              >
+                Got it
+              </button>
+              <Link
+                href="/privacy"
+                className="flex-1 rounded-full border-2 border-gray-200 py-3 text-sm font-bold text-center text-gray-700 hover:border-emerald-600 hover:text-emerald-600 transition-colors"
+              >
+                Privacy Policy
+              </Link>
+            </div>
           </div>
         </div>
       )}
