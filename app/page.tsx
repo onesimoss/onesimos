@@ -43,7 +43,7 @@ export default function LandingPage() {
     <div className="min-h-[100dvh] flex flex-col font-[family-name:var(--font-switzer)] overflow-x-hidden w-full m-0 p-0 bg-white">
       
       {/* --- HERO SECTION --- */}
-      <div className="relative w-full min-h-[100dvh] lg:h-[100dvh] flex flex-col justify-between overflow-hidden bg-[#522DB8]">
+      <div className="relative w-full min-h-[100dvh] lg:h-[100dvh] flex flex-col justify-between overflow-visible bg-[#522DB8]">
         
         {/* Responsive Background Swap */}
         <div className="absolute inset-0 w-full h-full z-0 overflow-hidden">
@@ -182,18 +182,18 @@ export default function LandingPage() {
           </div>
 
           {/* Right Side: Spacer for Desktop Layout */}
-          <div className="hidden md:block md:col-span-6 lg:col-span-6 relative h-full">
+          <div className="hidden md:block md:col-span-6 lg:col-span-6 relative h-full z-20">
             <img
               src="/hero-characters.png"
               alt="Family Reading On Sofa"
-              className="absolute bottom-0 right-0 w-[520px] lg:w-[680px] xl:w-[760px] max-w-none object-contain pointer-events-none drop-shadow-2xl translate-y-[8%]"
+              className="absolute bottom-0 right-0 w-[560px] lg:w-[720px] xl:w-[800px] max-w-none object-contain pointer-events-none drop-shadow-2xl translate-y-[12%]"
             />
           </div>
 
         </main>
 
         {/* Overlapping 3D Characters Cutout */}
-        <div className="block md:hidden relative z-20 flex justify-center pointer-events-none -mt-8"><img src="/hero-characters.png" alt="Onesimos Family Learning" className="w-[320px] sm:w-[420px] h-auto object-contain drop-shadow-2xl" /></div>
+        <div className="block md:hidden relative z-20 flex justify-center pointer-events-none mt-2 -mb-6"><img src="/hero-characters.png" alt="Onesimos Family Learning" className="w-[92%] max-w-[460px] h-auto object-contain drop-shadow-2xl translate-y-[10%]" /></div>
 
       </div>
 
