@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -43,7 +43,7 @@ export default function LandingPage() {
     <div className="min-h-[100dvh] flex flex-col font-[family-name:var(--font-switzer)] overflow-x-hidden w-full m-0 p-0 bg-white">
       
       {/* --- HERO SECTION --- */}
-      <div className="relative w-full min-h-[100dvh] flex flex-col justify-between overflow-visible">
+      <div className="relative w-full min-h-[100dvh] lg:h-[100dvh] flex flex-col justify-between overflow-hidden bg-[#522DB8]">
         
         {/* Responsive Background Swap */}
         <div className="absolute inset-0 w-full h-full z-0 overflow-hidden">
@@ -141,7 +141,7 @@ export default function LandingPage() {
         <main className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 pt-8 md:pt-16 pb-32 flex-grow grid grid-cols-1 md:grid-cols-12 items-center gap-8">
           
           {/* Left Side: Live Dynamic Text Rotator */}
-          <div className="md:col-span-6 lg:col-span-7 flex flex-col justify-center items-start text-white">
+          <div className="md:col-span-6 lg:col-span-6 flex flex-col justify-center items-start text-white">
             
             <span className="inline-block rounded-full bg-white/20 backdrop-blur-md px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-white border border-white/30 shadow-sm">
               DESIGNED FOR AGES 3 TO 12
@@ -150,7 +150,7 @@ export default function LandingPage() {
             {/* Rotating Headline */}
             <div className="min-h-[140px] sm:min-h-[180px] md:min-h-[220px] flex items-center mt-4">
               <h1
-                className={`font-[family-name:var(--font-achiko)] text-4xl sm:text-6xl lg:text-7xl font-bold leading-[1.08] tracking-tight transition-opacity duration-300 ${
+                className={`font-[family-name:var(--font-switzer)] text-4xl sm:text-6xl lg:text-7xl font-extrabold leading-[1.05] tracking-tight transition-opacity duration-300 ${
                   fade ? "opacity-100" : "opacity-0"
                 }`}
               >
@@ -182,21 +182,18 @@ export default function LandingPage() {
           </div>
 
           {/* Right Side: Spacer for Desktop Layout */}
-          <div className="hidden md:block md:col-span-6 lg:col-span-5 min-h-[300px]" />
+          <div className="hidden md:block md:col-span-6 lg:col-span-6 relative h-full">
+            <img
+              src="/hero-characters.png"
+              alt="Family Reading On Sofa"
+              className="absolute bottom-0 right-0 w-[520px] lg:w-[680px] xl:w-[760px] max-w-none object-contain pointer-events-none drop-shadow-2xl translate-y-[8%]"
+            />
+          </div>
 
         </main>
 
         {/* Overlapping 3D Characters Cutout */}
-        <div className="absolute bottom-0 right-0 left-0 md:left-auto md:right-12 z-20 flex justify-center md:justify-end pointer-events-none translate-y-[25%] md:translate-y-[20%]">
-          <img
-            src="/hero-characters.png"
-            alt="Onesimos Family Learning"
-            className="w-[85%] max-w-[420px] sm:max-w-[520px] md:max-w-[620px] lg:max-w-[720px] h-auto object-contain drop-shadow-2xl"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.opacity = "0";
-            }}
-          />
-        </div>
+        <div className="block md:hidden relative z-20 flex justify-center pointer-events-none -mt-8"><img src="/hero-characters.png" alt="Onesimos Family Learning" className="w-[320px] sm:w-[420px] h-auto object-contain drop-shadow-2xl" /></div>
 
       </div>
 
@@ -204,7 +201,7 @@ export default function LandingPage() {
       <section className="w-full bg-white pt-36 md:pt-44 pb-20 px-6 md:px-12 text-[#0B1B3A] border-t border-gray-100" id="features">
         <div className="mx-auto max-w-6xl">
           <div className="text-center max-w-2xl mx-auto mb-16">
-            <h2 className="font-[family-name:var(--font-achiko)] text-3xl sm:text-5xl font-bold">
+            <h2 className="font-[family-name:var(--font-switzer)] text-3xl sm:text-5xl font-extrabold">
               Built for Young Learners
             </h2>
             <p className="mt-4 text-base sm:text-lg text-[#0B1B3A]/70 leading-relaxed">
@@ -217,8 +214,8 @@ export default function LandingPage() {
             {/* Feature Pillar 1 */}
             <div className="p-8 rounded-3xl bg-[#FAF9F6] border border-[#0B1B3A]/5 shadow-xs flex flex-col justify-between">
               <div>
-                <div className="text-4xl mb-5">🎙️</div>
-                <h3 className="font-[family-name:var(--font-achiko)] text-2xl font-bold text-[#0B1B3A]">
+                <div className="text-4xl mb-5">???</div>
+                <h3 className="font-[family-name:var(--font-switzer)] text-2xl font-bold text-[#0B1B3A]">
                   Speech Evaluation
                 </h3>
                 <p className="mt-3 text-sm leading-relaxed text-[#0B1B3A]/70">
@@ -230,8 +227,8 @@ export default function LandingPage() {
             {/* Feature Pillar 2 */}
             <div className="p-8 rounded-3xl bg-[#FAF9F6] border border-[#0B1B3A]/5 shadow-xs flex flex-col justify-between">
               <div>
-                <div className="text-4xl mb-5">📖</div>
-                <h3 className="font-[family-name:var(--font-achiko)] text-2xl font-bold text-[#0B1B3A]">
+                <div className="text-4xl mb-5">??</div>
+                <h3 className="font-[family-name:var(--font-switzer)] text-2xl font-bold text-[#0B1B3A]">
                   Adaptive Chapters
                 </h3>
                 <p className="mt-3 text-sm leading-relaxed text-[#0B1B3A]/70">
@@ -243,8 +240,8 @@ export default function LandingPage() {
             {/* Feature Pillar 3 */}
             <div className="p-8 rounded-3xl bg-[#FAF9F6] border border-[#0B1B3A]/5 shadow-xs flex flex-col justify-between">
               <div>
-                <div className="text-4xl mb-5">🛡️</div>
-                <h3 className="font-[family-name:var(--font-achiko)] text-2xl font-bold text-[#0B1B3A]">
+                <div className="text-4xl mb-5">???</div>
+                <h3 className="font-[family-name:var(--font-switzer)] text-2xl font-bold text-[#0B1B3A]">
                   Parent Protection
                 </h3>
                 <p className="mt-3 text-sm leading-relaxed text-[#0B1B3A]/70">
