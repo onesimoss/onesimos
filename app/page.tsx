@@ -10,9 +10,9 @@ export default function LandingPage() {
   const [fade, setFade] = useState(true);
 
   const phrases = [
-    "Make reading\nsomething kids own.",
-    "Say it out loud.\nWe're listening.",
-    "Stories made\njust for you."
+    "Make reading\nsomething kids\ntruly own.",
+    "Say it out loud.\nWe listen and\ncheer you on.",
+    "Personalized stories\ncrafted daily,\njust for you."
   ];
 
   // Rotate through phrases every 4 seconds with a smooth fade effect
@@ -159,7 +159,7 @@ export default function LandingPage() {
             </div>
 
             {/* Subcaption */}
-            <p className="mt-4 text-base sm:text-lg text-white/90 leading-relaxed max-w-lg font-normal drop-shadow-sm">
+            <p className="mt-4 text-base sm:text-lg text-white/90 leading-relaxed max-w-[340px] font-normal drop-shadow-sm">
               Personalized learning chapters and real-time speech evaluation designed to build independent confidence in young readers.
             </p>
 
@@ -186,14 +186,14 @@ export default function LandingPage() {
             <img
               src="/hero-characters.png"
               alt="Family Reading On Sofa"
-              className="absolute bottom-0 right-0 w-[560px] lg:w-[720px] xl:w-[800px] max-w-none object-contain pointer-events-none drop-shadow-2xl translate-y-[18%]"
+              className="absolute bottom-0 right-6 lg:right-16 w-[560px] lg:w-[720px] xl:w-[800px] max-w-none object-contain pointer-events-none drop-shadow-2xl translate-y-[6%]"
             />
           </div>
 
         </main>
 
         {/* Overlapping 3D Characters Cutout */}
-        <div className="block md:hidden relative z-20 w-full flex justify-center pointer-events-none mt-2"><img src="/hero-characters.png" alt="Onesimos Family Learning" className="w-[90%] max-w-[400px] h-auto object-contain drop-shadow-2xl translate-y-[14%]" /></div>
+        <div className="block md:hidden relative z-20 w-full flex justify-center pointer-events-none mt-2"><img src="/hero-characters.png" alt="Onesimos Family Learning" className="w-[90%] max-w-[400px] h-auto object-contain drop-shadow-2xl -translate-x-3 translate-y-[3%]" /></div>
 
       </div>
 
