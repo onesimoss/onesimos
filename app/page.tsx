@@ -15,6 +15,13 @@ export default function LandingPage() {
     "Personalized\nstories, made\njust for you."
   ];
 
+  // Traffic light colors cycling in sync with text rotator
+  const trafficLightBadges = [
+    "bg-[#EF4444] text-white border-red-300/40 shadow-red-500/20",
+    "bg-[#FACC15] text-[#0B1B3A] border-yellow-400/50 shadow-yellow-500/20",
+    "bg-[#10B981] text-white border-emerald-300/40 shadow-emerald-500/20"
+  ];
+
   // Rotate through phrases every 4 seconds with a smooth fade effect
   useEffect(() => {
     const interval = setInterval(() => {
@@ -23,7 +30,7 @@ export default function LandingPage() {
         setPhraseIndex((prev) => (prev + 1) % phrases.length);
         setFade(true);
       }, 300);
-    }, 4000);
+    }, 7000);
 
     return () => clearInterval(interval);
   }, []);
@@ -44,6 +51,47 @@ export default function LandingPage() {
       
       {/* --- HERO SECTION --- */}
       <div className="relative w-full min-h-[100dvh] lg:h-[100dvh] flex flex-col justify-between overflow-visible bg-[#522DB8]">
+        
+        {/* --- SEASONAL INTERACTION HOOK (SNOW EFFECT READY) --- */}
+        {/* <div className="seasonal-snow-layer pointer-events-none absolute inset-0 z-30" /> */}
+
+        {/* CSS Keyframes for Perching Butterflies */}
+        <style>{`
+          @keyframes flutter {
+            0%, 100% { transform: scaleX(1) rotate(0deg); }
+            50% { transform: scaleX(0.4) rotate(12deg); }
+          }
+          @keyframes fly-perch-1 {
+            0%, 100% { transform: translate(0px, 0px); }
+            35% { transform: translate(140px, -60px) rotate(-15deg); }
+            70% { transform: translate(220px, 30px) rotate(10deg); }
+          }
+          @keyframes fly-perch-2 {
+            0%, 100% { transform: translate(0px, 0px); }
+            45% { transform: translate(-160px, 80px) rotate(20deg); }
+          }
+          .b-wing { animation: flutter 0.4s infinite ease-in-out; }
+          .b-fly-1 { animation: fly-perch-1 18s infinite ease-in-out; }
+          .b-fly-2 { animation: fly-perch-2 22s infinite ease-in-out; }
+        `}</style>
+
+        {/* Live Vector Butterflies Perched near Flowers */}
+        <div className="hidden md:block absolute top-24 left-10 z-20 pointer-events-none b-fly-1">
+          <svg width="26" height="26" viewBox="0 0 24 24" className="b-wing drop-shadow-md">
+            <path d="M12 12C10 6 3 4 3 9C3 12 7 13 12 12Z" fill="#FACC15" />
+            <path d="M12 12C14 6 21 4 21 9C21 12 17 13 12 12Z" fill="#FACC15" />
+            <path d="M12 12C10 16 4 17 4 19C4 21 8 20 12 12Z" fill="#F472B6" />
+            <path d="M12 12C14 16 20 17 20 19C20 21 16 20 12 12Z" fill="#F472B6" />
+          </svg>
+        </div>
+        <div className="hidden md:block absolute top-28 right-16 z-20 pointer-events-none b-fly-2">
+          <svg width="24" height="24" viewBox="0 0 24 24" className="b-wing drop-shadow-md" style={{ animationDelay: "0.2s" }}>
+            <path d="M12 12C10 6 3 4 3 9C3 12 7 13 12 12Z" fill="#60A5FA" />
+            <path d="M12 12C14 6 21 4 21 9C21 12 17 13 12 12Z" fill="#60A5FA" />
+            <path d="M12 12C10 16 4 17 4 19C4 21 8 20 12 12Z" fill="#FACC15" />
+            <path d="M12 12C14 16 20 17 20 19C20 21 16 20 12 12Z" fill="#FACC15" />
+          </svg>
+        </div>
         
         {/* Responsive Background Swap */}
         <div className="absolute inset-0 w-full h-full z-0 overflow-hidden">
@@ -68,7 +116,7 @@ export default function LandingPage() {
         </div>
 
         {/* Floating Header */}
-        <header className="relative z-30 w-full px-6 py-6 md:px-12">
+        <header className="sticky top-0 z-40 w-full px-6 py-4 md:px-12 bg-[#522DB8]/85 backdrop-blur-xl border-b border-white/10 transition-all shadow-sm">
           <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between">
             
             {/* Logo */}
@@ -95,11 +143,11 @@ export default function LandingPage() {
             </nav>
 
             {/* Desktop Action Buttons */}
-            <div className="hidden items-center gap-4 md:flex">
-              <Link href="/login" className="text-sm font-semibold text-white hover:text-[#FACC15] transition-colors">
+            <div className="hidden items-center gap-5 md:flex">
+              <Link href="/login" className="text-sm font-bold text-white hover:text-[#FACC15] transition-colors py-2">
                 Log in
               </Link>
-              <Link href="/signup" className="rounded-full bg-white px-7 py-3 text-sm font-bold text-[#0B1B3A] hover:bg-[#FACC15] transition-all shadow-md">
+              <Link href="/signup" className="rounded-full bg-[#FACC15] px-6 py-2.5 text-sm font-bold text-[#0B1B3A] hover:bg-white transition-all shadow-md">
                 Get Started
               </Link>
             </div>
@@ -143,7 +191,12 @@ export default function LandingPage() {
           {/* Left Side: Live Dynamic Text Rotator */}
           <div className="md:col-span-6 lg:col-span-6 flex flex-col justify-center items-start text-white max-w-[85%] md:max-w-none">
             
-            <span className="inline-block rounded-full bg-white/20 backdrop-blur-md px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-white border border-white/30 shadow-sm">
+            <span className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-widest transition-all duration-500 border shadow-sm ${trafficLightBadges[phraseIndex]}`}>
+              <span className="flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full transition-opacity duration-300 ${phraseIndex === 0 ? "bg-white animate-pulse" : "bg-white/40"}`} />
+                <span className={`w-2 h-2 rounded-full transition-opacity duration-300 ${phraseIndex === 1 ? "bg-[#0B1B3A] animate-pulse" : "bg-white/40"}`} />
+                <span className={`w-2 h-2 rounded-full transition-opacity duration-300 ${phraseIndex === 2 ? "bg-white animate-pulse" : "bg-white/40"}`} />
+              </span>
               DESIGNED FOR AGES 3 TO 12
             </span>
 
@@ -167,13 +220,13 @@ export default function LandingPage() {
             <div className="mt-8 flex flex-wrap items-center gap-4">
               <Link
                 href="/signup"
-                className="inline-flex items-center justify-center rounded-full bg-white px-8 py-4 text-base font-bold text-[#0B1B3A] transition-all hover:bg-[#FACC15] hover:scale-105 active:scale-95 shadow-xl"
+                className="inline-flex items-center justify-center rounded-full bg-[#FACC15] px-7 py-3.5 text-sm font-bold text-[#0B1B3A] transition-all hover:bg-white hover:scale-105 active:scale-95 shadow-xl"
               >
                 Get Started
               </Link>
               <a
                 href="#features"
-                className="inline-flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md border border-white/30 px-8 py-4 text-base font-semibold text-white transition-colors hover:bg-white/20"
+                className="inline-flex items-center justify-center rounded-full bg-white/15 backdrop-blur-md border border-white/30 px-7 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-white/25"
               >
                 Learn More
               </a>
