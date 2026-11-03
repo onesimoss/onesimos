@@ -10,9 +10,9 @@ export default function LandingPage() {
   const [fade, setFade] = useState(true);
 
   const phrases = [
-    "Make reading something kids own.",
-    "Say it out loud. We're listening.",
-    "Stories made just for you."
+    "Make reading\nsomething kids own.",
+    "Say it out loud.\nWe're listening.",
+    "Stories made\njust for you."
   ];
 
   // Rotate through phrases every 4 seconds with a smooth fade effect
@@ -138,10 +138,10 @@ export default function LandingPage() {
         </header>
 
         {/* Hero Body Content */}
-        <main className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 pt-8 md:pt-16 pb-32 flex-grow grid grid-cols-1 md:grid-cols-12 items-center gap-8">
+        <main className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 pt-6 md:pt-12 pb-6 md:pb-12 flex-grow grid grid-cols-1 md:grid-cols-12 items-center gap-8">
           
           {/* Left Side: Live Dynamic Text Rotator */}
-          <div className="md:col-span-6 lg:col-span-6 flex flex-col justify-center items-start text-white">
+          <div className="md:col-span-6 lg:col-span-6 flex flex-col justify-center items-start text-white max-w-[85%] md:max-w-none">
             
             <span className="inline-block rounded-full bg-white/20 backdrop-blur-md px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-white border border-white/30 shadow-sm">
               DESIGNED FOR AGES 3 TO 12
@@ -150,7 +150,7 @@ export default function LandingPage() {
             {/* Rotating Headline */}
             <div className="min-h-[140px] sm:min-h-[180px] md:min-h-[220px] flex items-center mt-4">
               <h1
-                className={`font-[family-name:var(--font-switzer)] text-4xl sm:text-6xl lg:text-7xl font-extrabold leading-[1.05] tracking-tight transition-opacity duration-300 ${
+                className={`font-[family-name:var(--font-switzer)] text-4xl sm:text-6xl lg:text-7xl font-extrabold leading-[1.05] tracking-tight whitespace-pre-line transition-opacity duration-300 ${
                   fade ? "opacity-100" : "opacity-0"
                 }`}
               >
@@ -186,19 +186,19 @@ export default function LandingPage() {
             <img
               src="/hero-characters.png"
               alt="Family Reading On Sofa"
-              className="absolute bottom-0 right-0 w-[560px] lg:w-[720px] xl:w-[800px] max-w-none object-contain pointer-events-none drop-shadow-2xl translate-y-[12%]"
+              className="absolute bottom-0 right-0 w-[560px] lg:w-[720px] xl:w-[800px] max-w-none object-contain pointer-events-none drop-shadow-2xl translate-y-[18%]"
             />
           </div>
 
         </main>
 
         {/* Overlapping 3D Characters Cutout */}
-        <div className="block md:hidden relative z-20 flex justify-center pointer-events-none mt-2 -mb-6"><img src="/hero-characters.png" alt="Onesimos Family Learning" className="w-[92%] max-w-[460px] h-auto object-contain drop-shadow-2xl translate-y-[10%]" /></div>
+        <div className="block md:hidden relative z-20 w-full flex justify-center pointer-events-none mt-2"><img src="/hero-characters.png" alt="Onesimos Family Learning" className="w-[90%] max-w-[400px] h-auto object-contain drop-shadow-2xl translate-y-[14%]" /></div>
 
       </div>
 
       {/* --- WHITE FEATURE SECTION BELOW HERO --- */}
-      <section className="w-full bg-white pt-36 md:pt-44 pb-20 px-6 md:px-12 text-[#0B1B3A] border-t border-gray-100" id="features">
+      <section className="w-full bg-white pt-14 md:pt-24 pb-20 px-6 md:px-12 text-[#0B1B3A] border-t border-gray-100" id="features">
         <div className="mx-auto max-w-6xl">
           <div className="text-center max-w-2xl mx-auto mb-16">
             <h2 className="font-[family-name:var(--font-switzer)] text-3xl sm:text-5xl font-extrabold">
