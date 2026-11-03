@@ -51,7 +51,7 @@ export default function LandingPage() {
         {/* <div className="seasonal-snow-layer pointer-events-none absolute inset-0 z-30" /> */}
 
         {/* CSS Keyframes for Perching Butterflies */}
-        <style>{`
+        <style dangerouslySetInnerHTML={{ __html: `
           @keyframes b-wing-left { 0%, 100% { transform: scaleX(1) rotate(0deg); } 50% { transform: scaleX(0.2) rotate(15deg); } }
           @keyframes b-wing-right { 0%, 100% { transform: scaleX(1) rotate(0deg); } 50% { transform: scaleX(0.2) rotate(-15deg); } }
           @keyframes b-flight-1 { 0%, 100% { transform: translate(0px, 0px); } 50% { transform: translate(60px, -40px) rotate(8deg); } }
@@ -62,7 +62,7 @@ export default function LandingPage() {
           .b-f1 { animation: b-flight-1 12s infinite ease-in-out; }
           .b-f2 { animation: b-flight-2 15s infinite ease-in-out; }
           .b-f3 { animation: b-flight-3 10s infinite ease-in-out; }
-        `}</style>
+        ` }} />
 
         {/* Live Vector Butterflies Perched near Flowers */}
         {/* 5 Live Vector Butterflies */}
