@@ -12,7 +12,7 @@ export default function LandingPage() {
   const phrases = [
     "Make reading\nsomething kids\ntruly own.",
     "Say it out loud.\nWe listen and\ncheer you on.",
-    "Personalized stories crafted\ndaily, just for\nyou."
+    "Personalized\nstories, made\njust for you."
   ];
 
   // Rotate through phrases every 4 seconds with a smooth fade effect
@@ -148,7 +148,7 @@ export default function LandingPage() {
             </span>
 
             {/* Rotating Headline */}
-            <div className="min-h-[140px] sm:min-h-[180px] md:min-h-[220px] flex items-center mt-4">
+            <div className="h-[180px] sm:h-[220px] lg:h-[260px] flex items-center mt-4">
               <h1
                 className={`font-[family-name:var(--font-switzer)] text-4xl sm:text-6xl lg:text-7xl font-extrabold leading-[1.05] tracking-tight whitespace-pre-line transition-opacity duration-300 ${
                   fade ? "opacity-100" : "opacity-0"
@@ -186,14 +186,14 @@ export default function LandingPage() {
             <img
               src="/hero-characters.png"
               alt="Family Reading On Sofa"
-              className="absolute bottom-0 right-6 lg:right-16 w-[560px] lg:w-[720px] xl:w-[800px] max-w-none object-contain pointer-events-none drop-shadow-2xl translate-y-0"
+              className="absolute bottom-0 right-6 lg:right-16 w-[560px] lg:w-[720px] xl:w-[800px] max-w-none object-contain pointer-events-none drop-shadow-2xl translate-y-[14%]"
             />
           </div>
 
         </main>
 
         {/* Overlapping 3D Characters Cutout */}
-        <div className="block md:hidden relative z-20 w-full flex justify-center pointer-events-none mt-2"><img src="/hero-characters.png" alt="Onesimos Family Learning" className="w-[90%] max-w-[400px] h-auto object-contain drop-shadow-2xl -translate-x-3 translate-y-0" /></div>
+        <div className="block md:hidden relative z-20 w-full flex justify-center pointer-events-none mt-2"><img src="/hero-characters.png" alt="Onesimos Family Learning" className="w-[90%] max-w-[400px] h-auto object-contain drop-shadow-2xl -translate-x-3 translate-y-[10%]" /></div>
 
       </div>
 
