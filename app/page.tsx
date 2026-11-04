@@ -100,9 +100,9 @@ export default function LandingPage() {
           <img src="/hero-bg-mobile.jpg" alt="Onesimos Mobile Hero" className="block md:hidden w-full h-full object-cover object-center" />
         </div>
 
+        {/* HEADER — frosted glass pill, natural BG reads through */}
         <header className="fixed top-5 inset-x-0 z-40 w-full px-6 md:px-8 pointer-events-none">
-          {/* Reduced max-width to 6xl so it's not overly wide and stretched */}
-          <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between">
+          <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between">
             
             <Link href="/" className="flex items-center gap-2.5 pointer-events-auto">
               <img
@@ -118,27 +118,26 @@ export default function LandingPage() {
               </span>
             </Link>
 
-            {/* Dark Purple Nav Pill with Inner Yellow Hover Pills */}
-            <nav className="hidden md:flex items-center gap-1 p-1 rounded-full bg-[#2D1674]/95 shadow-xl pointer-events-auto text-sm font-semibold text-white/90">
-              <a href="#features" className="hover:bg-[#FACC15] hover:text-[#0B1B3A] px-5 py-2 rounded-full transition-colors">Features</a>
-              <a href="#curriculum" className="hover:bg-[#FACC15] hover:text-[#0B1B3A] px-5 py-2 rounded-full transition-colors">Curriculum</a>
-              <a href="#pricing" className="hover:bg-[#FACC15] hover:text-[#0B1B3A] px-5 py-2 rounded-full transition-colors">Pricing</a>
-              <a href="#about" className="hover:bg-[#FACC15] hover:text-[#0B1B3A] px-5 py-2 rounded-full transition-colors">About us</a>
+            {/* Petit frosted pill — natural hero shows through, yellow hover chips */}
+            <nav className="hidden md:flex items-center gap-0.5 p-1 rounded-full bg-black/25 backdrop-blur-xl border border-white/10 shadow-xl pointer-events-auto text-[13px] font-semibold text-white">
+              <a href="#features" className="px-5 py-2 rounded-full transition-colors hover:bg-[#FACC15] hover:text-[#0B1B3A]">Features</a>
+              <a href="#curriculum" className="px-5 py-2 rounded-full transition-colors hover:bg-[#FACC15] hover:text-[#0B1B3A]">Curriculum</a>
+              <a href="#pricing" className="px-5 py-2 rounded-full transition-colors hover:bg-[#FACC15] hover:text-[#0B1B3A]">Pricing</a>
+              <a href="#about" className="px-5 py-2 rounded-full transition-colors hover:bg-[#FACC15] hover:text-[#0B1B3A]">About us</a>
             </nav>
 
-            {/* Tighter alignment for Auth Buttons */}
-            <div className="hidden md:flex items-center gap-3 pointer-events-auto">
+            <div className="hidden md:flex items-center gap-2 pointer-events-auto">
               <Link href="/login" className="text-sm font-bold text-white hover:text-[#FACC15] transition-colors px-3 py-2">
                 Log in
               </Link>
-              <Link href="/signup" className="rounded-full bg-[#FACC15] px-6 py-2.5 text-sm font-bold text-[#0B1B3A] hover:bg-white transition-all shadow-md hover:scale-105 active:scale-95">
+              <Link href="/signup" className="rounded-full bg-[#FACC15] px-5 py-2.5 text-sm font-bold text-[#0B1B3A] hover:bg-white transition-all shadow-md hover:scale-105 active:scale-95">
                 Get Started
               </Link>
             </div>
 
             <button
               type="button"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/40 backdrop-blur-md md:hidden text-white hover:bg-black/60 pointer-events-auto border border-white/10"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/25 backdrop-blur-md md:hidden text-white hover:bg-black/40 pointer-events-auto border border-white/10"
               aria-label={menuOpen ? "Close menu" : "Open menu"}
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((v) => !v)}
@@ -188,7 +187,7 @@ export default function LandingPage() {
               </Link>
               <a
                 href="#features"
-                className="inline-flex items-center justify-center rounded-full bg-black/40 backdrop-blur-md border border-white/10 px-7 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-black/60 shadow-lg"
+                className="inline-flex items-center justify-center rounded-full bg-black/25 backdrop-blur-md border border-white/10 px-7 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-black/40 shadow-lg"
               >
                 Learn More
               </a>
@@ -198,35 +197,38 @@ export default function LandingPage() {
 
           <div className="hidden md:block md:col-span-6 lg:col-span-6 relative h-full z-20">
             
+            {/* COPPA wheel — solid black ring, natural BG gap, white center */}
             <button
               onClick={() => setCoppaOpen(true)}
               className="group absolute top-2 right-12 lg:right-24 z-30 flex items-center justify-center transition-transform hover:scale-110 active:scale-95 focus:outline-none"
               title="Click for COPPA & Child Safety Specs"
             >
-              <div className="relative w-28 h-28 flex items-center justify-center rounded-full shadow-2xl">
+              <div className="relative w-28 h-28 flex items-center justify-center">
                 
-                {/* 1. Glass Black Donut Ring with the Transparent Gap (Inner Cut) */}
-                <div 
-                  className="absolute inset-0 rounded-full bg-black/60 backdrop-blur-md"
+                {/* Solid black donut — hole is larger than white button so natural purple shows through */}
+                <div
+                  className="absolute inset-0 rounded-full bg-black shadow-2xl"
                   style={{
-                    maskImage: "radial-gradient(transparent 28px, black 29px)",
-                    WebkitMaskImage: "radial-gradient(transparent 28px, black 29px)"
+                    maskImage: "radial-gradient(circle, transparent 26px, black 27px)",
+                    WebkitMaskImage: "radial-gradient(circle, transparent 26px, black 27px)"
                   }}
                 />
 
-                {/* 2. Un-bolded Spinning Text Ring */}
+                {/* Spinning text — medium weight, even spacing */}
                 <svg className="absolute w-full h-full animate-[spin_12s_linear_infinite] pointer-events-none" viewBox="0 0 100 100">
-                  <path id="circlePath" d="M 50, 50 m -37, 0 a 37,37 0 1,1 74,0 a 37,37 0 1,1 -74,0" fill="none" />
-                  <text className="text-[10px] font-medium uppercase fill-white tracking-widest">
+                  <defs>
+                    <path id="circlePath" d="M 50, 50 m -34, 0 a 34,34 0 1,1 68,0 a 34,34 0 1,1 -68,0" fill="none" />
+                  </defs>
+                  <text className="fill-white" style={{ fontSize: "8.5px", fontWeight: 500, letterSpacing: "2.5px" }}>
                     <textPath href="#circlePath" startOffset="0%">
-                      DESIGNED FOR AGES 3 TO 9 • COPPA SAFE • 
+                      COPPA SAFE  •  DESIGNED FOR AGES 3 TO 9  •  
                     </textPath>
                   </text>
                 </svg>
 
-                {/* 3. Center White Button (Sits slightly smaller than the mask gap to reveal BG) */}
-                <div className="absolute w-12 h-12 rounded-full bg-white text-[#0B1B3A] flex items-center justify-center shadow-md group-hover:bg-[#FACC15] transition-colors duration-300 z-10">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="transition-transform duration-300 group-hover:rotate-90">
+                {/* White center — sits inside the mask hole leaving a purple BG ring gap */}
+                <div className="absolute w-[42px] h-[42px] rounded-full bg-white text-[#0B1B3A] flex items-center justify-center shadow-md group-hover:bg-[#FACC15] transition-colors duration-300 z-10">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="transition-transform duration-300 group-hover:rotate-90">
                     <path d="M7 17L17 7M17 7H7M17 7V17" />
                   </svg>
                 </div>
