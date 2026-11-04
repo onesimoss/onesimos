@@ -162,60 +162,59 @@ export default function LandingPage() {
           </div>
         </header>
 
-                {menuOpen && (
+                        {menuOpen && (
           <div className="fixed inset-0 z-[100] md:hidden pointer-events-auto flex items-center justify-center p-5">
-            {/* Dimmed backdrop — tap to close */}
+            {/* Backdrop — tap to dismiss */}
             <div className="absolute inset-0 bg-[#0B1B3A]/70 backdrop-blur-sm" onClick={() => setMenuOpen(false)} />
 
-            {/* POPUP CARD */}
+            {/* CARD — locked size, nothing inside can stretch it */}
             <div className="relative w-full max-w-[340px] h-[420px] bg-white rounded-[28px] shadow-2xl overflow-hidden flex">
               
-              {/* Red X close */}
+              {/* Red X — tucked inside, top right */}
               <button
                 type="button"
                 onClick={() => setMenuOpen(false)}
-                className="absolute top-3 right-3 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-red-500 text-white shadow-md active:scale-95"
+                className="absolute top-4 right-4 z-30 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-white shadow-md active:scale-95"
                 aria-label="Close menu"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                   <path d="M18 6L6 18M6 6l12 12" />
                 </svg>
               </button>
 
-              {/* LEFT: links + smart pills */}
-              <div className="relative z-10 flex w-[55%] flex-col justify-between px-5 pt-12 pb-6">
+              {/* LEFT: nav + CTAs */}
+              <div className="relative z-10 flex w-[52%] flex-col justify-between px-6 pt-14 pb-6">
                 <nav className="flex flex-col gap-5">
-                  <a href="#features" onClick={() => setMenuOpen(false)} className="text-[1.35rem] font-extrabold leading-none text-[#0B1B3A]">Features</a>
-                  <a href="#curriculum" onClick={() => setMenuOpen(false)} className="text-[1.35rem] font-extrabold leading-none text-[#0B1B3A]">Curriculum</a>
-                  <a href="#pricing" onClick={() => setMenuOpen(false)} className="text-[1.35rem] font-extrabold leading-none text-[#0B1B3A]">Pricing</a>
-                  <a href="#about" onClick={() => setMenuOpen(false)} className="text-[1.35rem] font-extrabold leading-none text-[#0B1B3A]">About us</a>
+                  <a href="#features" onClick={() => setMenuOpen(false)} className="text-[1.25rem] font-extrabold leading-tight text-[#0B1B3A]">Features</a>
+                  <a href="#curriculum" onClick={() => setMenuOpen(false)} className="text-[1.25rem] font-extrabold leading-tight text-[#0B1B3A]">Curriculum</a>
+                  <a href="#pricing" onClick={() => setMenuOpen(false)} className="text-[1.25rem] font-extrabold leading-tight text-[#0B1B3A]">Pricing</a>
+                  <a href="#about" onClick={() => setMenuOpen(false)} className="text-[1.25rem] font-extrabold leading-tight text-[#0B1B3A]">About us</a>
                 </nav>
 
-                {/* Same language as home Get Started / Learn More */}
                 <div className="flex flex-col gap-2.5 w-full">
                   <Link
                     href="/login"
                     onClick={() => setMenuOpen(false)}
-                    className="inline-flex h-11 w-full items-center justify-center rounded-full bg-[#0B1B3A] px-5 text-sm font-bold text-white shadow-md active:scale-95 transition-transform"
+                    className="inline-flex h-11 w-full items-center justify-center rounded-full bg-[#0B1B3A] text-sm font-bold text-white shadow-sm active:scale-95 transition-transform"
                   >
                     Log in
                   </Link>
                   <Link
                     href="/signup"
                     onClick={() => setMenuOpen(false)}
-                    className="inline-flex h-11 w-full items-center justify-center rounded-full bg-[#FACC15] px-5 text-sm font-bold text-[#0B1B3A] shadow-md active:scale-95 transition-transform"
+                    className="inline-flex h-11 w-full items-center justify-center rounded-full bg-[#FACC15] text-sm font-bold text-[#0B1B3A] shadow-sm active:scale-95 transition-transform"
                   >
                     Get Started
                   </Link>
                 </div>
               </div>
 
-              {/* RIGHT: character — absolute, cannot affect card size */}
-              <div className="pointer-events-none absolute inset-y-0 right-0 w-[50%]">
+              {/* RIGHT: contained character column */}
+              <div className="relative w-[48%] flex items-end justify-center bg-gradient-to-br from-[#F8F7FF] to-[#EDE9FE] border-l border-gray-100">
                 <img
                   src="/menu-character.png"
                   alt=""
-                  className="absolute bottom-0 right-[-10%] h-[88%] w-auto max-w-none object-contain object-bottom select-none"
+                  className="h-[78%] w-auto max-w-[95%] object-contain object-bottom pointer-events-none select-none"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                 />
               </div>
