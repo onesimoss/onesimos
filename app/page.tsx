@@ -163,57 +163,60 @@ export default function LandingPage() {
         </header>
 
         {menuOpen && (
-          <div className="fixed inset-0 z-[100] bg-white md:hidden pointer-events-auto flex flex-col" style={{ paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}>
-            {/* Bright red X close */}
-            <button
-              type="button"
-              onClick={() => setMenuOpen(false)}
-              className="absolute top-5 right-5 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-red-500 text-white shadow-lg active:scale-95"
-              aria-label="Close menu"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                <path d="M18 6L6 18M6 6l12 12" />
-              </svg>
-            </button>
+          <div className="fixed inset-0 z-[100] md:hidden pointer-events-auto flex flex-col bg-[#522DB8]">
+            {/* Dark purple fills status-bar / safe-area; white sheet sits below */}
+            <div className="flex-1 flex flex-col bg-white mt-[env(safe-area-inset-top)] mb-[env(safe-area-inset-bottom)] relative overflow-hidden">
+              
+              {/* Bright red X close */}
+              <button
+                type="button"
+                onClick={() => setMenuOpen(false)}
+                className="absolute top-4 right-4 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-red-500 text-white shadow-lg active:scale-95"
+                aria-label="Close menu"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
 
-            {/* Split body: links left, character right */}
-            <div className="flex-1 flex w-full overflow-hidden">
-              {/* LEFT: nav + auth */}
-              <div className="flex w-[48%] flex-col justify-between px-7 pt-20 pb-10">
-                <nav className="flex flex-col gap-6">
-                  <a href="#features" onClick={() => setMenuOpen(false)} className="text-[1.6rem] font-extrabold leading-none text-[#0B1B3A] active:text-[#522DB8]">Features</a>
-                  <a href="#curriculum" onClick={() => setMenuOpen(false)} className="text-[1.6rem] font-extrabold leading-none text-[#0B1B3A] active:text-[#522DB8]">Curriculum</a>
-                  <a href="#pricing" onClick={() => setMenuOpen(false)} className="text-[1.6rem] font-extrabold leading-none text-[#0B1B3A] active:text-[#522DB8]">Pricing</a>
-                  <a href="#about" onClick={() => setMenuOpen(false)} className="text-[1.6rem] font-extrabold leading-none text-[#0B1B3A] active:text-[#522DB8]">About us</a>
-                </nav>
+              {/* Split body */}
+              <div className="flex-1 flex w-full min-h-0">
+                {/* LEFT: nav + equal pills */}
+                <div className="flex w-[48%] flex-col justify-between px-7 pt-16 pb-10 min-w-0">
+                  <nav className="flex flex-col gap-6">
+                    <a href="#features" onClick={() => setMenuOpen(false)} className="text-[1.6rem] font-extrabold leading-none text-[#0B1B3A] active:text-[#522DB8]">Features</a>
+                    <a href="#curriculum" onClick={() => setMenuOpen(false)} className="text-[1.6rem] font-extrabold leading-none text-[#0B1B3A] active:text-[#522DB8]">Curriculum</a>
+                    <a href="#pricing" onClick={() => setMenuOpen(false)} className="text-[1.6rem] font-extrabold leading-none text-[#0B1B3A] active:text-[#522DB8]">Pricing</a>
+                    <a href="#about" onClick={() => setMenuOpen(false)} className="text-[1.6rem] font-extrabold leading-none text-[#0B1B3A] active:text-[#522DB8]">About us</a>
+                  </nav>
 
-                <div className="flex flex-col gap-3 items-start">
-                  {/* Dark matter glass Login pill */}
-                  <Link
-                    href="/login"
-                    onClick={() => setMenuOpen(false)}
-                    className="inline-flex items-center justify-center rounded-full bg-[#0B1B3A]/90 backdrop-blur-md border border-white/10 px-7 py-2.5 text-sm font-bold text-white shadow-md active:scale-95"
-                  >
-                    Log in
-                  </Link>
-                  <Link
-                    href="/signup"
-                    onClick={() => setMenuOpen(false)}
-                    className="inline-flex items-center justify-center rounded-full bg-[#FACC15] px-7 py-2.5 text-sm font-bold text-[#0B1B3A] shadow-md active:scale-95"
-                  >
-                    Get Started
-                  </Link>
+                  <div className="flex flex-col gap-3 w-full max-w-[160px]">
+                    <Link
+                      href="/login"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex h-11 w-full items-center justify-center rounded-full bg-[#0B1B3A] text-sm font-bold text-white shadow-md active:scale-95"
+                    >
+                      Log in
+                    </Link>
+                    <Link
+                      href="/signup"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex h-11 w-full items-center justify-center rounded-full bg-[#FACC15] text-sm font-bold text-[#0B1B3A] shadow-md active:scale-95"
+                    >
+                      Get Started
+                    </Link>
+                  </div>
                 </div>
-              </div>
 
-              {/* RIGHT: character art */}
-              <div className="relative w-[52%] flex items-end justify-center bg-white">
-                <img
-                  src="/menu-character.png"
-                  alt="Onesimos"
-                  className="h-[85%] w-auto max-w-none object-contain object-bottom pointer-events-none select-none"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                />
+                {/* RIGHT: fixed column — image cannot dictate size */}
+                <div className="relative w-[52%] flex-shrink-0 overflow-hidden bg-white">
+                  <img
+                    src="/menu-character.png"
+                    alt="Onesimos"
+                    className="absolute bottom-0 right-0 h-[75%] w-auto max-w-[140%] object-contain object-bottom pointer-events-none select-none"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                </div>
               </div>
             </div>
           </div>
