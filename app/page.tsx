@@ -163,13 +163,32 @@ export default function LandingPage() {
         </header>
 
         {menuOpen && (
-          <div className="fixed inset-0 top-20 z-50 bg-[#522DB8]/95 backdrop-blur-lg flex flex-col items-center gap-6 pt-10 md:hidden pointer-events-auto">
-            <a href="#features" onClick={() => setMenuOpen(false)} className="text-lg font-semibold text-white hover:text-[#FACC15]">Features</a>
-            <a href="#curriculum" onClick={() => setMenuOpen(false)} className="text-lg font-semibold text-white hover:text-[#FACC15]">Curriculum</a>
-            <a href="#pricing" onClick={() => setMenuOpen(false)} className="text-lg font-semibold text-white hover:text-[#FACC15]">Pricing</a>
-            <a href="#about" onClick={() => setMenuOpen(false)} className="text-lg font-semibold text-white hover:text-[#FACC15]">About us</a>
-            <Link href="/login" onClick={() => setMenuOpen(false)} className="text-lg font-bold text-white hover:text-[#FACC15] mt-4">Log in</Link>
-            <Link href="/signup" onClick={() => setMenuOpen(false)} className="rounded-full bg-[#FACC15] px-8 py-3 text-base font-bold text-[#0B1B3A]">Get Started</Link>
+          <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-5 md:hidden pointer-events-auto">
+            <div className="absolute inset-0 bg-[#0B1B3A]/60 backdrop-blur-sm" onClick={() => setMenuOpen(false)} />
+            <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl flex overflow-hidden min-h-[340px] border border-gray-100">
+              {/* Left Side: Navigation Links */}
+              <div className="flex-1 p-7 flex flex-col justify-center gap-5 z-10 bg-white">
+                <a href="#features" onClick={() => setMenuOpen(false)} className="text-xl font-extrabold text-[#0B1B3A] hover:text-[#522DB8]">Features</a>
+                <a href="#curriculum" onClick={() => setMenuOpen(false)} className="text-xl font-extrabold text-[#0B1B3A] hover:text-[#522DB8]">Curriculum</a>
+                <a href="#pricing" onClick={() => setMenuOpen(false)} className="text-xl font-extrabold text-[#0B1B3A] hover:text-[#522DB8]">Pricing</a>
+                <a href="#about" onClick={() => setMenuOpen(false)} className="text-xl font-extrabold text-[#0B1B3A] hover:text-[#522DB8]">About us</a>
+                <div className="mt-3 flex flex-col items-start gap-4">
+                  <Link href="/login" onClick={() => setMenuOpen(false)} className="text-sm font-bold text-[#0B1B3A]">Log in</Link>
+                  <Link href="/signup" onClick={() => setMenuOpen(false)} className="rounded-full bg-[#FACC15] px-6 py-2.5 text-sm font-bold text-[#0B1B3A] shadow-md">Get Started</Link>
+                </div>
+              </div>
+              {/* Right Side: Unique Graphic Design */}
+              <div className="w-[38%] bg-[#FAF9F6] relative flex items-end justify-center border-l border-gray-100">
+                <div className="absolute top-4 right-4 pointer-events-none">
+                  <svg width="30" height="30" viewBox="0 0 40 40">
+                    <ellipse cx="14" cy="20" rx="10" ry="7" fill="#F472B6" transform="rotate(15 20 20)" />
+                    <ellipse cx="26" cy="20" rx="10" ry="7" fill="#FACC15" transform="rotate(-15 20 20)" />
+                    <circle cx="20" cy="20" r="2" fill="#1a1a2e" />
+                  </svg>
+                </div>
+                <img src="/hero-characters.png" alt="Onesimos Kids" className="w-[180%] max-w-none object-contain translate-x-3 translate-y-6 pointer-events-none drop-shadow-lg" />
+              </div>
+            </div>
           </div>
         )}
 
@@ -177,7 +196,7 @@ export default function LandingPage() {
           
           <div className="md:col-span-6 lg:col-span-6 flex flex-col justify-center items-start text-white max-w-full md:max-w-none">
             
-            <div className="h-[235px] sm:h-[220px] lg:h-[260px] flex items-center mt-2">
+            <div className="h-[200px] sm:h-[220px] lg:h-[260px] flex items-end sm:items-center pb-2 sm:pb-0 mt-2">
               <h1
                 className={`font-[family-name:var(--font-switzer)] text-[2.7rem] sm:text-6xl lg:text-7xl font-extrabold leading-[1.05] tracking-tight whitespace-pre-line transition-opacity duration-300 ${
                   fade ? "opacity-100" : "opacity-0"
@@ -191,7 +210,7 @@ export default function LandingPage() {
               Personalized learning chapters and real-time speech evaluation designed to build independent confidence in young readers.
             </p>
 
-            <div className="mt-10 md:mt-8 flex w-full md:w-auto flex-nowrap items-center justify-center md:justify-start gap-3 md:gap-4">
+            <div className="mt-16 md:mt-8 flex w-full md:w-auto flex-nowrap items-center justify-center md:justify-start gap-3 md:gap-4">
               <Link
                 href="/signup"
                 className="inline-flex items-center justify-center rounded-full bg-[#FACC15] px-5 py-3 text-[13px] md:px-7 md:py-3.5 md:text-sm font-bold text-[#0B1B3A] transition-all hover:bg-white hover:scale-105 active:scale-95 shadow-xl"
@@ -254,7 +273,7 @@ export default function LandingPage() {
 
         </main>
 
-        <button onClick={() => setCoppaOpen(true)} className="md:hidden absolute top-[86px] right-4 z-30 flex items-center justify-center active:scale-95" title="COPPA">
+        <button onClick={() => setCoppaOpen(true)} className="md:hidden absolute top-[140px] right-4 z-30 flex items-center justify-center active:scale-95" title="COPPA">
 <div className="relative w-20 h-20 flex items-center justify-center">
 <div className="absolute inset-0 rounded-full bg-black shadow-2xl" style={{ maskImage: "radial-gradient(circle, transparent 18px, black 19px)", WebkitMaskImage: "radial-gradient(circle, transparent 18px, black 19px)" }} />
 <svg className="absolute w-full h-full animate-[spin_12s_linear_infinite]" viewBox="0 0 100 100"><defs><path id="circlePathMobile" d="M 50, 50 m -34, 0 a 34,34 0 1,1 68,0 a 34,34 0 1,1 -68,0" fill="none" /></defs><text className="fill-white" style={{ fontSize: "8.5px", fontWeight: 500, letterSpacing: "2.5px" }}><textPath href="#circlePathMobile">COPPA SAFE  •  DESIGNED FOR AGES 3 TO 9  •  </textPath></text></svg>
