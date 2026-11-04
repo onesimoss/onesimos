@@ -59,7 +59,6 @@ export default function LandingPage() {
         
         {/* <div className="seasonal-snow-layer pointer-events-none absolute inset-0 z-30" /> */}
 
-        {/* 5 Live Vector Butterflies (Desktop Only for now) */}
         <div className="absolute top-[18%] left-[8%] z-20 pointer-events-none b-f1 hidden md:block" style={{ opacity: 0.85 }}>
           <svg width="38" height="38" viewBox="0 0 40 40">
             <ellipse className="b-left" cx="14" cy="20" rx="10" ry="7" fill="#FACC15" />
@@ -101,15 +100,15 @@ export default function LandingPage() {
           <img src="/hero-bg-mobile.jpg" alt="Onesimos Mobile Hero" className="block md:hidden w-full h-full object-cover object-center" />
         </div>
 
-        <header className="fixed top-5 inset-x-0 z-40 w-full px-6 md:px-12 pointer-events-none">
-          <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between">
+        <header className="fixed top-5 inset-x-0 z-40 w-full px-6 md:px-8 pointer-events-none">
+          {/* Reduced max-width to 6xl so it's not overly wide and stretched */}
+          <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between">
             
-            {/* Left: Logo Area */}
             <Link href="/" className="flex items-center gap-2.5 pointer-events-auto">
               <img
                 src="/logo.png"
                 alt="Onesimos"
-                className="h-9 w-auto object-contain"
+                className="h-8 w-auto object-contain"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = "none";
                 }}
@@ -119,25 +118,24 @@ export default function LandingPage() {
               </span>
             </Link>
 
-            {/* Center: Dark Frost Glass Petit Pill */}
-            <nav className="hidden md:flex items-center gap-7 px-8 py-2.5 rounded-full bg-black/40 backdrop-blur-lg border border-white/5 shadow-xl pointer-events-auto text-sm font-semibold text-white/90">
-              <a href="#features" className="hover:text-[#FACC15] transition-colors py-1">Features</a>
-              <a href="#curriculum" className="hover:text-[#FACC15] transition-colors py-1">Curriculum</a>
-              <a href="#pricing" className="hover:text-[#FACC15] transition-colors py-1">Pricing</a>
-              <a href="#about" className="hover:text-[#FACC15] transition-colors py-1">About us</a>
+            {/* Dark Purple Nav Pill with Inner Yellow Hover Pills */}
+            <nav className="hidden md:flex items-center gap-1 p-1 rounded-full bg-[#2D1674]/95 shadow-xl pointer-events-auto text-sm font-semibold text-white/90">
+              <a href="#features" className="hover:bg-[#FACC15] hover:text-[#0B1B3A] px-5 py-2 rounded-full transition-colors">Features</a>
+              <a href="#curriculum" className="hover:bg-[#FACC15] hover:text-[#0B1B3A] px-5 py-2 rounded-full transition-colors">Curriculum</a>
+              <a href="#pricing" className="hover:bg-[#FACC15] hover:text-[#0B1B3A] px-5 py-2 rounded-full transition-colors">Pricing</a>
+              <a href="#about" className="hover:bg-[#FACC15] hover:text-[#0B1B3A] px-5 py-2 rounded-full transition-colors">About us</a>
             </nav>
 
-            {/* Right: CTA Buttons */}
-            <div className="hidden md:flex items-center gap-5 pointer-events-auto">
-              <Link href="/login" className="text-sm font-bold text-white hover:text-[#FACC15] transition-colors px-2 py-1">
+            {/* Tighter alignment for Auth Buttons */}
+            <div className="hidden md:flex items-center gap-3 pointer-events-auto">
+              <Link href="/login" className="text-sm font-bold text-white hover:text-[#FACC15] transition-colors px-3 py-2">
                 Log in
               </Link>
-              <Link href="/signup" className="rounded-full bg-[#FACC15] px-6 py-2.5 text-sm font-bold text-[#0B1B3A] hover:bg-white transition-all shadow-lg hover:scale-105 active:scale-95">
+              <Link href="/signup" className="rounded-full bg-[#FACC15] px-6 py-2.5 text-sm font-bold text-[#0B1B3A] hover:bg-white transition-all shadow-md hover:scale-105 active:scale-95">
                 Get Started
               </Link>
             </div>
 
-            {/* Mobile Hamburger */}
             <button
               type="button"
               className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/40 backdrop-blur-md md:hidden text-white hover:bg-black/60 pointer-events-auto border border-white/10"
@@ -152,7 +150,6 @@ export default function LandingPage() {
           </div>
         </header>
 
-        {/* Full-Screen Mobile Menu Drawer */}
         {menuOpen && (
           <div className="fixed inset-0 top-20 z-50 bg-[#522DB8]/95 backdrop-blur-lg flex flex-col items-center gap-6 pt-10 md:hidden pointer-events-auto">
             <a href="#features" onClick={() => setMenuOpen(false)} className="text-lg font-semibold text-white hover:text-[#FACC15]">Features</a>
@@ -201,26 +198,39 @@ export default function LandingPage() {
 
           <div className="hidden md:block md:col-span-6 lg:col-span-6 relative h-full z-20">
             
-            {/* New Black COPPA Badge with Hover Flip Arrow */}
             <button
               onClick={() => setCoppaOpen(true)}
               className="group absolute top-2 right-12 lg:right-24 z-30 flex items-center justify-center transition-transform hover:scale-110 active:scale-95 focus:outline-none"
               title="Click for COPPA & Child Safety Specs"
             >
-              <div className="relative w-28 h-28 flex items-center justify-center rounded-full bg-black shadow-2xl">
-                <svg className="w-full h-full animate-[spin_12s_linear_infinite]" viewBox="0 0 100 100">
+              <div className="relative w-28 h-28 flex items-center justify-center rounded-full shadow-2xl">
+                
+                {/* 1. Glass Black Donut Ring with the Transparent Gap (Inner Cut) */}
+                <div 
+                  className="absolute inset-0 rounded-full bg-black/60 backdrop-blur-md"
+                  style={{
+                    maskImage: "radial-gradient(transparent 28px, black 29px)",
+                    WebkitMaskImage: "radial-gradient(transparent 28px, black 29px)"
+                  }}
+                />
+
+                {/* 2. Un-bolded Spinning Text Ring */}
+                <svg className="absolute w-full h-full animate-[spin_12s_linear_infinite] pointer-events-none" viewBox="0 0 100 100">
                   <path id="circlePath" d="M 50, 50 m -37, 0 a 37,37 0 1,1 74,0 a 37,37 0 1,1 -74,0" fill="none" />
-                  <text className="text-[9.5px] font-extrabold uppercase fill-white tracking-widest">
+                  <text className="text-[10px] font-medium uppercase fill-white tracking-widest">
                     <textPath href="#circlePath" startOffset="0%">
                       DESIGNED FOR AGES 3 TO 9 • COPPA SAFE • 
                     </textPath>
                   </text>
                 </svg>
-                <div className="absolute w-12 h-12 rounded-full bg-white text-[#0B1B3A] flex items-center justify-center shadow-md group-hover:bg-[#FACC15] transition-colors duration-300">
+
+                {/* 3. Center White Button (Sits slightly smaller than the mask gap to reveal BG) */}
+                <div className="absolute w-12 h-12 rounded-full bg-white text-[#0B1B3A] flex items-center justify-center shadow-md group-hover:bg-[#FACC15] transition-colors duration-300 z-10">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="transition-transform duration-300 group-hover:rotate-90">
                     <path d="M7 17L17 7M17 7H7M17 7V17" />
                   </svg>
                 </div>
+
               </div>
             </button>
 
@@ -294,7 +304,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Upgraded COPPA Modal */}
       {coppaOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B1B3A]/80 backdrop-blur-md">
           <div className="relative w-full max-w-lg bg-white rounded-3xl p-8 shadow-2xl text-[#0B1B3A]">
