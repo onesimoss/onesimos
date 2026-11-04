@@ -162,61 +162,62 @@ export default function LandingPage() {
           </div>
         </header>
 
-        {menuOpen && (
-          <div className="fixed inset-0 z-[100] md:hidden pointer-events-auto flex flex-col bg-[#522DB8]">
-            {/* Dark purple fills status-bar / safe-area; white sheet sits below */}
-            <div className="flex-1 flex flex-col bg-white mt-[env(safe-area-inset-top)] mb-[env(safe-area-inset-bottom)] relative overflow-hidden">
+                {menuOpen && (
+          <div className="fixed inset-0 z-[100] md:hidden pointer-events-auto flex items-center justify-center p-5">
+            {/* Dimmed backdrop — tap to close */}
+            <div className="absolute inset-0 bg-[#0B1B3A]/70 backdrop-blur-sm" onClick={() => setMenuOpen(false)} />
+
+            {/* POPUP CARD */}
+            <div className="relative w-full max-w-[340px] h-[420px] bg-white rounded-[28px] shadow-2xl overflow-hidden flex">
               
-              {/* Bright red X close */}
+              {/* Red X close */}
               <button
                 type="button"
                 onClick={() => setMenuOpen(false)}
-                className="absolute top-4 right-4 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-red-500 text-white shadow-lg active:scale-95"
+                className="absolute top-3 right-3 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-red-500 text-white shadow-md active:scale-95"
                 aria-label="Close menu"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                   <path d="M18 6L6 18M6 6l12 12" />
                 </svg>
               </button>
 
-              {/* Split body */}
-              <div className="flex-1 flex w-full min-h-0">
-                {/* LEFT: nav + equal pills */}
-                <div className="flex w-[48%] flex-col justify-between px-7 pt-16 pb-10 min-w-0">
-                  <nav className="flex flex-col gap-6">
-                    <a href="#features" onClick={() => setMenuOpen(false)} className="text-[1.6rem] font-extrabold leading-none text-[#0B1B3A] active:text-[#522DB8]">Features</a>
-                    <a href="#curriculum" onClick={() => setMenuOpen(false)} className="text-[1.6rem] font-extrabold leading-none text-[#0B1B3A] active:text-[#522DB8]">Curriculum</a>
-                    <a href="#pricing" onClick={() => setMenuOpen(false)} className="text-[1.6rem] font-extrabold leading-none text-[#0B1B3A] active:text-[#522DB8]">Pricing</a>
-                    <a href="#about" onClick={() => setMenuOpen(false)} className="text-[1.6rem] font-extrabold leading-none text-[#0B1B3A] active:text-[#522DB8]">About us</a>
-                  </nav>
+              {/* LEFT: links + smart pills */}
+              <div className="relative z-10 flex w-[55%] flex-col justify-between px-5 pt-12 pb-6">
+                <nav className="flex flex-col gap-5">
+                  <a href="#features" onClick={() => setMenuOpen(false)} className="text-[1.35rem] font-extrabold leading-none text-[#0B1B3A]">Features</a>
+                  <a href="#curriculum" onClick={() => setMenuOpen(false)} className="text-[1.35rem] font-extrabold leading-none text-[#0B1B3A]">Curriculum</a>
+                  <a href="#pricing" onClick={() => setMenuOpen(false)} className="text-[1.35rem] font-extrabold leading-none text-[#0B1B3A]">Pricing</a>
+                  <a href="#about" onClick={() => setMenuOpen(false)} className="text-[1.35rem] font-extrabold leading-none text-[#0B1B3A]">About us</a>
+                </nav>
 
-                  <div className="flex flex-col gap-3 w-full max-w-[160px]">
-                    <Link
-                      href="/login"
-                      onClick={() => setMenuOpen(false)}
-                      className="flex h-11 w-full items-center justify-center rounded-full bg-[#0B1B3A] text-sm font-bold text-white shadow-md active:scale-95"
-                    >
-                      Log in
-                    </Link>
-                    <Link
-                      href="/signup"
-                      onClick={() => setMenuOpen(false)}
-                      className="flex h-11 w-full items-center justify-center rounded-full bg-[#FACC15] text-sm font-bold text-[#0B1B3A] shadow-md active:scale-95"
-                    >
-                      Get Started
-                    </Link>
-                  </div>
+                {/* Same language as home Get Started / Learn More */}
+                <div className="flex flex-col gap-2.5 w-full">
+                  <Link
+                    href="/login"
+                    onClick={() => setMenuOpen(false)}
+                    className="inline-flex h-11 w-full items-center justify-center rounded-full bg-[#0B1B3A] px-5 text-sm font-bold text-white shadow-md active:scale-95 transition-transform"
+                  >
+                    Log in
+                  </Link>
+                  <Link
+                    href="/signup"
+                    onClick={() => setMenuOpen(false)}
+                    className="inline-flex h-11 w-full items-center justify-center rounded-full bg-[#FACC15] px-5 text-sm font-bold text-[#0B1B3A] shadow-md active:scale-95 transition-transform"
+                  >
+                    Get Started
+                  </Link>
                 </div>
+              </div>
 
-                {/* RIGHT: fixed column — image cannot dictate size */}
-                <div className="relative w-[52%] flex-shrink-0 overflow-hidden bg-white">
-                  <img
-                    src="/menu-character.png"
-                    alt="Onesimos"
-                    className="absolute bottom-0 right-0 h-[75%] w-auto max-w-[140%] object-contain object-bottom pointer-events-none select-none"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                  />
-                </div>
+              {/* RIGHT: character — absolute, cannot affect card size */}
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-[50%]">
+                <img
+                  src="/menu-character.png"
+                  alt=""
+                  className="absolute bottom-0 right-[-10%] h-[88%] w-auto max-w-none object-contain object-bottom select-none"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                />
               </div>
             </div>
           </div>
