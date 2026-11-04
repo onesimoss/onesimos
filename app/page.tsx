@@ -59,49 +59,49 @@ export default function LandingPage() {
         
         {/* <div className="seasonal-snow-layer pointer-events-none absolute inset-0 z-30" /> */}
 
-        <div className="absolute top-[18%] left-[8%] z-20 pointer-events-none b-f1 hidden md:block" style={{ opacity: 0.85 }}>
+        <div className="absolute top-[18%] left-[8%] z-20 pointer-events-none b-f1 block" style={{ opacity: 0.85 }}>
           <svg width="38" height="38" viewBox="0 0 40 40">
             <ellipse className="b-left" cx="14" cy="20" rx="10" ry="7" fill="#FACC15" />
             <ellipse className="b-right" cx="26" cy="20" rx="10" ry="7" fill="#FACC15" />
             <circle cx="20" cy="20" r="2" fill="#1a1a2e" />
           </svg>
         </div>
-        <div className="absolute top-[12%] right-[15%] z-20 pointer-events-none b-f2 hidden md:block" style={{ opacity: 0.7 }}>
+        <div className="absolute top-[12%] right-[15%] z-20 pointer-events-none b-f2 block" style={{ opacity: 0.7 }}>
           <svg width="30" height="30" viewBox="0 0 40 40">
             <ellipse className="b-left" cx="14" cy="20" rx="10" ry="7" fill="#A78BFA" />
             <ellipse className="b-right" cx="26" cy="20" rx="10" ry="7" fill="#A78BFA" />
             <circle cx="20" cy="20" r="2" fill="#1a1a2e" />
           </svg>
         </div>
-        <div className="absolute top-[55%] left-[5%] z-20 pointer-events-none b-f3 hidden md:block" style={{ opacity: 0.75 }}>
+        <div className="absolute top-[55%] left-[5%] z-20 pointer-events-none b-f3 block" style={{ opacity: 0.75 }}>
           <svg width="34" height="34" viewBox="0 0 40 40">
             <ellipse className="b-left" cx="14" cy="20" rx="10" ry="7" fill="#34D399" />
             <ellipse className="b-right" cx="26" cy="20" rx="10" ry="7" fill="#34D399" />
             <circle cx="20" cy="20" r="2" fill="#1a1a2e" />
           </svg>
         </div>
-        <div className="absolute top-[40%] right-[8%] z-20 pointer-events-none b-f1 hidden md:block" style={{ opacity: 0.65 }}>
+        <div className="absolute top-[40%] right-[8%] z-20 pointer-events-none b-f1 block" style={{ opacity: 0.65 }}>
           <svg width="28" height="28" viewBox="0 0 40 40">
             <ellipse className="b-left" cx="14" cy="20" rx="10" ry="7" fill="#FB923C" />
             <ellipse className="b-right" cx="26" cy="20" rx="10" ry="7" fill="#FB923C" />
             <circle cx="20" cy="20" r="2" fill="#1a1a2e" />
           </svg>
         </div>
-        <div className="absolute top-[70%] left-[45%] z-20 pointer-events-none b-f2 hidden md:block" style={{ opacity: 0.6 }}>
+        <div className="absolute top-[70%] left-[45%] z-20 pointer-events-none b-f2 block" style={{ opacity: 0.6 }}>
           <svg width="32" height="32" viewBox="0 0 40 40">
             <ellipse className="b-left" cx="14" cy="20" rx="10" ry="7" fill="#F472B6" />
             <ellipse className="b-right" cx="26" cy="20" rx="10" ry="7" fill="#F472B6" />
             <circle cx="20" cy="20" r="2" fill="#1a1a2e" />
           </svg>
         </div>
-        <div className="absolute bottom-[18%] right-[12%] z-20 pointer-events-none b-f3 hidden md:block" style={{ opacity: 0.7 }}>
+        <div className="absolute bottom-[18%] right-[12%] z-20 pointer-events-none b-f3 block" style={{ opacity: 0.7 }}>
           <svg width="30" height="30" viewBox="0 0 40 40">
             <ellipse className="b-left" cx="14" cy="20" rx="10" ry="7" fill="#60A5FA" />
             <ellipse className="b-right" cx="26" cy="20" rx="10" ry="7" fill="#60A5FA" />
             <circle cx="20" cy="20" r="2" fill="#1a1a2e" />
           </svg>
         </div>
-        <div className="absolute bottom-[10%] right-[22%] z-20 pointer-events-none b-f1 hidden md:block" style={{ opacity: 0.75 }}>
+        <div className="absolute bottom-[10%] right-[22%] z-20 pointer-events-none b-f1 block" style={{ opacity: 0.75 }}>
           <svg width="26" height="26" viewBox="0 0 40 40">
             <ellipse className="b-left" cx="14" cy="20" rx="10" ry="7" fill="#FACC15" />
             <ellipse className="b-right" cx="26" cy="20" rx="10" ry="7" fill="#F472B6" />
@@ -175,11 +175,11 @@ export default function LandingPage() {
 
         <main className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 pt-28 md:pt-32 pb-6 md:pb-12 flex-grow grid grid-cols-1 md:grid-cols-12 items-center gap-8">
           
-          <div className="md:col-span-6 lg:col-span-6 flex flex-col justify-center items-start text-white max-w-[85%] md:max-w-none">
+          <div className="md:col-span-6 lg:col-span-6 flex flex-col justify-center items-start text-white max-w-full md:max-w-none">
             
-            <div className="h-[180px] sm:h-[220px] lg:h-[260px] flex items-center mt-2">
+            <div className="h-[235px] sm:h-[220px] lg:h-[260px] flex items-center mt-2">
               <h1
-                className={`font-[family-name:var(--font-switzer)] text-4xl sm:text-6xl lg:text-7xl font-extrabold leading-[1.05] tracking-tight whitespace-pre-line transition-opacity duration-300 ${
+                className={`font-[family-name:var(--font-switzer)] text-[2.7rem] sm:text-6xl lg:text-7xl font-extrabold leading-[1.05] tracking-tight whitespace-pre-line transition-opacity duration-300 ${
                   fade ? "opacity-100" : "opacity-0"
                 }`}
               >
@@ -191,16 +191,16 @@ export default function LandingPage() {
               Personalized learning chapters and real-time speech evaluation designed to build independent confidence in young readers.
             </p>
 
-            <div className="mt-8 flex flex-wrap items-center gap-4">
+            <div className="mt-10 md:mt-8 flex w-full md:w-auto flex-nowrap items-center justify-center md:justify-start gap-3 md:gap-4">
               <Link
                 href="/signup"
-                className="inline-flex items-center justify-center rounded-full bg-[#FACC15] px-7 py-3.5 text-sm font-bold text-[#0B1B3A] transition-all hover:bg-white hover:scale-105 active:scale-95 shadow-xl"
+                className="inline-flex items-center justify-center rounded-full bg-[#FACC15] px-5 py-3 text-[13px] md:px-7 md:py-3.5 md:text-sm font-bold text-[#0B1B3A] transition-all hover:bg-white hover:scale-105 active:scale-95 shadow-xl"
               >
                 Get Started
               </Link>
               <a
                 href="#features"
-                className="inline-flex items-center justify-center rounded-full bg-black/25 backdrop-blur-md border border-white/10 px-7 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-black/40 shadow-lg"
+                className="inline-flex items-center justify-center rounded-full bg-black/25 backdrop-blur-md border border-white/10 px-5 py-3 text-[13px] md:px-7 md:py-3.5 md:text-sm font-semibold text-white transition-colors hover:bg-black/40 shadow-lg"
               >
                 Learn More
               </a>
@@ -254,7 +254,14 @@ export default function LandingPage() {
 
         </main>
 
-        <div className="block md:hidden relative z-20 w-full flex justify-center pointer-events-none mt-2">
+        <button onClick={() => setCoppaOpen(true)} className="md:hidden absolute top-[86px] right-4 z-30 flex items-center justify-center active:scale-95" title="COPPA">
+<div className="relative w-20 h-20 flex items-center justify-center">
+<div className="absolute inset-0 rounded-full bg-black shadow-2xl" style={{ maskImage: "radial-gradient(circle, transparent 18px, black 19px)", WebkitMaskImage: "radial-gradient(circle, transparent 18px, black 19px)" }} />
+<svg className="absolute w-full h-full animate-[spin_12s_linear_infinite]" viewBox="0 0 100 100"><defs><path id="circlePathMobile" d="M 50, 50 m -34, 0 a 34,34 0 1,1 68,0 a 34,34 0 1,1 -68,0" fill="none" /></defs><text className="fill-white" style={{ fontSize: "8.5px", fontWeight: 500, letterSpacing: "2.5px" }}><textPath href="#circlePathMobile">COPPA SAFE  •  DESIGNED FOR AGES 3 TO 9  •  </textPath></text></svg>
+<div className="absolute w-[30px] h-[30px] rounded-full bg-white text-[#0B1B3A] flex items-center justify-center shadow-md"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M7 17L17 7M17 7H7M17 7V17" /></svg></div>
+</div>
+</button>
+<div className="block md:hidden relative z-20 w-full flex justify-center pointer-events-none mt-2">
           <img
             src="/hero-characters.png"
             alt="Onesimos Family Learning"
