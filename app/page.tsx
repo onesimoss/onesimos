@@ -94,6 +94,20 @@ export default function LandingPage() {
             <circle cx="20" cy="20" r="2" fill="#1a1a2e" />
           </svg>
         </div>
+        <div className="absolute bottom-[18%] right-[12%] z-20 pointer-events-none b-f3 hidden md:block" style={{ opacity: 0.7 }}>
+          <svg width="30" height="30" viewBox="0 0 40 40">
+            <ellipse className="b-left" cx="14" cy="20" rx="10" ry="7" fill="#60A5FA" />
+            <ellipse className="b-right" cx="26" cy="20" rx="10" ry="7" fill="#60A5FA" />
+            <circle cx="20" cy="20" r="2" fill="#1a1a2e" />
+          </svg>
+        </div>
+        <div className="absolute bottom-[10%] right-[22%] z-20 pointer-events-none b-f1 hidden md:block" style={{ opacity: 0.75 }}>
+          <svg width="26" height="26" viewBox="0 0 40 40">
+            <ellipse className="b-left" cx="14" cy="20" rx="10" ry="7" fill="#FACC15" />
+            <ellipse className="b-right" cx="26" cy="20" rx="10" ry="7" fill="#F472B6" />
+            <circle cx="20" cy="20" r="2" fill="#1a1a2e" />
+          </svg>
+        </div>
 
         <div className="absolute inset-0 w-full h-full z-0 overflow-hidden">
           <img src="/hero-bg-desktop.jpg" alt="Onesimos Desktop Hero" className="hidden md:block w-full h-full object-cover object-center" />
@@ -198,7 +212,7 @@ export default function LandingPage() {
             
             <button
               onClick={() => setCoppaOpen(true)}
-              className="group absolute top-2 right-12 lg:right-24 z-30 flex items-center justify-center transition-transform hover:scale-110 active:scale-95 focus:outline-none"
+              className="group absolute top-10 right-4 lg:right-8 z-30 flex items-center justify-center transition-transform hover:scale-110 active:scale-95 focus:outline-none"
               title="Click for COPPA & Child Safety Specs"
             >
               <div className="relative w-28 h-28 flex items-center justify-center">
