@@ -55,7 +55,7 @@ export default function LandingPage() {
       
       <style dangerouslySetInnerHTML={{ __html: butterflyStyles }} />
 
-      <main className="relative z-10 w-full bg-white rounded-b-[36px] md:rounded-b-[56px] shadow-[0_30px_70px_rgba(11,27,58,0.35)] overflow-hidden">
+      <main className="relative z-10 w-full bg-white rounded-b-[44px] md:rounded-b-[60px] shadow-[0_35px_80px_rgba(11,27,58,0.4)] overflow-hidden mb-[540px] md:mb-[440px]">
 
       <div className="relative w-full min-h-[100dvh] lg:h-[100dvh] flex flex-col justify-between overflow-visible bg-[#522DB8]">
         
@@ -481,7 +481,7 @@ export default function LandingPage() {
 
       </main>
 
-      <div className="sticky bottom-0 z-0 w-full">
+      <div className="fixed bottom-0 left-0 right-0 z-0 w-full pointer-events-auto">
         <Footer />
       </div>
     </div>
