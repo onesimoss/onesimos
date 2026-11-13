@@ -51,9 +51,11 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="min-h-[100dvh] flex flex-col font-[family-name:var(--font-switzer)] overflow-x-hidden w-full m-0 p-0 bg-white [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+    <div className="min-h-[100dvh] flex flex-col font-[family-name:var(--font-switzer)] overflow-x-hidden w-full m-0 p-0 bg-[#0B1B3A] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
       
       <style dangerouslySetInnerHTML={{ __html: butterflyStyles }} />
+
+      <main className="relative z-10 w-full bg-white rounded-b-[36px] md:rounded-b-[56px] shadow-[0_30px_70px_rgba(11,27,58,0.35)] overflow-hidden">
 
       <div className="relative w-full min-h-[100dvh] lg:h-[100dvh] flex flex-col justify-between overflow-visible bg-[#522DB8]">
         
@@ -268,7 +270,7 @@ export default function LandingPage() {
           </div>
         )}
 
-        <main className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 pt-28 md:pt-32 pb-6 md:pb-12 flex-grow grid grid-cols-1 md:grid-cols-12 items-center gap-8">
+        <div className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 pt-28 md:pt-32 pb-6 md:pb-12 flex-grow grid grid-cols-1 md:grid-cols-12 items-center gap-8">
           
           <div className="md:col-span-6 lg:col-span-6 flex flex-col justify-center items-start text-white max-w-full md:max-w-none">
             
@@ -325,9 +327,7 @@ export default function LandingPage() {
                     <path id="circlePath" d="M 50, 50 m -34, 0 a 34,34 0 1,1 68,0 a 34,34 0 1,1 -68,0" fill="none" />
                   </defs>
                   <text className="fill-white" style={{ fontSize: "8.5px", fontWeight: 500, letterSpacing: "2.5px" }}>
-                    <textPath href="#circlePath" startOffset="0%">
-                      COPPA SAFE  •  DESIGNED FOR AGES 3 TO 9  •  
-                    </textPath>
+                    <textPath href="#circlePath" startOffset="0%">COPPA SAFE  {"\u2022"}  DESIGNED FOR AGES 3 TO 9  {"\u2022"}  </textPath>
                   </text>
                 </svg>
 
@@ -346,13 +346,12 @@ export default function LandingPage() {
               className="absolute bottom-0 right-6 lg:right-16 w-[560px] lg:w-[720px] xl:w-[800px] max-w-none object-contain pointer-events-none drop-shadow-2xl translate-y-[18%]"
             />
           </div>
-
-        </main>
+          </div>
 
         <button onClick={() => setCoppaOpen(true)} className="md:hidden absolute top-[140px] right-4 z-30 flex items-center justify-center active:scale-95" title="COPPA">
 <div className="relative w-20 h-20 flex items-center justify-center">
 <div className="absolute inset-0 rounded-full bg-black shadow-2xl" style={{ maskImage: "radial-gradient(circle, transparent 18px, black 19px)", WebkitMaskImage: "radial-gradient(circle, transparent 18px, black 19px)" }} />
-<svg className="absolute w-full h-full animate-[spin_12s_linear_infinite]" viewBox="0 0 100 100"><defs><path id="circlePathMobile" d="M 50, 50 m -34, 0 a 34,34 0 1,1 68,0 a 34,34 0 1,1 -68,0" fill="none" /></defs><text className="fill-white" style={{ fontSize: "8.5px", fontWeight: 500, letterSpacing: "2.5px" }}><textPath href="#circlePathMobile">COPPA SAFE  •  DESIGNED FOR AGES 3 TO 9  •  </textPath></text></svg>
+<svg className="absolute w-full h-full animate-[spin_12s_linear_infinite]" viewBox="0 0 100 100"><defs><path id="circlePathMobile" d="M 50, 50 m -34, 0 a 34,34 0 1,1 68,0 a 34,34 0 1,1 -68,0" fill="none" /></defs><text className="fill-white" style={{ fontSize: "8.5px", fontWeight: 500, letterSpacing: "2.5px" }}><textPath href="#circlePathMobile">COPPA SAFE  {"\u2022"}  DESIGNED FOR AGES 3 TO 9  {"\u2022"}  </textPath></text></svg>
 <div className="absolute w-[30px] h-[30px] rounded-full bg-white text-[#0B1B3A] flex items-center justify-center shadow-md"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M7 17L17 7M17 7H7M17 7V17" /></svg></div>
 </div>
 </button>
@@ -380,7 +379,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="p-8 rounded-3xl bg-[#FAF9F6] border border-[#0B1B3A]/5 shadow-sm flex flex-col justify-between">
               <div>
-                <div className="text-4xl mb-5">🎙️</div>
+                <div className="text-4xl mb-5">ðŸŽ™ï¸</div>
                 <h3 className="font-[family-name:var(--font-switzer)] text-2xl font-bold text-[#0B1B3A]">
                   Speech Evaluation
                 </h3>
@@ -392,7 +391,7 @@ export default function LandingPage() {
 
             <div className="p-8 rounded-3xl bg-[#FAF9F6] border border-[#0B1B3A]/5 shadow-sm flex flex-col justify-between">
               <div>
-                <div className="text-4xl mb-5">📖</div>
+                <div className="text-4xl mb-5">ðŸ“–</div>
                 <h3 className="font-[family-name:var(--font-switzer)] text-2xl font-bold text-[#0B1B3A]">
                   Adaptive Chapters
                 </h3>
@@ -404,7 +403,7 @@ export default function LandingPage() {
 
             <div className="p-8 rounded-3xl bg-[#FAF9F6] border border-[#0B1B3A]/5 shadow-sm flex flex-col justify-between">
               <div>
-                <div className="text-4xl mb-5">🛡️</div>
+                <div className="text-4xl mb-5">ðŸ›¡ï¸</div>
                 <h3 className="font-[family-name:var(--font-switzer)] text-2xl font-bold text-[#0B1B3A]">
                   Parent Protection
                 </h3>
@@ -480,7 +479,11 @@ export default function LandingPage() {
         </div>
       )}
 
-      <Footer />
+      </main>
+
+      <div className="sticky bottom-0 z-0 w-full">
+        <Footer />
+      </div>
     </div>
   );
 }
