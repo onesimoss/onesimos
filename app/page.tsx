@@ -162,67 +162,108 @@ export default function LandingPage() {
           </div>
         </header>
 
-                                {menuOpen && (
-          <div className="fixed inset-0 z-[100] md:hidden pointer-events-auto flex items-center justify-center px-5">
-            {/* Faded Purple Overlay */}
-            <div className="absolute inset-0 bg-[#522DB8]/80 backdrop-blur-md" onClick={() => setMenuOpen(false)} />
+                                        {menuOpen && (
+          <div className="fixed inset-0 z-[100] md:hidden pointer-events-auto flex items-center justify-center p-5">
+            {/* Deep frosted backdrop */}
+            <div className="absolute inset-0 bg-[#0B1B3A]/75 backdrop-blur-xl transition-opacity" onClick={() => setMenuOpen(false)} />
             
-            {/* Pop-out Card Wrapper — relative to allow image overflow */}
-            <div className="relative w-full max-w-[320px] h-[400px] mt-20">
+            {/* Ultra-Premium Light Card (Matching Reference Spec) */}
+            <div className="relative w-full max-w-[340px] bg-[#F3F3F6] rounded-[32px] p-6 shadow-2xl border border-white/80 flex flex-col justify-between min-h-[440px] z-10">
               
-              {/* White Background Card */}
-              <div className="absolute inset-0 bg-white rounded-[28px] shadow-2xl" />
-
-              {/* Overflowing 3D Character Image */}
-              <img
-                src="/menu-character.png"
-                alt="Menu Character"
-                className="absolute bottom-0 -right-4 w-[250px] h-[120%] object-contain object-bottom z-20 pointer-events-none drop-shadow-2xl select-none"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-              />
-
-              {/* Card Content (Z-10 so the image overlaps it on the right) */}
-              <div className="absolute inset-0 z-10 flex w-full flex-col justify-between p-6">
-                
-                {/* Close Button */}
+              {/* Top Bar: Close Circle + Micro Info Pills */}
+              <div className="flex items-center justify-between w-full">
                 <button
                   type="button"
                   onClick={() => setMenuOpen(false)}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-[#EE3B3B] text-white shadow-md active:scale-95 transition-transform"
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#0B1B3A] shadow-xs border border-black/5 active:scale-90 transition-transform"
                   aria-label="Close menu"
                 >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4">
-                    <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round"/>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                    <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </button>
 
-                {/* Navigation Links */}
-                <nav className="flex flex-col gap-4 mt-2 w-[65%]">
-                  <a href="#features" onClick={() => setMenuOpen(false)} className="text-[1.15rem] font-extrabold leading-tight text-[#0B1B3A]">Features</a>
-                  <a href="#curriculum" onClick={() => setMenuOpen(false)} className="text-[1.15rem] font-extrabold leading-tight text-[#0B1B3A]">Curriculum</a>
-                  <a href="#pricing" onClick={() => setMenuOpen(false)} className="text-[1.15rem] font-extrabold leading-tight text-[#0B1B3A]">Pricing</a>
-                  <a href="#about" onClick={() => setMenuOpen(false)} className="text-[1.15rem] font-extrabold leading-tight text-[#0B1B3A]">About us</a>
-                </nav>
-
-                {/* Buttons (Login & Get Started) */}
-                <div className="flex flex-col gap-3 w-[65%] mb-2">
-                  <Link
-                    href="/login"
-                    onClick={() => setMenuOpen(false)}
-                    className="inline-flex h-11 w-full items-center justify-center rounded-full bg-[#4A4A4A] text-sm font-bold text-white shadow-md active:scale-95 transition-transform"
-                  >
-                    Login
-                  </Link>
-                  <Link
-                    href="/signup"
-                    onClick={() => setMenuOpen(false)}
-                    className="inline-flex h-11 w-full items-center justify-center rounded-full bg-[#FACC15] text-sm font-bold text-[#0B1B3A] shadow-md active:scale-95 transition-transform"
-                  >
-                    Get Started
-                  </Link>
+                <div className="flex items-center gap-1.5">
+                  <span className="px-3 py-1 rounded-full bg-white/80 text-[10px] font-bold tracking-wider text-[#0B1B3A]/60 border border-black/5 uppercase">
+                    Ages 3 to 9
+                  </span>
+                  <span className="px-3 py-1 rounded-full bg-[#FACC15]/20 text-[10px] font-extrabold tracking-wider text-[#0B1B3A] border border-[#FACC15]/30 uppercase">
+                    Speech AI
+                  </span>
                 </div>
-
               </div>
+
+              {/* Body: Subtle Category Header + Crisp Nav Links */}
+              <div className="flex flex-col gap-3 my-4">
+                <span className="text-[11px] font-bold tracking-widest text-[#0B1B3A]/40 uppercase px-1">Navigation</span>
+                <nav className="flex flex-col gap-1">
+                  <a
+                    href="#features"
+                    onClick={() => setMenuOpen(false)}
+                    className="group flex items-center justify-between p-2.5 rounded-2xl hover:bg-white/80 transition-all"
+                  >
+                    <span className="text-[1.25rem] font-extrabold tracking-tight text-[#0B1B3A]">Features</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-gray-400 group-hover:text-[#0B1B3A] group-hover:translate-x-0.5 transition-all">
+                      <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                  </a>
+                  <a
+                    href="#curriculum"
+                    onClick={() => setMenuOpen(false)}
+                    className="group flex items-center justify-between p-2.5 rounded-2xl hover:bg-white/80 transition-all"
+                  >
+                    <span className="text-[1.25rem] font-extrabold tracking-tight text-[#0B1B3A]">Curriculum</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-gray-400 group-hover:text-[#0B1B3A] group-hover:translate-x-0.5 transition-all">
+                      <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                  </a>
+                  <a
+                    href="#pricing"
+                    onClick={() => setMenuOpen(false)}
+                    className="group flex items-center justify-between p-2.5 rounded-2xl hover:bg-white/80 transition-all"
+                  >
+                    <span className="text-[1.25rem] font-extrabold tracking-tight text-[#0B1B3A]">Pricing</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-gray-400 group-hover:text-[#0B1B3A] group-hover:translate-x-0.5 transition-all">
+                      <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                  </a>
+                  <a
+                    href="#about"
+                    onClick={() => setMenuOpen(false)}
+                    className="group flex items-center justify-between p-2.5 rounded-2xl hover:bg-white/80 transition-all"
+                  >
+                    <span className="text-[1.25rem] font-extrabold tracking-tight text-[#0B1B3A]">About us</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-gray-400 group-hover:text-[#0B1B3A] group-hover:translate-x-0.5 transition-all">
+                      <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                  </a>
+                </nav>
+              </div>
+
+              {/* Bottom Floating Pill Action (Reference Card Pill Style) */}
+              <div className="flex flex-col gap-2 w-full">
+                <Link
+                  href="/signup"
+                  onClick={() => setMenuOpen(false)}
+                  className="group flex h-13 w-full items-center justify-between rounded-full bg-[#0B1B3A] px-5 shadow-lg active:scale-98 transition-all"
+                >
+                  <span className="text-sm font-bold text-white tracking-wide">Get Started</span>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#FACC15] text-[#0B1B3A] shadow-sm group-hover:scale-105 transition-transform">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/login"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex h-10 w-full items-center justify-center rounded-full bg-white text-xs font-bold text-[#0B1B3A] border border-black/5 shadow-2xs active:scale-98 transition-transform"
+                >
+                  Log in to account
+                </Link>
+              </div>
+
             </div>
           </div>
         )}
@@ -439,7 +480,7 @@ export default function LandingPage() {
         </div>
       )}
 
-      <Footer />
+      <div className="sticky bottom-0 -z-10 w-full"><Footer /></div>
     </div>
   );
 }
