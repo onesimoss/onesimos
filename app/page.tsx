@@ -55,7 +55,7 @@ export default function LandingPage() {
       
       <style dangerouslySetInnerHTML={{ __html: butterflyStyles }} />
 
-      <main className="relative z-10 w-full bg-white rounded-b-[44px] md:rounded-b-[60px] shadow-[0_35px_80px_rgba(11,27,58,0.4)] overflow-hidden mb-[540px] md:mb-[440px]">
+      <main className="relative z-10 w-full bg-white rounded-b-[44px] md:rounded-b-[64px] shadow-[0_40px_100px_-20px_rgba(11,27,58,0.35),0_20px_40px_-20px_rgba(0,0,0,0.4)] overflow-hidden mb-[540px] md:mb-[440px]">
 
       <div className="relative w-full min-h-[100dvh] lg:h-[100dvh] flex flex-col justify-between overflow-visible bg-[#522DB8]">
         
@@ -365,53 +365,102 @@ export default function LandingPage() {
 
       </div>
 
-      <section className="w-full bg-white pt-14 md:pt-24 pb-20 px-6 md:px-12 text-[#0B1B3A] border-t border-gray-100" id="features">
+            <section className="w-full bg-white pt-16 md:pt-28 pb-24 px-6 md:px-12 text-[#0B1B3A] border-t border-gray-100/80" id="features">
         <div className="mx-auto max-w-6xl">
-          <div className="text-center max-w-2xl mx-auto mb-16">
-            <h2 className="font-[family-name:var(--font-switzer)] text-3xl sm:text-5xl font-extrabold">
+          
+          {/* Header Block */}
+          <div className="text-center max-w-2xl mx-auto mb-16 md:mb-20">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#522DB8]/5 border border-[#522DB8]/10 text-[11px] font-extrabold tracking-widest text-[#522DB8] uppercase mb-4 shadow-2xs">
+              Designed For Confidence
+            </div>
+            <h2 className="font-[family-name:var(--font-switzer)] text-3xl sm:text-5xl font-extrabold tracking-tight text-[#0B1B3A]">
               Built for Young Learners
             </h2>
-            <p className="mt-4 text-base sm:text-lg text-[#0B1B3A]/70 leading-relaxed">
-              Three simple pillars that help your child read with joy and confidence.
+            <p className="mt-4 text-base sm:text-lg text-[#0B1B3A]/70 leading-relaxed font-normal">
+              Three intelligent pillars that guide your child to read with joy, independence, and pride.
             </p>
           </div>
 
+          {/* Apple Hardware Surface 3-Card Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="p-8 rounded-3xl bg-[#FAF9F6] border border-[#0B1B3A]/5 shadow-sm flex flex-col justify-between">
+            
+            {/* Card 1: Speech Evaluation */}
+            <div className="group relative p-8 sm:p-9 rounded-[32px] bg-gradient-to-b from-[#FAFBFD] to-[#F1F3F8] border border-black/[0.06] shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_25px_50px_rgba(11,27,58,0.09)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between overflow-hidden">
+              <div className="absolute inset-0 rounded-[32px] border border-white/80 pointer-events-none" />
               <div>
-                <div className="text-4xl mb-5">ðŸŽ™ï¸</div>
-                <h3 className="font-[family-name:var(--font-switzer)] text-2xl font-bold text-[#0B1B3A]">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#7C3AED] to-[#4F46E5] shadow-md shadow-indigo-500/20 flex items-center justify-center mb-7 group-hover:scale-110 transition-transform duration-300">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    <line x1="12" y1="19" x2="12" y2="22"/>
+                  </svg>
+                </div>
+                <h3 className="font-[family-name:var(--font-switzer)] text-xl sm:text-2xl font-bold text-[#0B1B3A] tracking-tight group-hover:text-[#522DB8] transition-colors">
                   Speech Evaluation
                 </h3>
-                <p className="mt-3 text-sm leading-relaxed text-[#0B1B3A]/70">
-                  Real-time voice recognition that listens as your child reads aloud and provides encouraging feedback.
+                <p className="mt-3 text-sm sm:text-[15px] leading-relaxed text-[#0B1B3A]/70 font-normal">
+                  Real-time voice recognition that listens as your child reads aloud and provides encouraging, gentle feedback.
                 </p>
+              </div>
+              <div className="mt-8 pt-5 border-t border-black/[0.05] flex items-center justify-between text-xs font-bold text-[#522DB8]">
+                <span>Explore Speech AI</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="group-hover:translate-x-1 transition-transform">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
               </div>
             </div>
 
-            <div className="p-8 rounded-3xl bg-[#FAF9F6] border border-[#0B1B3A]/5 shadow-sm flex flex-col justify-between">
+            {/* Card 2: Adaptive Chapters */}
+            <div className="group relative p-8 sm:p-9 rounded-[32px] bg-gradient-to-b from-[#FAFBFD] to-[#F1F3F8] border border-black/[0.06] shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_25px_50px_rgba(11,27,58,0.09)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between overflow-hidden">
+              <div className="absolute inset-0 rounded-[32px] border border-white/80 pointer-events-none" />
               <div>
-                <div className="text-4xl mb-5">ðŸ“–</div>
-                <h3 className="font-[family-name:var(--font-switzer)] text-2xl font-bold text-[#0B1B3A]">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#F97316] to-[#EA580C] shadow-md shadow-orange-500/20 flex items-center justify-center mb-7 group-hover:scale-110 transition-transform duration-300">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                    <path d="M12 6l1.5 3 3.5.5-2.5 2.5.5 3.5-3-1.5-3 1.5.5-3.5L7 9.5l3.5-.5z"/>
+                  </svg>
+                </div>
+                <h3 className="font-[family-name:var(--font-switzer)] text-xl sm:text-2xl font-bold text-[#0B1B3A] tracking-tight group-hover:text-[#EA580C] transition-colors">
                   Adaptive Chapters
                 </h3>
-                <p className="mt-3 text-sm leading-relaxed text-[#0B1B3A]/70">
-                  Personalized story chapters that dynamically adapt to your childs reading level and vocabulary.
+                <p className="mt-3 text-sm sm:text-[15px] leading-relaxed text-[#0B1B3A]/70 font-normal">
+                  Personalized story chapters that dynamically adapt to your childs reading pace, interests, and growing vocabulary.
                 </p>
+              </div>
+              <div className="mt-8 pt-5 border-t border-black/[0.05] flex items-center justify-between text-xs font-bold text-[#EA580C]">
+                <span>Dynamic Stories</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="group-hover:translate-x-1 transition-transform">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
               </div>
             </div>
 
-            <div className="p-8 rounded-3xl bg-[#FAF9F6] border border-[#0B1B3A]/5 shadow-sm flex flex-col justify-between">
+            {/* Card 3: Parent Protection */}
+            <div className="group relative p-8 sm:p-9 rounded-[32px] bg-gradient-to-b from-[#FAFBFD] to-[#F1F3F8] border border-black/[0.06] shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_25px_50px_rgba(11,27,58,0.09)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between overflow-hidden">
+              <div className="absolute inset-0 rounded-[32px] border border-white/80 pointer-events-none" />
               <div>
-                <div className="text-4xl mb-5">ðŸ›¡ï¸</div>
-                <h3 className="font-[family-name:var(--font-switzer)] text-2xl font-bold text-[#0B1B3A]">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#10B981] to-[#059669] shadow-md shadow-emerald-500/20 flex items-center justify-center mb-7 group-hover:scale-110 transition-transform duration-300">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    <path d="M9 12l2 2 4-4"/>
+                  </svg>
+                </div>
+                <h3 className="font-[family-name:var(--font-switzer)] text-xl sm:text-2xl font-bold text-[#0B1B3A] tracking-tight group-hover:text-[#059669] transition-colors">
                   Parent Protection
                 </h3>
-                <p className="mt-3 text-sm leading-relaxed text-[#0B1B3A]/70">
-                  100% Parent PIN protection ensures a safe, uninterrupted learning environment for every session.
+                <p className="mt-3 text-sm sm:text-[15px] leading-relaxed text-[#0B1B3A]/70 font-normal">
+                  100% Parent PIN protection ensures a safe, COPPA-compliant, ad-free environment for every reading session.
                 </p>
               </div>
+              <div className="mt-8 pt-5 border-t border-black/[0.05] flex items-center justify-between text-xs font-bold text-[#059669]">
+                <span>COPPA Verified</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="group-hover:translate-x-1 transition-transform">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+              </div>
             </div>
+
           </div>
         </div>
       </section>
