@@ -480,7 +480,7 @@ export default function LandingPage() {
         </div>
       )}
 
-      <div className="sticky bottom-0 -z-10 w-full"><Footer /></div>
+      <Footer />
     </div>
   );
 }
