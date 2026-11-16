@@ -22,6 +22,8 @@ export default function LandingPage() {
   const [phraseIndex, setPhraseIndex] = useState(0);
   const [fade, setFade] = useState(true);
   const [coppaOpen, setCoppaOpen] = useState(false);
+  const [navExpanded, setNavExpanded] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(true);
 
   const phrases = [
     "Make reading\nsomething kids\ntruly own.",
@@ -164,117 +166,140 @@ export default function LandingPage() {
           </div>
         </header>
 
-                                                                        {menuOpen && (
-          <div className="fixed inset-0 z-[100] md:hidden pointer-events-auto flex flex-col items-center justify-center p-4">
+                                                                                {menuOpen && (
+          <div className="fixed inset-0 z-[100] md:hidden pointer-events-auto flex flex-col items-center justify-center p-5 overflow-y-auto">
             {/* Subtle Frosted Backdrop */}
-            <div className="absolute inset-0 bg-[#0B1B3A]/75 backdrop-blur-xl transition-opacity" onClick={() => setMenuOpen(false)} />
+            <div
+              className="absolute inset-0 bg-[#0B1B3A]/80 backdrop-blur-2xl transition-opacity"
+              onClick={() => { setMenuOpen(false); setNavExpanded(false); }}
+            />
 
-            {/* 3 Floating Components Stack with Air Gap */}
-            <div className="relative z-10 flex flex-col items-center gap-3 w-full max-w-[300px]">
+            {/* Independent Top Right Floating Close Button */}
+            <div className="relative z-20 w-full max-w-[340px] flex justify-end mb-2">
+              <button
+                type="button"
+                onClick={() => { setMenuOpen(false); setNavExpanded(false); }}
+                className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-[#0B1B3A] shadow-2xl backdrop-blur-md border border-white/80 active:scale-90 transition-transform"
+                aria-label="Close menu"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
 
-              {/* COMPONENT 1: Floating Welcome Video Card */}
-              <div className="relative w-full h-[160px] rounded-[24px] overflow-hidden bg-gradient-to-br from-[#522DB8] via-[#3B1D8C] to-[#0B1B3A] shadow-[0_20px_40px_rgba(0,0,0,0.35)] border border-white/20 flex flex-col justify-between p-4 group">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(250,204,21,0.25)_0%,transparent_60%)] pointer-events-none" />
-                <img
-                  src="/hero-bg-mobile.jpg"
-                  alt="Welcome Video Preview"
-                  className="absolute inset-0 w-full h-full object-cover opacity-35 mix-blend-overlay pointer-events-none"
+            {/* Floating Component Stack */}
+            <div className="relative z-10 flex flex-col items-center gap-3.5 w-full max-w-[340px]">
+
+              {/* COMPONENT 1: Scaled Autoplay Video Card (No Labels, Tap to Pause) */}
+              <div
+                onClick={(e) => {
+                  const video = e.currentTarget.querySelector('video');
+                  if (video) {
+                    if (video.paused) { video.play(); setIsPlaying(true); }
+                    else { video.pause(); setIsPlaying(false); }
+                  }
+                }}
+                className="relative w-full h-[210px] rounded-[28px] overflow-hidden bg-gradient-to-br from-[#522DB8] via-[#3B1D8C] to-[#0B1B3A] shadow-[0_25px_50px_rgba(0,0,0,0.4)] border border-white/30 cursor-pointer group"
+              >
+                <video
+                  src="/welcome-video.mp4"
+                  poster="/hero-bg-mobile.jpg"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover"
                 />
-
-                {/* Video Top Bar: Badge + Close X */}
-                <div className="relative z-10 flex items-center justify-between w-full">
-                  <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-[10px] font-extrabold tracking-wider text-white border border-white/20 uppercase">
-                    Welcome Video
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex h-7 w-7 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md hover:bg-black/60 active:scale-90 transition-all border border-white/10"
-                    aria-label="Close menu"
-                  >
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M18 6L6 18M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-
-                {/* Video Play Button Overlay */}
-                <div className="relative z-10 flex flex-col items-center justify-center my-auto">
-                  <button
-                    type="button"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-[#0B1B3A] shadow-xl hover:scale-105 active:scale-95 transition-all group-hover:bg-[#FACC15]"
-                    aria-label="Play welcome video"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="ml-0.5">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  </button>
-                  <span className="mt-1.5 text-[10px] font-bold text-white/90 drop-shadow-sm">Watch Quick Intro</span>
-                </div>
+                
+                {/* Pause/Play Minimal Overlay Indicator */}
+                {!isPlaying && (
+                  <div className="absolute inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center">
+                    <div className="h-14 w-14 rounded-full bg-white/90 text-[#0B1B3A] flex items-center justify-center shadow-2xl">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="ml-1">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* COMPONENT 2: Floating Navigation Card */}
-              <div className="w-full bg-white/95 backdrop-blur-2xl rounded-[24px] p-2 shadow-[0_15px_35px_rgba(0,0,0,0.25)] border border-white/80 flex flex-col">
-                <nav className="flex flex-col gap-0.5">
-                  <a
-                    href="#features"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center justify-between px-3.5 py-2.5 rounded-xl hover:bg-black/5 transition-colors text-sm font-semibold text-[#0B1B3A]"
-                  >
-                    <span>Features</span>
-                    <span className="text-[10px] font-extrabold text-[#0B1B3A]/35 tracking-wider uppercase">01</span>
-                  </a>
+              {/* COMPONENT 2: Scaled Expandable Menu Pill (Up/Down Chevron) */}
+              <div className="w-full bg-white/95 backdrop-blur-2xl rounded-[28px] shadow-[0_20px_40px_rgba(0,0,0,0.3)] border border-white/80 overflow-hidden transition-all duration-300">
+                
+                {/* Collapsed Header Pill Button */}
+                <button
+                  type="button"
+                  onClick={() => setNavExpanded(!navExpanded)}
+                  className="w-full h-14 px-6 flex items-center justify-between text-[#0B1B3A] font-extrabold text-base tracking-tight active:bg-black/5 transition-colors"
+                >
+                  <span>Navigation Menu</span>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-black/5 text-[#0B1B3A]">
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className={`transition-transform duration-300 ${navExpanded ? "rotate-180" : "rotate-0"}`}
+                    >
+                      <path d="M6 9l6 6 6-6" />
+                    </svg>
+                  </div>
+                </button>
 
-                  <div className="h-[1px] bg-black/[0.05] mx-3" />
-
-                  <a
-                    href="#curriculum"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center justify-between px-3.5 py-2.5 rounded-xl hover:bg-black/5 transition-colors text-sm font-semibold text-[#0B1B3A]"
-                  >
-                    <span>Curriculum</span>
-                    <span className="text-[10px] font-extrabold text-[#0B1B3A]/35 tracking-wider uppercase">02</span>
-                  </a>
-
-                  <div className="h-[1px] bg-black/[0.05] mx-3" />
-
-                  <a
-                    href="#pricing"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center justify-between px-3.5 py-2.5 rounded-xl hover:bg-black/5 transition-colors text-sm font-semibold text-[#0B1B3A]"
-                  >
-                    <span>Pricing</span>
-                    <span className="text-[10px] font-extrabold text-[#0B1B3A]/35 tracking-wider uppercase">03</span>
-                  </a>
-
-                  <div className="h-[1px] bg-black/[0.05] mx-3" />
-
-                  <a
-                    href="#about"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center justify-between px-3.5 py-2.5 rounded-xl hover:bg-black/5 transition-colors text-sm font-semibold text-[#0B1B3A]"
-                  >
-                    <span>About us</span>
-                    <span className="text-[10px] font-extrabold text-[#0B1B3A]/35 tracking-wider uppercase">04</span>
-                  </a>
-                </nav>
+                {/* Expanded Menu Options */}
+                {navExpanded && (
+                  <nav className="flex flex-col px-3 pb-3 border-t border-black/5 pt-2 animate-fadeIn">
+                    <a
+                      href="#features"
+                      onClick={() => { setMenuOpen(false); setNavExpanded(false); }}
+                      className="flex items-center justify-between px-4 py-3 rounded-2xl hover:bg-black/5 transition-colors text-base font-bold text-[#0B1B3A]"
+                    >
+                      Features
+                    </a>
+                    <a
+                      href="#curriculum"
+                      onClick={() => { setMenuOpen(false); setNavExpanded(false); }}
+                      className="flex items-center justify-between px-4 py-3 rounded-2xl hover:bg-black/5 transition-colors text-base font-bold text-[#0B1B3A]"
+                    >
+                      Curriculum
+                    </a>
+                    <a
+                      href="#pricing"
+                      onClick={() => { setMenuOpen(false); setNavExpanded(false); }}
+                      className="flex items-center justify-between px-4 py-3 rounded-2xl hover:bg-black/5 transition-colors text-base font-bold text-[#0B1B3A]"
+                    >
+                      Pricing
+                    </a>
+                    <a
+                      href="#about"
+                      onClick={() => { setMenuOpen(false); setNavExpanded(false); }}
+                      className="flex items-center justify-between px-4 py-3 rounded-2xl hover:bg-black/5 transition-colors text-base font-bold text-[#0B1B3A]"
+                    >
+                      About us
+                    </a>
+                  </nav>
+                )}
               </div>
 
-              {/* COMPONENT 3: Floating Side-by-Side CTAs */}
-              <div className="flex items-center gap-2.5 w-full">
+              {/* COMPONENT 3: Scaled Side-by-Side Floating CTAs (Height 14 / 2.5x Touch Scale) */}
+              <div className="flex items-center gap-3 w-full">
                 <Link
                   href="/login"
-                  onClick={() => setMenuOpen(false)}
-                  className="flex-1 flex h-11 items-center justify-center rounded-full bg-[#0B1B3A] text-xs font-bold text-white shadow-[0_10px_25px_rgba(11,27,58,0.3)] active:scale-95 transition-transform"
+                  onClick={() => { setMenuOpen(false); setNavExpanded(false); }}
+                  className="flex-1 flex h-14 items-center justify-center rounded-full bg-[#0B1B3A] text-sm font-extrabold text-white shadow-[0_12px_30px_rgba(11,27,58,0.4)] active:scale-95 transition-transform"
                 >
                   Log in
                 </Link>
 
                 <Link
                   href="/signup"
-                  onClick={() => setMenuOpen(false)}
-                  className="flex-1 flex h-11 items-center justify-center rounded-full bg-[#FACC15] text-xs font-bold text-[#0B1B3A] shadow-[0_10px_25px_rgba(250,204,21,0.3)] active:scale-95 transition-transform hover:bg-white"
+                  onClick={() => { setMenuOpen(false); setNavExpanded(false); }}
+                  className="flex-1 flex h-14 items-center justify-center rounded-full bg-[#FACC15] text-sm font-extrabold text-[#0B1B3A] shadow-[0_12px_30px_rgba(250,204,21,0.4)] active:scale-95 transition-transform hover:bg-white"
                 >
                   Get Started
                 </Link>
