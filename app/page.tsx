@@ -164,95 +164,120 @@ export default function LandingPage() {
           </div>
         </header>
 
-                                        {menuOpen && (
+                                                {menuOpen && (
           <div className="fixed inset-0 z-[100] md:hidden pointer-events-auto flex items-center justify-center p-5">
-            {/* Deep frosted backdrop */}
-            <div className="absolute inset-0 bg-[#0B1B3A]/75 backdrop-blur-xl transition-opacity" onClick={() => setMenuOpen(false)} />
+            {/* Deep Frosted Glass Backdrop */}
+            <div className="absolute inset-0 bg-[#0B1B3A]/80 backdrop-blur-2xl transition-opacity" onClick={() => setMenuOpen(false)} />
             
-            {/* Ultra-Premium Light Card (Matching Reference Spec) */}
-            <div className="relative w-full max-w-[340px] bg-[#F3F3F6] rounded-[32px] p-6 shadow-2xl border border-white/80 flex flex-col justify-between min-h-[440px] z-10">
+            {/* Pop-Out Card Container */}
+            <div className="relative w-full max-w-[340px] bg-[#F4F4F7] rounded-[36px] p-6 shadow-[0_32px_64px_-12px_rgba(11,27,58,0.4)] border border-white/90 flex flex-col justify-between min-h-[470px] z-10">
               
-              {/* Top Bar: Close Circle + Micro Info Pills */}
-              <div className="flex items-center justify-between w-full">
+              {/* Peeking 3D Character Illustration */}
+              <div className="absolute -left-14 top-14 w-[130px] pointer-events-none z-20 select-none drop-shadow-2xl">
+                <img
+                  src="/menu-character.png"
+                  alt="Onesimos Learning Character"
+                  className="w-full h-auto object-contain"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                />
+              </div>
+
+              {/* Top Header Bar: Red Close Circle + Micro Info Chips */}
+              <div className="flex items-center justify-between w-full z-10">
                 <button
                   type="button"
                   onClick={() => setMenuOpen(false)}
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#0B1B3A] shadow-xs border border-black/5 active:scale-90 transition-transform"
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-b from-[#EF4444] to-[#DC2626] text-white shadow-md shadow-red-500/30 active:scale-90 transition-transform"
                   aria-label="Close menu"
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                    <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 6L6 18M6 6l12 12" />
                   </svg>
                 </button>
 
                 <div className="flex items-center gap-1.5">
-                  <span className="px-3 py-1 rounded-full bg-white/80 text-[10px] font-bold tracking-wider text-[#0B1B3A]/60 border border-black/5 uppercase">
+                  <span className="px-3 py-1 rounded-full bg-white/90 text-[10px] font-extrabold tracking-wider text-[#0B1B3A]/60 border border-black/5 uppercase shadow-2xs">
                     Ages 3 to 9
                   </span>
-                  <span className="px-3 py-1 rounded-full bg-[#FACC15]/20 text-[10px] font-extrabold tracking-wider text-[#0B1B3A] border border-[#FACC15]/30 uppercase">
+                  <span className="px-3 py-1 rounded-full bg-[#FACC15]/25 text-[10px] font-extrabold tracking-wider text-[#0B1B3A] border border-[#FACC15]/40 uppercase shadow-2xs">
                     Speech AI
                   </span>
                 </div>
               </div>
 
-              {/* Body: Subtle Category Header + Crisp Nav Links */}
-              <div className="flex flex-col gap-3 my-4">
-                <span className="text-[11px] font-bold tracking-widest text-[#0B1B3A]/40 uppercase px-1">Navigation</span>
+              {/* Nav Body: Category Label + Links */}
+              <div className="flex flex-col gap-3 my-4 z-10">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-[10px] font-extrabold tracking-widest text-[#0B1B3A]/40 uppercase">Navigation</span>
+                  <span className="h-[1px] flex-1 bg-black/5 ml-3" />
+                </div>
                 <nav className="flex flex-col gap-1">
                   <a
                     href="#features"
                     onClick={() => setMenuOpen(false)}
-                    className="group flex items-center justify-between p-2.5 rounded-2xl hover:bg-white/80 transition-all"
+                    className="group flex items-center justify-between py-2.5 px-3 rounded-2xl hover:bg-white hover:shadow-xs transition-all"
                   >
                     <span className="text-[1.25rem] font-extrabold tracking-tight text-[#0B1B3A]">Features</span>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-gray-400 group-hover:text-[#0B1B3A] group-hover:translate-x-0.5 transition-all">
-                      <path d="M5 12h14M12 5l7 7-7 7" />
-                    </svg>
+                    <div className="flex items-center gap-1.5 text-gray-400 group-hover:text-[#522DB8] transition-colors">
+                      <span className="text-xs font-bold opacity-60">01</span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="group-hover:translate-x-0.5 transition-transform">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                      </svg>
+                    </div>
                   </a>
                   <a
                     href="#curriculum"
                     onClick={() => setMenuOpen(false)}
-                    className="group flex items-center justify-between p-2.5 rounded-2xl hover:bg-white/80 transition-all"
+                    className="group flex items-center justify-between py-2.5 px-3 rounded-2xl hover:bg-white hover:shadow-xs transition-all"
                   >
                     <span className="text-[1.25rem] font-extrabold tracking-tight text-[#0B1B3A]">Curriculum</span>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-gray-400 group-hover:text-[#0B1B3A] group-hover:translate-x-0.5 transition-all">
-                      <path d="M5 12h14M12 5l7 7-7 7" />
-                    </svg>
+                    <div className="flex items-center gap-1.5 text-gray-400 group-hover:text-[#522DB8] transition-colors">
+                      <span className="text-xs font-bold opacity-60">02</span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="group-hover:translate-x-0.5 transition-transform">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                      </svg>
+                    </div>
                   </a>
                   <a
                     href="#pricing"
                     onClick={() => setMenuOpen(false)}
-                    className="group flex items-center justify-between p-2.5 rounded-2xl hover:bg-white/80 transition-all"
+                    className="group flex items-center justify-between py-2.5 px-3 rounded-2xl hover:bg-white hover:shadow-xs transition-all"
                   >
                     <span className="text-[1.25rem] font-extrabold tracking-tight text-[#0B1B3A]">Pricing</span>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-gray-400 group-hover:text-[#0B1B3A] group-hover:translate-x-0.5 transition-all">
-                      <path d="M5 12h14M12 5l7 7-7 7" />
-                    </svg>
+                    <div className="flex items-center gap-1.5 text-gray-400 group-hover:text-[#522DB8] transition-colors">
+                      <span className="text-xs font-bold opacity-60">03</span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="group-hover:translate-x-0.5 transition-transform">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                      </svg>
+                    </div>
                   </a>
                   <a
                     href="#about"
                     onClick={() => setMenuOpen(false)}
-                    className="group flex items-center justify-between p-2.5 rounded-2xl hover:bg-white/80 transition-all"
+                    className="group flex items-center justify-between py-2.5 px-3 rounded-2xl hover:bg-white hover:shadow-xs transition-all"
                   >
                     <span className="text-[1.25rem] font-extrabold tracking-tight text-[#0B1B3A]">About us</span>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-gray-400 group-hover:text-[#0B1B3A] group-hover:translate-x-0.5 transition-all">
-                      <path d="M5 12h14M12 5l7 7-7 7" />
-                    </svg>
+                    <div className="flex items-center gap-1.5 text-gray-400 group-hover:text-[#522DB8] transition-colors">
+                      <span className="text-xs font-bold opacity-60">04</span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="group-hover:translate-x-0.5 transition-transform">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                      </svg>
+                    </div>
                   </a>
                 </nav>
               </div>
 
-              {/* Bottom Floating Pill Action (Reference Card Pill Style) */}
-              <div className="flex flex-col gap-2 w-full">
+              {/* Bottom Action Stack */}
+              <div className="flex flex-col gap-2.5 w-full z-10">
                 <Link
                   href="/signup"
                   onClick={() => setMenuOpen(false)}
-                  className="group flex h-13 w-full items-center justify-between rounded-full bg-[#0B1B3A] px-5 shadow-lg active:scale-98 transition-all"
+                  className="group flex h-12 w-full items-center justify-between rounded-full bg-[#FACC15] px-5 text-[#0B1B3A] font-bold text-sm shadow-md active:scale-98 transition-all hover:bg-white"
                 >
-                  <span className="text-sm font-bold text-white tracking-wide">Get Started</span>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#FACC15] text-[#0B1B3A] shadow-sm group-hover:scale-105 transition-transform">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M8 5v14l11-7z" />
+                  <span className="tracking-wide">Get Started</span>
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#0B1B3A] text-white shadow-xs group-hover:scale-105 transition-transform">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 12h14M12 5l7 7-7 7" />
                     </svg>
                   </div>
                 </Link>
@@ -260,7 +285,7 @@ export default function LandingPage() {
                 <Link
                   href="/login"
                   onClick={() => setMenuOpen(false)}
-                  className="flex h-10 w-full items-center justify-center rounded-full bg-white text-xs font-bold text-[#0B1B3A] border border-black/5 shadow-2xs active:scale-98 transition-transform"
+                  className="flex h-11 w-full items-center justify-center rounded-full bg-[#0B1B3A] text-white font-bold text-xs shadow-sm active:scale-98 transition-transform hover:bg-[#1a2b4c]"
                 >
                   Log in to account
                 </Link>
