@@ -164,70 +164,99 @@ export default function LandingPage() {
           </div>
         </header>
 
-                                                        {menuOpen && (
-          <div className="fixed inset-0 z-[100] md:hidden pointer-events-auto flex items-center justify-center p-5">
-            {/* Deep Frosted Backdrop */}
-            <div className="absolute inset-0 bg-[#0B1B3A]/75 backdrop-blur-xl transition-opacity" onClick={() => setMenuOpen(false)} />
-            
-            {/* Minimalist White Card */}
-            <div className="relative w-full max-w-[320px] bg-white rounded-[32px] p-6 shadow-2xl border border-gray-100 flex flex-col justify-between min-h-[380px] z-10">
-              
-              {/* Top Bar: Close Circle + Age Pill */}
-              <div className="flex items-center justify-between w-full">
+                                                                {menuOpen && (
+          <div className="fixed inset-0 z-[100] md:hidden pointer-events-auto flex items-center justify-center p-4">
+            {/* Subtle Frosted Backdrop */}
+            <div className="absolute inset-0 bg-[#0B1B3A]/40 backdrop-blur-md transition-opacity" onClick={() => setMenuOpen(false)} />
+
+            {/* Compact Executive Context Menu Card (Reference Spec) */}
+            <div className="relative w-full max-w-[290px] bg-white/90 backdrop-blur-2xl rounded-[24px] p-2.5 shadow-[0_20px_50px_rgba(11,27,58,0.2)] border border-white/80 flex flex-col gap-1 z-10 text-[#0B1B3A]">
+
+              {/* Quiet Brand Context Header */}
+              <div className="flex items-center justify-between px-3 py-2 border-b border-black/[0.06]">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0B1B3A] text-white font-[family-name:var(--font-achiko)] text-sm font-bold shadow-xs">
+                    O
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-[#0B1B3A] leading-tight">Onesimos</span>
+                    <span className="text-[10px] font-medium text-[#0B1B3A]/60 leading-tight">Ages 3 to 9</span>
+                  </div>
+                </div>
                 <button
                   type="button"
                   onClick={() => setMenuOpen(false)}
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-[#0B1B3A] hover:bg-gray-200 active:scale-90 transition-all"
+                  className="flex h-6 w-6 items-center justify-center rounded-full bg-black/5 text-[#0B1B3A]/70 hover:bg-black/10 hover:text-[#0B1B3A] active:scale-90 transition-all"
                   aria-label="Close menu"
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M18 6L6 18M6 6l12 12" />
                   </svg>
                 </button>
-
-                <span className="px-3.5 py-1 rounded-full bg-[#0B1B3A]/5 text-[11px] font-bold tracking-wider text-[#0B1B3A]/70 uppercase">
-                  Ages 3 to 9
-                </span>
               </div>
 
-              {/* Crisp Navigation Links */}
-              <nav className="flex flex-col gap-2 my-6">
+              {/* Quiet Navigation Rows */}
+              <nav className="flex flex-col gap-0.5 py-1">
                 <a
                   href="#features"
                   onClick={() => setMenuOpen(false)}
-                  className="py-2.5 px-3 text-[1.25rem] font-extrabold text-[#0B1B3A] hover:bg-gray-50 rounded-2xl transition-colors"
+                  className="group flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-black/[0.04] transition-colors text-sm font-medium text-[#0B1B3A]"
                 >
-                  Features
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#0B1B3A]/60 group-hover:text-[#0B1B3A]">
+                    <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                    <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                    <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                    <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                  </svg>
+                  <span>Features</span>
                 </a>
+
                 <a
                   href="#curriculum"
                   onClick={() => setMenuOpen(false)}
-                  className="py-2.5 px-3 text-[1.25rem] font-extrabold text-[#0B1B3A] hover:bg-gray-50 rounded-2xl transition-colors"
+                  className="group flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-black/[0.04] transition-colors text-sm font-medium text-[#0B1B3A]"
                 >
-                  Curriculum
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#0B1B3A]/60 group-hover:text-[#0B1B3A]">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                  </svg>
+                  <span>Curriculum</span>
                 </a>
+
                 <a
                   href="#pricing"
                   onClick={() => setMenuOpen(false)}
-                  className="py-2.5 px-3 text-[1.25rem] font-extrabold text-[#0B1B3A] hover:bg-gray-50 rounded-2xl transition-colors"
+                  className="group flex items-center gap-3 px-3 py-2 rounded-xl bg-black/[0.04] shadow-2xs text-sm font-semibold text-[#0B1B3A] transition-colors"
                 >
-                  Pricing
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#0B1B3A]">
+                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                  </svg>
+                  <span>Pricing</span>
                 </a>
+
                 <a
                   href="#about"
                   onClick={() => setMenuOpen(false)}
-                  className="py-2.5 px-3 text-[1.25rem] font-extrabold text-[#0B1B3A] hover:bg-gray-50 rounded-2xl transition-colors"
+                  className="group flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-black/[0.04] transition-colors text-sm font-medium text-[#0B1B3A]"
                 >
-                  About us
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#0B1B3A]/60 group-hover:text-[#0B1B3A]">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="16" x2="12" y2="12" />
+                    <line x1="12" y1="8" x2="12.01" y2="8" />
+                  </svg>
+                  <span>About us</span>
                 </a>
               </nav>
 
-              {/* Side-by-Side Equal CTAs */}
-              <div className="flex items-center gap-3 w-full">
+              {/* Thin Divider Line */}
+              <div className="h-[1px] bg-black/[0.06] my-0.5" />
+
+              {/* Quiet Equal Side-by-Side CTAs */}
+              <div className="flex items-center gap-2 pt-0.5 pb-1">
                 <Link
                   href="/login"
                   onClick={() => setMenuOpen(false)}
-                  className="flex-1 flex h-11 items-center justify-center rounded-full bg-[#0B1B3A] text-xs font-bold text-white shadow-sm active:scale-95 transition-transform"
+                  className="flex-1 flex h-9 items-center justify-center rounded-xl bg-black/[0.05] hover:bg-black/10 text-xs font-semibold text-[#0B1B3A] active:scale-95 transition-all"
                 >
                   Log in
                 </Link>
@@ -235,7 +264,7 @@ export default function LandingPage() {
                 <Link
                   href="/signup"
                   onClick={() => setMenuOpen(false)}
-                  className="flex-1 flex h-11 items-center justify-center rounded-full bg-[#FACC15] text-xs font-bold text-[#0B1B3A] shadow-sm active:scale-95 transition-transform"
+                  className="flex-1 flex h-9 items-center justify-center rounded-xl bg-[#FACC15] hover:bg-[#eab308] text-xs font-bold text-[#0B1B3A] shadow-2xs active:scale-95 transition-all"
                 >
                   Get Started
                 </Link>
