@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -56,90 +56,6 @@ export default function LandingPage() {
     <div className="min-h-[100dvh] flex flex-col font-[family-name:var(--font-switzer)] overflow-x-hidden w-full m-0 p-0 bg-[#0B1B3A] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
       
       <style dangerouslySetInnerHTML={{ __html: butterflyStyles }} />
-
-      
-
-      {/* MOBILE MENU - FLOATING 3-COMPONENT STACK */}
-      {menuOpen && (
-        <div className="fixed inset-0 z-[100] md:hidden flex flex-col items-center justify-center p-6">
-          {/* 1. Translucent Frosted Glass Backdrop */}
-          <div 
-            className="absolute inset-0 bg-[#0B1B3A]/25 backdrop-blur-2xl transition-all"
-            onClick={() => { setMenuOpen(false); setNavExpanded(false); }}
-          />
-
-          {/* 2. Independent Bright Red Close Button */}
-          <button 
-            onClick={() => { setMenuOpen(false); setNavExpanded(false); }}
-            aria-label="Close menu"
-            className="absolute top-6 right-6 z-[110] h-12 w-12 flex items-center justify-center bg-red-500 text-white rounded-2xl shadow-xl shadow-red-500/40 border border-white/30 active:scale-95 transition-all"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-
-          {/* 3. Floating 3-Component Stack */}
-          <div className="relative z-10 w-full max-w-[340px] flex flex-col items-center space-y-4">
-            
-            {/* COMPONENT 1: Video Card */}
-            <div className="w-full h-[200px] bg-black/80 rounded-[24px] overflow-hidden shadow-2xl border border-white/20">
-              <video 
-                autoPlay 
-                loop 
-                muted 
-                playsInline
-                poster="/hero-bg-mobile.jpg"
-                className="w-full h-full object-cover"
-              >
-                <source src="/welcome-video.mp4" type="video/mp4" />
-              </video>
-            </div>
-
-            {/* COMPONENT 2: Middle Navigation Pill */}
-            <div className="w-full bg-white/95 backdrop-blur-2xl rounded-[28px] shadow-2xl border border-white/30 overflow-hidden transition-all duration-300">
-              <button 
-                onClick={() => setNavExpanded(!navExpanded)}
-                className="w-full h-14 px-6 flex items-center justify-between text-[#0B1B3A] font-bold text-lg"
-              >
-                <span>Navigation Menu</span>
-                <svg 
-                  className={`w-5 h-5 text-[#0B1B3A] transition-transform duration-300 ${navExpanded ? 'rotate-180' : ''}`} 
-                  fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              
-              {navExpanded && (
-                <div className="px-6 pb-6 flex flex-col space-y-4 border-t border-gray-100/80 pt-4 text-[17px] font-semibold text-gray-700">
-                  <Link href="#features" onClick={() => { setMenuOpen(false); setNavExpanded(false); }} className="hover:text-[#0B1B3A]">Features</Link>
-                  <Link href="#curriculum" onClick={() => { setMenuOpen(false); setNavExpanded(false); }} className="hover:text-[#0B1B3A]">Curriculum</Link>
-                  <Link href="#pricing" onClick={() => { setMenuOpen(false); setNavExpanded(false); }} className="hover:text-[#0B1B3A]">Pricing</Link>
-                  <Link href="#about" onClick={() => { setMenuOpen(false); setNavExpanded(false); }} className="hover:text-[#0B1B3A]">About us</Link>
-                </div>
-              )}
-            </div>
-
-            {/* COMPONENT 3: Bottom CTAs (iPhone Green + Brand Yellow) */}
-            <div className="w-full flex space-x-3">
-              <Link 
-                href="/login"
-                className="flex-1 h-14 bg-[#34C759] text-white rounded-[22px] flex items-center justify-center font-bold text-base shadow-xl shadow-green-500/30 border border-white/20 active:scale-95 transition-transform"
-              >
-                Log in
-              </Link>
-              <Link 
-                href="/signup"
-                className="flex-1 h-14 bg-[#FACC15] text-[#0B1B3A] rounded-[22px] flex items-center justify-center font-bold text-base shadow-xl shadow-yellow-500/25 active:scale-95 transition-transform"
-              >
-                Get Started
-              </Link>
-            </div>
-
-          </div>
-        </div>
-      )}
 
       <main className="relative z-10 w-full bg-white rounded-b-[44px] md:rounded-b-[64px] shadow-[0_40px_100px_-20px_rgba(11,27,58,0.35),0_20px_40px_-20px_rgba(0,0,0,0.4)] overflow-hidden mb-[540px] md:mb-[440px]">
 
@@ -250,72 +166,62 @@ export default function LandingPage() {
           </div>
         </header>
 
-                                                                                
-      {menuOpen && (
-        <div className="fixed inset-0 z-[100] md:hidden flex flex-col items-center justify-center p-6">
-          {/* 1. Translucent Frosted Glass Backdrop */}
-          <div 
-            className="absolute inset-0 bg-[#0B1B3A]/25 backdrop-blur-2xl transition-all"
-            onClick={() => setMenuOpen(false)}
-          />
+                                                                                {menuOpen && (
+          <div className="fixed inset-0 z-[100] md:hidden pointer-events-auto flex flex-col items-center justify-center p-5 overflow-y-auto">
+            {/* Subtle Frosted Backdrop */}
+            <div
+              className="absolute inset-0 bg-[#0B1B3A]/80 backdrop-blur-2xl transition-opacity"
+              onClick={() => { setMenuOpen(false); setNavExpanded(false); }}
+            />
 
-          {/* 2. Bright Red Close Button */}
-          <button 
-            onClick={() => setMenuOpen(false)}
-            aria-label="Close menu"
-            className="absolute top-6 right-6 z-[110] h-12 w-12 flex items-center justify-center bg-red-500 text-white rounded-2xl shadow-xl shadow-red-500/40 border border-white/30 active:scale-95 transition-all"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-
-          {/* 3. Floating 3-Component Stack */}
-          <div className="relative z-10 w-full max-w-[340px] flex flex-col items-center space-y-4">
-            
-            {/* Top Media Card */}
-            <div className="w-full h-[200px] bg-black/80 rounded-[24px] overflow-hidden shadow-2xl border border-white/20">
-              <video autoPlay loop muted playsInline poster="/hero-bg-mobile.jpg" className="w-full h-full object-cover">
-                <source src="/welcome-video.mp4" type="video/mp4" />
-              </video>
-            </div>
-
-            {/* Middle Navigation Pill */}
-            <div className="w-full bg-white/95 backdrop-blur-2xl rounded-[28px] shadow-2xl border border-white/30 overflow-hidden">
-              <div className="w-full h-14 px-6 flex items-center justify-between text-[#0B1B3A] font-bold text-lg border-b border-gray-100">
-                <span>Navigation Menu</span>
-                <svg className="w-5 h-5 text-[#0B1B3A]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+            {/* Independent Top Right Floating Close Button */}
+            <div className="relative z-20 w-full max-w-[340px] flex justify-end mb-2">
+              <button
+                type="button"
+                onClick={() => { setMenuOpen(false); setNavExpanded(false); }}
+                className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-[#0B1B3A] shadow-2xl backdrop-blur-md border border-white/80 active:scale-90 transition-transform"
+                aria-label="Close menu"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 6L6 18M6 6l12 12" />
                 </svg>
-              </div>
-              <div className="px-6 py-4 flex flex-col space-y-3 text-[16px] font-semibold text-gray-700">
-                <a href="#features" onClick={() => setMenuOpen(false)} className="hover:text-[#0B1B3A]">Features</a>
-                <a href="#curriculum" onClick={() => setMenuOpen(false)} className="hover:text-[#0B1B3A]">Curriculum</a>
-                <a href="#pricing" onClick={() => setMenuOpen(false)} className="hover:text-[#0B1B3A]">Pricing</a>
-                <a href="#about" onClick={() => setMenuOpen(false)} className="hover:text-[#0B1B3A]">About us</a>
-              </div>
+              </button>
             </div>
 
-            {/* Bottom CTAs: iPhone Green Login + Brand Yellow Get Started */}
-            <div className="w-full flex space-x-3">
-              <a 
-                href="/login"
-                className="flex-1 h-14 bg-[#34C759] text-white rounded-[22px] flex items-center justify-center font-bold text-base shadow-xl shadow-green-500/30 border border-white/20 active:scale-95 transition-transform"
-              >
-                Log in
-              </a>
-              <a 
-                href="/signup"
-                className="flex-1 h-14 bg-[#FACC15] text-[#0B1B3A] rounded-[22px] flex items-center justify-center font-bold text-base shadow-xl shadow-yellow-500/25 active:scale-95 transition-transform"
-              >
-                Get Started
-              </a>
-            </div>
+            {/* Floating Component Stack */}
+            <div className="relative z-10 flex flex-col items-center gap-3.5 w-full max-w-[340px]">
 
-          </div>
-        </div>
-      )}
-
+              {/* COMPONENT 1: Scaled Autoplay Video Card (No Labels, Tap to Pause) */}
+              <div
+                onClick={(e) => {
+                  const video = e.currentTarget.querySelector('video');
+                  if (video) {
+                    if (video.paused) { video.play(); setIsPlaying(true); }
+                    else { video.pause(); setIsPlaying(false); }
+                  }
+                }}
+                className="relative w-full h-[210px] rounded-[28px] overflow-hidden bg-gradient-to-br from-[#522DB8] via-[#3B1D8C] to-[#0B1B3A] shadow-[0_25px_50px_rgba(0,0,0,0.4)] border border-white/30 cursor-pointer group"
+              >
+                <video
+                  src="/welcome-video.mp4"
+                  poster="/hero-bg-mobile.jpg"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+                
+                {/* Pause/Play Minimal Overlay Indicator */}
+                {!isPlaying && (
+                  <div className="absolute inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center">
+                    <div className="h-14 w-14 rounded-full bg-white/90 text-[#0B1B3A] flex items-center justify-center shadow-2xl">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="ml-1">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* COMPONENT 2: Scaled Expandable Menu Pill (Up/Down Chevron) */}
