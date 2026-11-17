@@ -180,7 +180,7 @@ export default function LandingPage() {
               <button
                 type="button"
                 onClick={() => { setMenuOpen(false); setNavExpanded(false); }}
-                className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-500 text-white shadow-xl shadow-red-500/40 border border-white/30 active:scale-90 transition-transform"
+                className="flex h-12 w-12 items-center justify-center rounded-full bg-red-500 text-white shadow-xl shadow-red-500/40 border border-white/30 active:scale-90 transition-transform"
                 aria-label="Close menu"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
@@ -292,7 +292,7 @@ export default function LandingPage() {
                 <Link
                   href="/login"
                   onClick={() => { setMenuOpen(false); setNavExpanded(false); }}
-                  className="flex-1 flex h-14 items-center justify-center rounded-[22px] bg-[#34C759] text-sm font-extrabold text-white shadow-xl shadow-green-500/30 border border-white/20 active:scale-95 transition-transform"
+                  className="flex-1 flex h-14 items-center justify-center rounded-full bg-[#34C759] text-sm font-extrabold text-white shadow-xl shadow-green-500/30 border border-white/20 active:scale-95 transition-transform"
                 >
                   Log in
                 </Link>
@@ -300,7 +300,7 @@ export default function LandingPage() {
                 <Link
                   href="/signup"
                   onClick={() => { setMenuOpen(false); setNavExpanded(false); }}
-                  className="flex-1 flex h-14 items-center justify-center rounded-full bg-[#FACC15] text-sm font-extrabold text-[#0B1B3A] shadow-[0_12px_30px_rgba(250,204,21,0.4)] active:scale-95 transition-transform hover:bg-white"
+                  className="flex-1 flex h-14 items-center justify-center rounded-full bg-[#FACC15] text-sm font-extrabold text-[#0B1B3A] shadow-xl shadow-yellow-500/25 border border-white/20 active:scale-95 transition-transform hover:bg-white"
                 >
                   Get Started
                 </Link>
